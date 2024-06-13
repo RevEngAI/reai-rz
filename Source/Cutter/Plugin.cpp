@@ -18,11 +18,43 @@
 #include <qt6/QtWidgets/QMainWindow>
 #include <qt6/QtWidgets/QMenuBar>
 
-/* local includes */
-#include "Common.h"
+/* creait lib */
+#include <Reai/Api/Api.h>
+#include <Reai/Common.h>
 
-class ReaiDockWidget : public CutterDockWidget {
-};
+/**
+ * @b Override default message handler by this one.
+ *
+ * @param[in] type
+ * @param[in] context
+ * @param[in] msg
+ * */
+void reai_custom_qt_message_handler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
+{
+    Q_UNUSED(context);
+
+    QByteArray localMsg = msg.toLocal8Bit();
+    switch (type) {
+    case QtDebugMsg:
+        fprintf(stderr, "REAI::Debug: %s\n", localMsg.constData());
+        break;
+    case QtInfoMsg:
+        fprintf(stderr, "REAI::Info: %s\n", localMsg.constData());
+        break;
+    case QtWarningMsg:
+        fprintf(stderr, "REAI::Warning: %s\n", localMsg.constData());
+        break;
+    case QtCriticalMsg:
+        fprintf(stderr, "REAI::Critical: %s\n", localMsg.constData());
+        break;
+    case QtFatalMsg:
+        fprintf(stderr, "REAI::Fatal: %s\n", localMsg.constData());
+        abort();
+    }
+
+    // Flush the output to ensure it's not buffered
+    fflush(stderr);
+}
 
 /**
  * @b RevEngAI Cutter Plugin class.
@@ -49,9 +81,14 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction* actDownloadBinAnalysisLogs = nullptr;
     QAction* actBinAnalysisHistory = nullptr;
 
+    Reai* reai = nullptr;
+    ReaiResponse* response;
+    ReaiRequest* request;
+
 public:
     void setupPlugin() override;
     void setupInterface(MainWindow* mainWin) override;
+    ~ReaiCutterPlugin();
 
     QString getName() const override { return "RevEngAI Plugin (rz-reai)"; }
     QString getAuthor() const override { return "Siddharth Mishra"; }
@@ -70,7 +107,31 @@ public:
     void on_BinAnalysisHistory();
 };
 
-void ReaiCutterPlugin::setupPlugin() {};
+void ReaiCutterPlugin::setupPlugin()
+{
+
+    /* turn off output buffering */
+    setbuf(stdout, nullptr);
+    setbuf(stderr, nullptr);
+
+    /* install custom message handler */
+    qInstallMessageHandler(reai_custom_qt_message_handler);
+
+    qInfo() << __FUNCTION__;
+
+    if (!(response = reai_response_init(new ReaiResponse))) {
+        qCritical() << "Failed to initialize response data object\n";
+    }
+
+    reai = reai_create(HARDCODED_HOST, HARDCODED_API_KEY);
+    if (!reai) {
+        qCritical() << "Failed to create Reai instance";
+    }
+
+    request = new ReaiRequest;
+
+    qInfo() << __FUNCTION__;
+};
 
 /**
  * @b Required by CutterPlugin to initialize UI for this plugin.
@@ -79,10 +140,11 @@ void ReaiCutterPlugin::setupPlugin() {};
  * */
 void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
 {
+    qInfo() << __FUNCTION__;
     /* get main window's menu bar */
     QMenuBar* menuBar = mainWin->menuBar();
     if (!menuBar) {
-        qCritical() << "REAI : Given Cutter main window has no menu bar.";
+        qCritical() << "Given Cutter main window has no menu bar.";
         return;
     }
 
@@ -92,7 +154,7 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
         /* get list of all menus in menu bar */
         QList<QMenu*> menuBarMenuList = menuBar->findChildren<QMenu*>();
         if (!menuBarMenuList.size()) {
-            qCritical() << "REAI : Cutter main window has no menu items in it's menu bar.";
+            qCritical() << "Cutter main window has no menu items in it's menu bar.";
             return;
         }
 
@@ -108,7 +170,7 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
         }
 
         if (!windowsMenu) {
-            qCritical() << "REAI : Cutter main window has no 'Windows' menu in it's menu bar.";
+            qCritical() << "Cutter main window has no 'Windows' menu in it's menu bar.";
             return;
         }
 
@@ -123,7 +185,7 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
         }
 
         if (!pluginsMenu) {
-            qCritical() << "REAI : Cutter main window has no 'Plugins' sub-menu in 'Windows' menu of it's menu bar.";
+            qCritical() << "Cutter main window has no 'Plugins' sub-menu in 'Windows' menu of it's menu bar.";
             return;
         }
     }
@@ -141,7 +203,7 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
     /* add revengai's own plugin menu */
     reaiMenu = menuBar->addMenu("RevEngAI");
     if (!reaiMenu) {
-        qCritical() << "REAI : Failed to add my own menu to Cutter's main window menu bar";
+        qCritical() << "Failed to add my own menu to Cutter's main window menu bar";
         return;
     }
 
@@ -158,6 +220,22 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
     connect(actCheckAnalysisStatus, &QAction::triggered, this, &ReaiCutterPlugin::on_CheckAnalysisStatus);
     connect(actDownloadBinAnalysisLogs, &QAction::triggered, this, &ReaiCutterPlugin::on_DownloadBinAnalysisLogs);
     connect(actPerformRenameFromSimilarFns, &QAction::triggered, this, &ReaiCutterPlugin::on_PerformRenameFromSimilarFns);
+    qInfo() << __FUNCTION__;
+}
+
+ReaiCutterPlugin::~ReaiCutterPlugin()
+{
+    if (request) {
+        delete request;
+    }
+
+    if (response) {
+        delete response;
+    }
+
+    if (reai) {
+        reai_destroy(reai);
+    }
 }
 
 /**
@@ -165,10 +243,24 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
  * */
 void ReaiCutterPlugin::on_ToggleReaiPlugin()
 {
+    qInfo() << __FUNCTION__;
     reaiMenu->menuAction()->setVisible(actToggleReaiPlugin->isChecked());
+    qInfo() << __FUNCTION__;
 }
 
-void ReaiCutterPlugin::on_UploadBin() { qInfo() << __FUNCTION__; }
+void ReaiCutterPlugin::on_UploadBin()
+{
+    qInfo() << __FUNCTION__;
+    request->type = REAI_REQUEST_TYPE_UPLOAD_FILE;
+    request->upload_file.file_path = "/home/misra/Desktop/RevEngAI/plugins/native/Build/Source/libreai_cutter.so";
+    if (!reai_request(reai, request, response)) {
+        qCritical() << "Failed to make request";
+    }
+
+    qInfo() << response->raw.data;
+    qInfo() << __FUNCTION__;
+}
+
 void ReaiCutterPlugin::on_CheckAnalysisStatus() { qInfo() << __FUNCTION__; }
 void ReaiCutterPlugin::on_AutoAnalyzeBinSym() { qInfo() << __FUNCTION__; }
 void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() { qInfo() << __FUNCTION__; }
@@ -176,4 +268,4 @@ void ReaiCutterPlugin::on_DownloadBinAnalysisLogs() { qInfo() << __FUNCTION__; }
 void ReaiCutterPlugin::on_BinAnalysisHistory() { qInfo() << __FUNCTION__; }
 
 /* Required by the meta object compiler, otherwise build fails */
-#include "Main.moc"
+#include "Plugin.moc"

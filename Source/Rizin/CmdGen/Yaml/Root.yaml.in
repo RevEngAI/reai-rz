@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2021 RizinOrg <info@rizin.re>
+# SPDX-License-Identifier: LGPL-3.0-only
+#
+#
+# Format of RzCmdDesc/RzCmdDescHelp descriptor
+# name: name of the YAML file, might be useful to reference another sub-file
+# commands:
+# - name: same as RzCmdDesc.name (mandatory)
+#   cname: >
+#     name used in the generated C code for structures, handlers, etc. Make sure
+#     this is a valid C name. It cannot contain special characters like `$`, `"`,
+#     `=`, etc.
+#   summary: same as RzCmdDescHelp.summary (mandatory)
+#   description: same as RzCmdDescHelp.description
+#   type: >
+#     same as RzCmdDescType. GROUP and ARGV_MODES are automatically detected
+#     based on the other fields, the rest must be specified. ARGV is the default
+#     mode if not specified.
+#   args_str: same as RzCmdDescHelp.args_str
+#   usage: same as RzCmdDescHelp.usage
+#   options: same as RzCmdDescHelp.options
+#   modes: >
+#     same as RzCmdDesc.modes. When present the type is automatically set to
+#     ARGV_MODES.
+#   default_mode: >
+#     same as RzCmdDesc.default_mode.
+#   details: >
+#     an array of RzCmdDescDetail or a string referencing an already existing
+#     RzCmdDescDetail array
+#   args: >
+#     an array of RzCmdDescArg or a string referencing an already existing
+#     RzCmdDescArg array
+#   handler: >
+#     name of the C handler that handles the command. If not specified it is based
+#     on the cname. For OLDINPUT, the handler has the form `rz_{cname}`, for all
+#     other cases it is `rz_{cname}_handler`.
+#   subcommands: >
+#     array of RzCmdDesc/RzCmdDescHelp descriptors. When present the
+#     type is RZ_CMD_DESC_TYPE_GROUP. Only the first subcommand can contain a
+#     descriptor with the same name as this one.
+#
+# Format of RzCmdDescDetail:
+#   details:
+#     - name: same as RzCmdDescDetail.name (mandatory)
+#       entries: array of RzCmdDescDetailEntry (mandatory)
+#
+# Format of RzCmdDescDetailEntry:
+#   entries:
+#     - text: same as RzCmdDescDetailEntry.text (mandatory)
+#       comment: same as RzCmdDescDetailEntry.comment (mandatory)
+#       arg_str: same as RzCmdDescDetailEntry.arg_str
+#
+# Format of RzCmdDescArg:
+#   args:
+#     - name: same as RzCmdDescArg.name (mandatory)
+#       optional: same as RzCmdDescArg.optional
+#       no_space: same as RzCmdDescArg.no_space
+#       type: same as RzCmdDescArg.type (mandatory)
+#       flags: same as RzCmdDescArg.flags
+#       default_value: same as RzCmdDescArg.default_value
+#       choices: same as RzCmdDescArg.choices (only valid if type is RZ_CMD_ARG_TYPE_CHOICES)
+#       choices_cb: same as RzCmdDescArg.choices_cb (only valid if type is RZ_CMD_ARG_TYPE_CHOICES)
+#
+---
+name: root
+commands:
+  - name: reai
+    summary: RevEngAI Plugin Commands 
+    subcommands: @SUBCOMMANDS_FILES_BASE@/Reai.yaml

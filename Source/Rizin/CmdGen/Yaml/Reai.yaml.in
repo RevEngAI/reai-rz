@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2024 Siddharth Mishra <admin@brightprogrammer.in>
+# SPDX-License-Identifier: All Rights Reserved.
+---
+name: @SUBCOMMANDS_FILES_BASE@/Reai.yaml 
+commands:
+  - name: REs 
+    cname: health_check
+    summary: Check connection status with RevEngAI servers.
+    args: []
+  - name: REA
+    cname: upload_and_analyse
+    summary: Upload and analyse currently loaded binary
+    args:
+        - name: file_path
+          type: RZ_CMD_ARG_TYPE_STRING
+          optional: false
+  - name: REu 
+    cname: upload_bin
+    summary: Upload given binary to RevEngAI servers. 
+    args:
+        - name: file_path
+          type: RZ_CMD_ARG_TYPE_STRING
+          optional: false

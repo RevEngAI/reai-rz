@@ -1,3 +1,8 @@
 Build/
 .cache/
 compile_commands.json
+
+# Generated file
+Source/Rizin/CmdGen/Yaml/Root.yaml
+Source/Rizin/CmdGen/Yaml/Reai.yaml
+Source/Rizin/CmdGen/Generators/__pycache__/

@@ -14,6 +14,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project(rz-reai VERSION 0 LANGUAGES C CXX)
 
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ----------------------------------------
@@ -21,9 +23,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ----------------------------------------
 
 # Minimal required version
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
 # Build parameters.
 if(MSVC) # Windows
@@ -45,7 +51,7 @@ elseif(UNIX) # Linux or macOS
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
 	# Set C flags
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra")
 else()
 	message(FATAL_ERROR "Unsupported system type: ${CMAKE_SYSTEM_NAME}")
 endif()
@@ -72,14 +78,10 @@ endif()
 find_package(Cutter REQUIRED)
 find_package(Rizin REQUIRED)
 set(CUTTER_INSTALL_PLUGDIR "${Cutter_USER_PLUGINDIR}" CACHE STRING "Directory to install Cutter plugin into")
+set(RIZIN_INSTALL_PLUGDIR "${Rizin_PLUGINDIR}" CACHE STRING "Directory to install Rizin plugins into")
 
 # --------------------------------------
 # ---- LGPL-3.0 LICENSED REGION END ----
 # --------------------------------------
-
-# AUTOMOC is alteast required to allow using of Q_PLUGIN_METADATA
-set(CMAKE_AUTOMOC ON) # Auto Meta Object Compiler
-set(CMAKE_AUTOUIC ON) # Auto User Interface Compiler
-set(CMAKE_AUTORCC ON) # Auto Resource Compile
 
 add_subdirectory(Source)
