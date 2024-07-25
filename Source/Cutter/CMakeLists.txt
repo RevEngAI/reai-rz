@@ -1,7 +1,7 @@
 # RevEngAI Cutter Plugin Sources
 # Author    : Siddharth Mishra (admin@brightprogrammer.in)
 # Date      : 12/06/2024
-# Copyright : Copyright (c) Siddharth Mishra. All Rights Reserved.
+# Copyright : Copyright (c) RevEngAI. All Rights Reserved.
 
 # AUTOMOC is alteast required to allow using of Q_PLUGIN_METADATA
 set(CMAKE_AUTOMOC ON) # Auto Meta Object Compiler

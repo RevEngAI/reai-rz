@@ -1,7 +1,7 @@
 # RevEngAI Cutter Plugin
 # Author    : Siddharth Mishra (admin@brightprogrammer.in)
 # Date      : 07/06/2024
-# Copyright : Copyright (c) Siddharth Mishra. All Rights Reserved.
+# Copyright : Copyright (c) RevEngAI. All Rights Reserved.
 
 # Writing python plugins is a P.I.T.A
 # Reference for writing this CPP plugin was taken from rz-retdec CPP plugin.
@@ -45,6 +45,7 @@ if(MSVC) # Windows
 elseif(UNIX) # Linux or macOS
 	# Common options.
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")

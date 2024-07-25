@@ -3,21 +3,22 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Reai.yaml 
 commands:
-  - name: REs 
+  - name: REh
     cname: health_check
     summary: Check connection status with RevEngAI servers.
     args: []
   - name: REA
-    cname: upload_and_analyse
+    cname: upload_and_create_analysis
     summary: Upload and analyse currently loaded binary
-    args:
-        - name: file_path
-          type: RZ_CMD_ARG_TYPE_STRING
-          optional: false
+    args: []
   - name: REu 
     cname: upload_bin
-    summary: Upload given binary to RevEngAI servers. 
-    args:
-        - name: file_path
-          type: RZ_CMD_ARG_TYPE_STRING
-          optional: false
+    summary: Upload currently loaded binary to RevEngAI servers. 
+    args: []
+    #    - name: file_path
+    #      type: RZ_CMD_ARG_TYPE_STRING
+    #      optional: false
+  - name: REa
+    cname: create_analysis
+    summary: Analyse already uploaded binary
+    args: []

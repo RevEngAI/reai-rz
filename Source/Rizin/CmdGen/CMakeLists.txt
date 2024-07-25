@@ -16,23 +16,31 @@ endif()
 set(SUBCOMMANDS_FILES_BASE "${CMAKE_CURRENT_SOURCE_DIR}/Yaml")
 
 set(CmdDescsRootYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Root.yaml.in")
-set(CmdDescsRootYaml "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Root.yaml")
+set(CmdDescsRootYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Root.yaml")
 configure_file(${CmdDescsRootYamlIn} ${CmdDescsRootYaml} @ONLY)
 
 set(CmdDescsReaiYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Reai.yaml.in")
-set(CmdDescsReaiYaml "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Reai.yaml")
+set(CmdDescsReaiYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Reai.yaml")
 configure_file(${CmdDescsReaiYamlIn} ${CmdDescsReaiYaml} @ONLY)
 
 set(CmdDescGenerator "${CMAKE_CURRENT_SOURCE_DIR}/Generators/CmdDescsGenerator.py")
-set(CmdDescYamlFiles "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Root.yaml" "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Reai.yaml")
-set(CmdDescOutputFiles "${CMAKE_CURRENT_SOURCE_DIR}/Output/CmdDescs.c" "${CMAKE_CURRENT_SOURCE_DIR}/Output/CmdDescs.h")
+set(CmdDescYamlFiles "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Root.yaml" "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Reai.yaml")
+set(CmdDescOutputFiles "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c" "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h")
 
 add_custom_command(
     OUTPUT ${CmdDescOutputFiles}
-    COMMAND "${Python3_EXECUTABLE}" ${CmdDescGenerator} --output-dir ${CMAKE_CURRENT_BINARY_DIR} --src-output-dir ${CMAKE_CURRENT_SOURCE_DIR} ${CmdDescYamlFiles}
+    COMMAND "${Python3_EXECUTABLE}" ${CmdDescGenerator} --output-dir ${CMAKE_CURRENT_BINARY_DIR} --src-output-dir ${CMAKE_CURRENT_BINARY_DIR} ${CmdDescYamlFiles}
     DEPENDS ${CmdDescYamlFiles}
     COMMENT "Generating CmdDescs.c and CmdDescs.h"
 )
 
 add_library(reai_cmdescs ${CmdDescOutputFiles})
 target_link_libraries(reai_cmdescs PUBLIC Rizin::Core)
+set_target_properties(
+    reai_cmdescs
+    PROPERTIES
+    ADDITIONAL_CLEAN_FILES ${CmdDescsReaiYaml}
+    ADDITIONAL_CLEAN_FILES ${CmdDescsRootYaml}
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c"
+    ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h"
+)

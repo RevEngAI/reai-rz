@@ -64,6 +64,6 @@
 ---
 name: root
 commands:
-  - name: reai
+  - name: RE 
     summary: RevEngAI Plugin Commands 
     subcommands: @SUBCOMMANDS_FILES_BASE@/Reai.yaml

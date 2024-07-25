@@ -2,7 +2,7 @@
  * @file      : Main.cpp
  * @author    : Siddharth Mishra
  * @date      : 07/06/2024
- * @copyright : Copyright (c) 2024 Siddharth Mishra. All Rights Reserved.
+ * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
 /* cutter includes */
@@ -21,6 +21,7 @@
 /* creait lib */
 #include <Reai/Api/Api.h>
 #include <Reai/Common.h>
+#include <Reai/Config.h>
 
 /**
  * @b Override default message handler by this one.
@@ -123,10 +124,12 @@ void ReaiCutterPlugin::setupPlugin()
         qCritical() << "Failed to initialize response data object\n";
     }
 
-    reai = reai_create(HARDCODED_HOST, HARDCODED_API_KEY);
+    ReaiConfig* config = reai_config_load(Null);
+    reai = reai_create(config->host, config->apikey);
     if (!reai) {
         qCritical() << "Failed to create Reai instance";
     }
+    reai_config_destroy(config);
 
     request = new ReaiRequest;
 
