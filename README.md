@@ -31,8 +31,7 @@ plugin name will be visible as `reai_rizin`
 
 Working towards first realease, version 0.1 will contain following features :
 
-- [x] upload and analyse binary
-- [ ] get info about recently uploaded binaries
-- [ ] load binary from binary id
-- [ ] auto analyse all functions and apply rename from ANN requests
+- [x] Upload and analyse binary
+- [x] Local database for keeping track of uploaded and analysed binaries
+- [ ] Auto analyse all functions and apply rename from ANN requests
 - [ ] find similar functions from a single function (single ANN request)

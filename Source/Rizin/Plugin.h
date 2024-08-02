@@ -11,30 +11,49 @@
 #ifndef REAI_RIZIN_PLUGIN
 #define REAI_RIZIN_PLUGIN
 
+/* revenai */
 #include <Reai/Api/Api.h>
+#include <Reai/Log.h>
+#include <Reai/Config.h>
+#include <Reai/Db.h>
 
 /* rizin */
 #include <rz_bin.h>
+#include <rz_core.h>
 
-ReaiResponse* reai_plugin_request (ReaiRequest* request);
-CString       reai_plugin_upload_file (CString file_path);
-BinaryId      reai_plugin_create_analysis (
-         ReaiModel      model,
-         ReaiFnInfoVec* fn_info_vec,
-         Bool           is_private,
-         CString        sha_256_hash,
-         CString        file_name,
-         CString        cmdline_args,
-         Size           size_in_bytes
-     );
+void reai_plugin_log_printf (ReaiLogLevel level, CString tag, CString fmtstr, ...);
+
+#define LOG_TRACE(...) REAI_LOG_TRACE (reai_logger(), __VA_ARGS__)
+#define LOG_INFO(...)  REAI_LOG_INFO (reai_logger(), __VA_ARGS__)
+#define LOG_DEBUG(...) REAI_LOG_DEBUG (reai_logger(), __VA_ARGS__)
+#define LOG_WARN(...)  REAI_LOG_WARN (reai_logger(), __VA_ARGS__)
+#define LOG_ERROR(...) REAI_LOG_ERROR (reai_logger(), __VA_ARGS__)
+#define LOG_FATAL(...) REAI_LOG_FATAL (reai_logger(), __VA_ARGS__)
+
+typedef struct ReaiPlugin {
+    ReaiConfig*   reai_config;
+    Reai*         reai;
+    ReaiDb*       reai_db;
+    ReaiResponse* reai_response;
+    ReaiLog*      reai_logger;
+
+    // TODO: This is temporary, database to be added to keep track of multiple
+    // uploaded binaries and created analysis
+    ReaiBinaryId bin_id;
+    CString      sha_256_hash;
+} ReaiPlugin;
+
+ReaiPlugin* reai_plugin();
+
+#define reai()          reai_plugin()->reai
+#define reai_db()       reai_plugin()->reai_db
+#define reai_response() reai_plugin()->reai_response
+#define reai_logger()   reai_plugin()->reai_logger
+#define reai_config()   reai_plugin()->reai_config
+
+/* helpers */
 ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzBinFile* binfile);
 
-void     reai_plugin_set_binary_id (BinaryId bin_id);
-BinaryId reai_plugin_get_binary_id();
-
-CString reai_plugin_set_sha_256_hash (CString sha_256_hash);
-CString reai_plugin_get_sha_256_hash();
-
-
+#include "Override.h"
 
 #endif // REAI_RIZIN_PLUGIN

@@ -7,6 +7,7 @@
  * @brief Main plugin entry point.
  * */
 
+/* rizin */
 #include <rz_analysis.h>
 #include <rz_asm.h>
 #include <rz_core.h>
@@ -14,103 +15,32 @@
 #include <rz_types.h>
 
 /* revengai */
+#include <Reai/AnalysisInfo.h>
+#include <Reai/Db.h>
+#include <Reai/Log.h>
 #include <Reai/Api/Api.h>
 #include <Reai/Common.h>
 #include <Reai/Config.h>
 #include <Reai/Types.h>
 
+/* libc */
+#include <stdarg.h>
+
 /* local includes */
 #include "CmdGen/Output/CmdDescs.h"
 #include "Plugin.h"
 
-/* private plugin data */
-static struct {
-    ReaiConfig*   reai_config;
-    Reai*         reai;
-    ReaiResponse* reai_response;
-
-    // TODO: This is temporary, database to be added to keep track of multiple
-    // uploaded binaries and created analysis
-    BinaryId bin_id;
-    CString  sha_256_hash;
-} plugin = {0};
-
 /**
- * @b To be used by command handlers to indirectly access Reai API
- * without accessing things that they don't need.
+ * Get Reai Plugin object.
  * */
-RZ_IPI ReaiResponse* reai_plugin_request (ReaiRequest* request) {
-    RETURN_VALUE_IF (!request, Null, ERR_INVALID_ARGUMENTS);
-    return reai_request (plugin.reai, request, plugin.reai_response);
-}
+ReaiPlugin* reai_plugin() {
+    static ReaiPlugin* plugin = Null;
 
-/**
- * @b Wrapper around reai upload file api
- * */
-RZ_IPI CString reai_plugin_upload_file (CString path) {
-    RETURN_VALUE_IF (!path, Null, ERR_INVALID_ARGUMENTS);
-    return reai_upload_file (plugin.reai, plugin.reai_response, path);
-}
-
-/**
- * @b Wrapper around reai create analysis api
- * */
-RZ_IPI BinaryId reai_plugin_create_analysis (
-    ReaiModel      model,
-    ReaiFnInfoVec* fn_info_vec,
-    Bool           is_private,
-    CString        sha_256_hash,
-    CString        file_name,
-    CString        cmdline_args,
-    Size           size_in_bytes
-) {
-    RETURN_VALUE_IF (
-        !model || !sha_256_hash || !file_name || !size_in_bytes,
-        0,
-        ERR_INVALID_ARGUMENTS
-    );
-
-    return reai_create_analysis (
-        plugin.reai,
-        plugin.reai_response,
-        model,
-        fn_info_vec,
-        is_private,
-        sha_256_hash,
-        file_name,
-        cmdline_args,
-        size_in_bytes
-    );
-}
-
-void reai_plugin_set_binary_id (BinaryId bin_id) {
-    plugin.bin_id = bin_id;
-}
-
-BinaryId reai_plugin_get_binary_id() {
-    return plugin.bin_id;
-}
-
-/**
- * @b Set hash is cloned and kept separately. Ownership of given string does not change
- * */
-CString reai_plugin_set_sha_256_hash (CString sha_256_hash) {
-    RETURN_VALUE_IF (!sha_256_hash, Null, ERR_INVALID_ARGUMENTS);
-
-    if (plugin.sha_256_hash) {
-        FREE (plugin.sha_256_hash);
-        plugin.sha_256_hash = Null;
+    if (!plugin) {
+        RETURN_VALUE_IF (!(plugin = NEW (ReaiPlugin)), Null, ERR_OUT_OF_MEMORY);
     }
 
-    RETURN_VALUE_IF (!(plugin.sha_256_hash = strdup (sha_256_hash)), Null, ERR_OUT_OF_MEMORY);
-    return plugin.sha_256_hash;
-}
-
-/**
- * @b returned string is onwed by caller and must free it after use.
- * */
-CString reai_plugin_get_sha_256_hash() {
-    return plugin.sha_256_hash ? strdup (plugin.sha_256_hash) : Null;
+    return plugin;
 }
 
 /**
@@ -148,6 +78,13 @@ ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzBinFile* binfile) {
                 reai_fn_info_vec_destroy (fn_boundaries);
                 return Null;
             }
+
+            LOG_TRACE (
+                "FUNCTION .name = %16s, .vaddr = 0x%08llx, .size = 0x%08llx",
+                fn_info.name,
+                fn_info.vaddr,
+                fn_info.size
+            );
         }
     }
 
@@ -155,7 +92,7 @@ ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzBinFile* binfile) {
 }
 
 /**
- * @brief Called by rizin when loading plugin. This is the plugin entrypoint where we
+ * @brief Called by rizin when loading reai_plugin()-> This is the plugin entrypoint where we
  * register all the commands and corresponding handlers.
  *
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
@@ -164,11 +101,29 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
     RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
 
     /* load default config */
-    plugin.reai_config = reai_config_load (Null);
+    reai_config() = reai_config_load (Null);
+    RETURN_VALUE_IF (!reai_config(), False, "Failed to load RevEng.AI toolkit config file.");
 
-    /* initialize Reai objects. */
-    plugin.reai          = reai_create (plugin.reai_config->host, plugin.reai_config->apikey);
-    plugin.reai_response = reai_response_init (NEW (ReaiResponse));
+    /* create logger */
+    reai_logger() = reai_log_create (Null);
+    RETURN_VALUE_IF (!reai_logger(), False, "Failed to create Reai logger.");
+
+    /* initialize reai object. */
+    reai() = reai_create (reai_config()->host, reai_config()->apikey);
+    RETURN_VALUE_IF (!reai(), False, "Failed to create Reai object.");
+
+    /* create response object */
+    reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
+    RETURN_VALUE_IF (!reai_response(), False, "Failed to create/init ReaiResponse object.");
+
+    /* create database and set it to reai database */
+    Size db_path_strlen = snprintf (Null, 0, "%s/reai.db", reai_config()->db_dir_path) + 1;
+    Char db_path[db_path_strlen];
+    snprintf (db_path, db_path_strlen, "%s/reai.db", reai_config()->db_dir_path);
+
+    reai_db() = reai_db_create (db_path);
+    RETURN_VALUE_IF (!reai_db(), False, "Failed to create Reai DB object.");
+    reai_set_db (reai(), reai_db());
 
     /* initialize command descriptors */
     rzshell_cmddescs_init (core);
@@ -177,22 +132,26 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
 }
 
 /**
- * @b Will be called by rizin before unloading the plugin.
+ * @b Will be called by rizin before unloading the reai_plugin()->
  * */
 RZ_IPI Bool reai_plugin_fini (RzCore* core) {
     RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
 
-    if (plugin.reai_response) {
-        reai_response_deinit (plugin.reai_response);
-        FREE (plugin.reai_response);
+    if (reai_response()) {
+        reai_response_deinit (reai_response());
+        FREE (reai_response());
     }
 
-    if (plugin.reai) {
-        reai_destroy (plugin.reai);
+    if (reai()) {
+        reai_destroy (reai());
     }
 
-    if (plugin.reai_config) {
-        reai_config_destroy (plugin.reai_config);
+    if (reai_config()) {
+        reai_config_destroy (reai_config());
+    }
+
+    if (reai_logger()) {
+        reai_log_destroy (reai_logger());
     }
 
     /* Remove command group from rzshell. The name of this comamnd group must match

@@ -7,18 +7,57 @@ commands:
     cname: health_check
     summary: Check connection status with RevEngAI servers.
     args: []
-  - name: REA
-    cname: upload_and_create_analysis
-    summary: Upload and analyse currently loaded binary
-    args: []
-  - name: REu 
+  - name: REu
     cname: upload_bin
-    summary: Upload currently loaded binary to RevEngAI servers. 
+    summary: Upload currently loaded binary to RevEngAI servers.
     args: []
     #    - name: file_path
     #      type: RZ_CMD_ARG_TYPE_STRING
     #      optional: false
   - name: REa
     cname: create_analysis
-    summary: Analyse already uploaded binary
+    summary: Upload and analyse currently loaded binary
     args: []
+  - name: REs
+    cname: get_analysis_status
+    summary: Get analysis status of given binary id
+    type: RZ_CMD_DESC_TYPE_ARGV_STATE
+    args:
+      - name: binary_id
+        type: RZ_CMD_ARG_TYPE_NUM
+        optional: true
+    modes:
+      - RZ_OUTPUT_MODE_STANDARD
+    details:
+      - name: Binary ID
+        entries:
+          - text: "18244"
+            comment: "Binary ID to check analysis status for"
+          - text: ""
+            comment: "No binary ID defaults to currently loaded binary"
+  - name: REfl
+    cname: get_basic_function_info
+    summary: Get & show basic function info for selected binary.
+    type: RZ_CMD_DESC_TYPE_ARGV_STATE
+    modes:
+      - RZ_OUTPUT_MODE_TABLE
+    args: []
+  - name: REfr
+    cname: rename_function
+    summary: Rename function with given function id to given name.
+    args:
+      - name: function_id
+        type: RZ_CMD_ARG_TYPE_NUM
+        optional: false
+      - name: new_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+    details:
+      - name: Function ID
+        entries:
+          - text: "3769845"
+            comment: "Function ID assigned by created analysis"
+      - name: New name
+        entries:
+          - text: "fopen"
+            comment: "New function name"
