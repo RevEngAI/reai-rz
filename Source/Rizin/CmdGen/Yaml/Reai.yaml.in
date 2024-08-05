@@ -18,16 +18,29 @@ commands:
     cname: create_analysis
     summary: Upload and analyse currently loaded binary
     args: []
+  - name: REau
+    cname: ann_auto_analyze
+    summary: Auto analyze binary functions using ANN and perform batch rename.
+    args:
+      - name: distance
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 0.1
+      - name: results_per_function
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 5
+      - name: min_confidence
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 0.95
   - name: REs
     cname: get_analysis_status
     summary: Get analysis status of given binary id
     type: RZ_CMD_DESC_TYPE_ARGV_STATE
+    modes:
+      - RZ_OUTPUT_MODE_STANDARD
     args:
       - name: binary_id
         type: RZ_CMD_ARG_TYPE_NUM
         optional: true
-    modes:
-      - RZ_OUTPUT_MODE_STANDARD
     details:
       - name: Binary ID
         entries:

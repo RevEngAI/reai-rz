@@ -8,6 +8,7 @@
  * */
 
 /* rizin */
+#include <Reai/Api/Reai.h>
 #include <rz_analysis.h>
 #include <rz_asm.h>
 #include <rz_core.h>
@@ -29,6 +30,8 @@
 /* local includes */
 #include "CmdGen/Output/CmdDescs.h"
 #include "Plugin.h"
+
+#define BACKGROUND_WORKER_UPDATE_INTERVAL 2
 
 /**
  * Get Reai Plugin object.
@@ -92,6 +95,20 @@ ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzBinFile* binfile) {
 }
 
 /**
+ * @b Background worker thread that updates the DB and other required things
+ * in the background periodically.
+ * */
+PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
+    if (plugin) {
+        if (plugin->reai) {
+            reai_update_all_analyses_status_in_db (plugin->reai);
+        }
+    }
+
+    rz_sys_sleep (BACKGROUND_WORKER_UPDATE_INTERVAL);
+}
+
+/**
  * @brief Called by rizin when loading reai_plugin()-> This is the plugin entrypoint where we
  * register all the commands and corresponding handlers.
  *
@@ -104,13 +121,17 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
     reai_config() = reai_config_load (Null);
     RETURN_VALUE_IF (!reai_config(), False, "Failed to load RevEng.AI toolkit config file.");
 
-    /* create logger */
-    reai_logger() = reai_log_create (Null);
-    RETURN_VALUE_IF (!reai_logger(), False, "Failed to create Reai logger.");
-
     /* initialize reai object. */
     reai() = reai_create (reai_config()->host, reai_config()->apikey);
     RETURN_VALUE_IF (!reai(), False, "Failed to create Reai object.");
+
+    /* create logger */
+    reai_logger() = reai_log_create (Null);
+    RETURN_VALUE_IF (
+        !reai_logger() || !reai_set_logger (reai(), reai_logger()),
+        False,
+        "Failed to create and set Reai logger."
+    );
 
     /* create response object */
     reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
@@ -122,8 +143,15 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
     snprintf (db_path, db_path_strlen, "%s/reai.db", reai_config()->db_dir_path);
 
     reai_db() = reai_db_create (db_path);
-    RETURN_VALUE_IF (!reai_db(), False, "Failed to create Reai DB object.");
-    reai_set_db (reai(), reai_db());
+    RETURN_VALUE_IF (
+        !reai_db() || !reai_set_db (reai(), reai_db()),
+        False,
+        "Failed to create and set Reai DB object."
+    );
+
+    RzThread* background_worker =
+        rz_th_new ((RzThreadFunction)reai_db_background_worker, reai_plugin());
+    RETURN_VALUE_IF (!background_worker, False, "Failed to create background worker");
 
     /* initialize command descriptors */
     rzshell_cmddescs_init (core);
@@ -148,10 +176,6 @@ RZ_IPI Bool reai_plugin_fini (RzCore* core) {
 
     if (reai_config()) {
         reai_config_destroy (reai_config());
-    }
-
-    if (reai_logger()) {
-        reai_log_destroy (reai_logger());
     }
 
     /* Remove command group from rzshell. The name of this comamnd group must match

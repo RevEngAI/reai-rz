@@ -9,6 +9,7 @@
  * */
 
 #include <Reai/AnalysisInfo.h>
+#include <Reai/AnnFnMatch.h>
 #include <Reai/Api/Api.h>
 #include <Reai/Api/Reai.h>
 #include <Reai/Api/Request.h>
@@ -20,7 +21,10 @@
 
 /* rizin */
 #include <rz_cmd.h>
+#include <rz_list.h>
 #include <rz_util/rz_assert.h>
+#include <rz_util/rz_num.h>
+#include <rz_vector.h>
 
 /* local includes */
 #include "CmdGen/Output/CmdDescs.h"
@@ -40,14 +44,13 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
 
     ReaiRequest request = {.type = REAI_REQUEST_TYPE_HEALTH_CHECK};
 
-    if (reai_request (reai(), &request, reai_response()) && reai_response()->health_check.success) {
-        printf ("REAI Health Check SUCCESS\n");
-        LOG_INFO ("health check SUCCESS");
-    } else {
-        eprintf ("REAI Health Check FAILURE\n");
-        LOG_ERROR ("health check FAILED : JSON = \"%s\"", reai_response()->raw.data);
-        return RZ_CMD_STATUS_ERROR;
-    }
+    RETURN_VALUE_IF (
+        !reai_request (reai(), &request, reai_response()) || !reai_response()->health_check.success,
+        RZ_CMD_STATUS_ERROR,
+        "Health check failed."
+    );
+
+    printf ("OK\n");
 
     return RZ_CMD_STATUS_OK;
 }
@@ -69,6 +72,8 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
  * TODO: compute sha256 hash of opened binary and check whether it matches the latest uploaded
  *       binary. If not then ask the user whether to perform a new upload or not.
  * TODO: check if an analysis already exists and whether user wants to reuse that analysis
+ * TODO: check if analysis is already created. If not created then ask the user whether
+ *       they really want to continue before analysis
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
@@ -82,8 +87,6 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         "No binary file opened. Cannot create analysis.\n"
     );
 
-    LOG_TRACE ("file_path = %s", binfile_path);
-
     /* check if file is already uploaded or otherwise upload */
     CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
     if (!sha256) {
@@ -92,11 +95,8 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         if (sha256) {
             sha256 = strdup (sha256);
             RETURN_VALUE_IF (!sha256, RZ_CMD_STATUS_ERROR, ERR_OUT_OF_MEMORY);
-
-            LOG_TRACE ("uploaded file \"%s\"", sha256);
         } else {
             PRINT_ERR ("Failed to upload file.");
-            LOG_ERROR ("JSON = \"%s\"", reai_response()->raw.data);
             return RZ_CMD_STATUS_ERROR;
         }
     } else {
@@ -105,12 +105,6 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
 
     /* get function boundaries to create analysis */
     ReaiFnInfoVec* fn_boundaries = reai_plugin_get_fn_boundaries (binfile);
-
-    if (fn_boundaries) {
-        LOG_TRACE ("sending %zu pre-analyzed functions to create analysis", fn_boundaries->count);
-    } else {
-        LOG_TRACE ("no function symbols being sent to create analysis");
-    }
 
     /* create analysis */
     ReaiBinaryId bin_id = reai_create_analysis (
@@ -125,17 +119,142 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         binfile->size
     );
 
-    if (reai_response()->create_analysis.success) {
-        LOG_TRACE ("created new analysis. binary_id = %llu", bin_id);
-    } else {
-        LOG_TRACE ("failed to create new analysis. JSON = \"%s\"", reai_response()->raw.data);
-    }
-
     /* destroy after use */
     FREE (sha256);
     reai_fn_info_vec_destroy (fn_boundaries);
 
     RETURN_VALUE_IF (!bin_id, RZ_CMD_STATUS_ERROR, "Failed to create analysis.");
+    return RZ_CMD_STATUS_OK;
+}
+
+/**
+ * REau
+ *
+ * @b Perform a Batch Symbol ANN request with current binary ID and
+ *    automatically rename all methods.
+ * */
+RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const char** argv) {
+    RETURN_VALUE_IF (argc < 4, RZ_CMD_STATUS_WRONG_ARGS, ERR_INVALID_ARGUMENTS);
+    LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
+
+    RzBinFile* binfile      = get_opened_bin_file (core);
+    CString    binfile_path = get_opened_bin_file_path (core);
+    RETURN_VALUE_IF (
+        !binfile || !binfile_path,
+        RZ_CMD_STATUS_ERROR,
+        "No binary file opened. Cannot perform ann auto analysis"
+    );
+
+    ReaiBinaryId bin_id = reai_db_get_latest_analysis_for_file (reai_db(), binfile_path);
+    RETURN_VALUE_IF (
+        !bin_id,
+        RZ_CMD_STATUS_ERROR,
+        "No previous analysis exists for opened binary. Please create an analysis first."
+    );
+
+    ReaiAnalysisStatus analysis_status;
+    RETURN_VALUE_IF (
+        (analysis_status = reai_db_get_analysis_status (reai_db(), bin_id)) !=
+            REAI_ANALYSIS_STATUS_COMPLETE,
+        RZ_CMD_STATUS_ERROR,
+        "Analysis of given binary is not complete yet. Current status = '%s'",
+        reai_analysis_status_to_cstr (analysis_status)
+    );
+
+    ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
+    RETURN_VALUE_IF (
+        !(fn_infos = reai_fn_info_vec_clone_create (fn_infos)),
+        RZ_CMD_STATUS_ERROR,
+        "Failed to get binary current function names."
+    );
+
+    Size               max_results_per_function = rz_num_math (core->num, argv[1]);
+    Float64            max_distance             = rz_num_get_float (core->num, argv[2]);
+    Float64            min_confidence           = rz_num_get_float (core->num, argv[3]);
+    ReaiAnnFnMatchVec* fn_matches               = reai_batch_binary_symbol_ann (
+        reai(),
+        reai_response(),
+        bin_id,
+        max_results_per_function,
+        max_distance,
+        Null
+    );
+    RETURN_VALUE_IF (
+        !(fn_matches = reai_ann_fn_match_vec_clone_create (fn_matches)),
+        RZ_CMD_STATUS_ERROR,
+        "Failed to get ANN binary symbol similarity result (auto analysis)."
+    );
+
+    ReaiFnInfoVec* new_name_mapping = reai_fn_info_vec_create();
+    RETURN_VALUE_IF (
+        !new_name_mapping,
+        RZ_CMD_STATUS_ERROR,
+        "Failed to create new name mapping vector object."
+    );
+
+    printf ("The analysis will perform the following function renames : \n");
+    REAI_VEC_FOREACH (fn_matches, match, {
+        CString origin_fn_name = Null;
+        REAI_VEC_FOREACH (fn_infos, fn, {
+            if (match->origin_function_id == fn->id) {
+                origin_fn_name = fn->name;
+            }
+        });
+
+        if (!origin_fn_name) {
+            PRINT_ERR (
+                "Failed to find orign function name in loaded binary. This might be an error in "
+                "RevEng.AI server. Please contact developers."
+            );
+            reai_fn_info_vec_destroy (fn_infos);
+            reai_ann_fn_match_vec_destroy (fn_matches);
+            return RZ_CMD_STATUS_ERROR;
+        }
+
+        // TODO: can we do some type of sorting of confidence level here?
+        // I'd like to select a function with max confidence
+        if (match->confidence >= min_confidence) {
+            printf (
+                "%s -> %s (confidence : %lf)\n",
+                origin_fn_name,
+                match->nn_function_name,
+                match->confidence
+            );
+            LOG_TRACE (
+                "%s -> %s (confidence : %lf)\n",
+                origin_fn_name,
+                match->nn_function_name,
+                match->confidence
+            );
+
+            /* append the rename info to new name mapping */
+            reai_fn_info_vec_append (
+                new_name_mapping,
+                &((ReaiFnInfo) {.id = match->origin_function_id, .name = match->nn_function_name})
+            );
+
+            /* rename function in rizin */
+            RzListIter*         func_iter = Null;
+            RzAnalysisFunction* func      = Null;
+            rz_list_foreach (core->analysis->fcns, func_iter, func) {
+                if (!strcmp (func->name, origin_fn_name) &&
+                    !!strcmp (func->name, match->nn_function_name)) {
+                    rz_analysis_function_rename (func, match->nn_function_name);
+                }
+            }
+        }
+    });
+
+    reai_fn_info_vec_destroy (fn_infos);
+    reai_ann_fn_match_vec_destroy (fn_matches);
+
+    /* perform a batch rename */
+    if (new_name_mapping->count) {
+        Bool res = reai_batch_renames_functions (reai(), reai_response(), new_name_mapping);
+        reai_fn_info_vec_destroy (new_name_mapping);
+        RETURN_VALUE_IF (!res, RZ_CMD_STATUS_ERROR, "Failed to rename all functions in binary.");
+    }
+
     return RZ_CMD_STATUS_OK;
 }
 
@@ -161,23 +280,12 @@ RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** a
         "No binary file opened. Cannot perform upload.\n"
     );
 
-    LOG_TRACE ("file_path = %s", binfile_path);
-
     /* check if file is already uploaded or otherwise upload */
     CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
     if (!sha256) {
         sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
-
-        if (sha256) {
-            sha256 = strdup (sha256);
-            RETURN_VALUE_IF (!sha256, RZ_CMD_STATUS_ERROR, ERR_OUT_OF_MEMORY);
-
-            LOG_TRACE ("uploaded file \"%s\"", sha256);
-        } else {
-            PRINT_ERR ("Failed to upload file.");
-            LOG_ERROR ("JSON = \"%s\"", reai_response()->raw.data);
-            return RZ_CMD_STATUS_ERROR;
-        }
+        RETURN_VALUE_IF (!sha256, RZ_CMD_STATUS_ERROR, "Failed to upload binary file.");
+        RETURN_VALUE_IF (!(sha256 = strdup (sha256)), RZ_CMD_STATUS_ERROR, ERR_OUT_OF_MEMORY);
     } else {
         LOG_TRACE ("using previously uploaded file with latest hash = \"%s\"", sha256);
     }
@@ -228,22 +336,20 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
 
     /* if analyses already exists in db */
     if (reai_db_check_analysis_exists (reai_db(), binary_id)) {
-        CString analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
-
-        rz_cons_printf ("Analysis Status : \"%s\"\n", analysis_status);
-        LOG_TRACE ("Analysis Status : \"%s\"", analysis_status);
-
-        FREE (analysis_status);
+        ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
+        RETURN_VALUE_IF (
+            !analysis_status,
+            RZ_CMD_STATUS_ERROR,
+            "reai_db_get_analysis_staus returned NULL."
+        );
+        rz_cons_printf (
+            "Analysis Status : \"%s\"\n",
+            reai_analysis_status_to_cstr (analysis_status)
+        );
     } else {
         ReaiAnalysisStatus status = reai_get_analysis_status (reai(), reai_response(), binary_id);
-
-        if (status) {
-            rz_cons_printf ("Analysis status = \"%s\"\n", reai_analysis_status_to_cstr (status));
-            LOG_TRACE ("Analysis Status : \"%s\"", status);
-        } else {
-            PRINT_ERR ("Failed to fetch analysis status.\n");
-            LOG_ERROR ("JSON = \"%s\"", reai_response()->raw.data);
-        }
+        RETURN_VALUE_IF (!status, RZ_CMD_STATUS_ERROR, "Failed to get analysis status.");
+        rz_cons_printf ("Analysis status = \"%s\"\n", reai_analysis_status_to_cstr (status));
     }
 
     return RZ_CMD_STATUS_OK;
@@ -293,15 +399,17 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     }
 
     /* get analysis status from db after an update and check for completion */
-    CString analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
+    ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
     RETURN_VALUE_IF (
         !analysis_status,
         RZ_CMD_STATUS_ERROR,
         "Failed to get analysis status of binary from DB."
     );
-    if (reai_analysis_status_from_cstr (analysis_status) != REAI_ANALYSIS_STATUS_COMPLETE) {
-        LOG_INFO ("Analysis not complete yet. Current status = \"%s\"", analysis_status);
-        rz_cons_printf ("Analysis not yet complete. Current status = \"%s\"\n", analysis_status);
+    if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
+        rz_cons_printf (
+            "Analysis not yet complete. Current status = \"%s\"\n",
+            reai_analysis_status_to_cstr (analysis_status)
+        );
         return RZ_CMD_STATUS_OK; // It's ok, check again after sometime
     }
     FREE (analysis_status);
@@ -310,7 +418,6 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), binary_id);
     if (!fn_infos) {
         PRINT_ERR ("Failed to get function info from RevEng.AI servers.");
-        LOG_TRACE ("JSON = %s", reai_response()->raw.data);
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -365,14 +472,12 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
     ReaiFunctionId function_id = rz_num_math (core->num, argv[1]);
     RETURN_VALUE_IF (!function_id, RZ_CMD_STATUS_ERROR, "Invalid function id.");
 
-    LOG_TRACE ("rename function_id=%llu to new_name=\"%s\"", function_id, new_name);
-
     /* perform rename operation */
-    if (!reai_rename_function (reai(), reai_response(), function_id, new_name)) {
-        PRINT_ERR ("Failed to rename function");
-        LOG_TRACE ("JSON = %s", reai_response()->raw.data);
-        return RZ_CMD_STATUS_ERROR;
-    }
+    RETURN_VALUE_IF (
+        !reai_rename_function (reai(), reai_response(), function_id, new_name),
+        RZ_CMD_STATUS_ERROR,
+        "Failed to rename function"
+    );
 
     return RZ_CMD_STATUS_OK;
 }

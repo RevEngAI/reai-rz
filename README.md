@@ -34,4 +34,4 @@ Working towards first realease, version 0.1 will contain following features :
 - [x] Upload and analyse binary
 - [x] Local database for keeping track of uploaded and analysed binaries
 - [ ] Auto analyse all functions and apply rename from ANN requests
-- [ ] find similar functions from a single function (single ANN request)
+- [ ] ~~ Find similar functions from a single function (single ANN request) ~~
