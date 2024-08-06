@@ -62,6 +62,7 @@
     do {                                                                                           \
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
+            eprintf ("\n");                                                                        \
             LOG_ERROR (__VA_ARGS__);                                                               \
             return value;                                                                          \
         }                                                                                          \
@@ -71,6 +72,7 @@
     do {                                                                                           \
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
+            eprintf ("\n");                                                                        \
             LOG_ERROR (__VA_ARGS__);                                                               \
             return;                                                                                \
         }                                                                                          \
@@ -79,6 +81,7 @@
 #define GOTO_HANDLER_IF_REACHED(handler, ...)                                                      \
     do {                                                                                           \
         eprintf (__VA_ARGS__);                                                                     \
+        eprintf ("\n");                                                                            \
         LOG_ERROR (__VA_ARGS__);                                                                   \
         goto handler;                                                                              \
     } while (0)
@@ -86,6 +89,7 @@
     do {                                                                                           \
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
+            eprintf ("\n");                                                                        \
             LOG_ERROR (__VA_ARGS__);                                                               \
             goto handler;                                                                          \
         }                                                                                          \
@@ -95,6 +99,7 @@
     do {                                                                                           \
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
+            eprintf ("\n");                                                                        \
             LOG_ERROR (__VA_ARGS__);                                                               \
             handler;                                                                               \
         }                                                                                          \
@@ -104,6 +109,7 @@
     do {                                                                                           \
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
+            eprintf ("\n");                                                                        \
             LOG_FATAL (__VA_ARGS__);                                                               \
             abort();                                                                               \
         }                                                                                          \
@@ -113,6 +119,7 @@
     do {                                                                                           \
         eprintf ("unreachable code reached : ");                                                   \
         eprintf (__VA_ARGS__);                                                                     \
+        eprintf ("\n");                                                                            \
         LOG_ERROR (__VA_ARGS__);                                                                   \
         return val;                                                                                \
     } while (0)
@@ -121,6 +128,7 @@
     do {                                                                                           \
         eprintf ("unreachable code reached : ");                                                   \
         eprintf (__VA_ARGS__);                                                                     \
+        eprintf ("\n");                                                                            \
         LOG_ERROR (__VA_ARGS__);                                                                   \
         return;                                                                                    \
     } while (0)
@@ -129,6 +137,7 @@
     do {                                                                                           \
         eprintf ("unreachable code reached : ");                                                   \
         eprintf (__VA_ARGS__);                                                                     \
+        eprintf ("\n");                                                                            \
         LOG_FATAL (__VA_ARGS__);                                                                   \
         abort();                                                                                   \
     } while (0)
@@ -136,6 +145,7 @@
 #define PRINT_ERR(...)                                                                             \
     do {                                                                                           \
         eprintf (__VA_ARGS__);                                                                     \
+        eprintf ("\n");                                                                            \
         LOG_ERROR (__VA_ARGS__);                                                                   \
     } while (0)
 

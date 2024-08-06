@@ -20,6 +20,7 @@
 #include <Reai/Types.h>
 
 /* rizin */
+#include <rz_analysis.h>
 #include <rz_cmd.h>
 #include <rz_list.h>
 #include <rz_util/rz_assert.h>
@@ -32,6 +33,11 @@
 
 PRIVATE RzBinFile* get_opened_bin_file (RzCore* core);
 PRIVATE CString    get_opened_bin_file_path (RzCore* core);
+PRIVATE CString    get_function_name_with_max_confidence (
+       ReaiAnnFnMatchVec* fn_matches,
+       ReaiFunctionId     origin_fn_id,
+       Float64*           confidence
+   );
 
 /**
  * "REh"
@@ -137,6 +143,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
     RETURN_VALUE_IF (argc < 4, RZ_CMD_STATUS_WRONG_ARGS, ERR_INVALID_ARGUMENTS);
     LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
+    // get opened binary file and print error if no binary is loaded
     RzBinFile* binfile      = get_opened_bin_file (core);
     CString    binfile_path = get_opened_bin_file_path (core);
     RETURN_VALUE_IF (
@@ -145,6 +152,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         "No binary file opened. Cannot perform ann auto analysis"
     );
 
+    // try to get latest analysis for loaded binary (if exists)
     ReaiBinaryId bin_id = reai_db_get_latest_analysis_for_file (reai_db(), binfile_path);
     RETURN_VALUE_IF (
         !bin_id,
@@ -152,6 +160,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         "No previous analysis exists for opened binary. Please create an analysis first."
     );
 
+    // an analysis must already exist in order to make auto-analysis work
     ReaiAnalysisStatus analysis_status;
     RETURN_VALUE_IF (
         (analysis_status = reai_db_get_analysis_status (reai_db(), bin_id)) !=
@@ -161,13 +170,20 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         reai_analysis_status_to_cstr (analysis_status)
     );
 
+    // get function names for all functions in the binary (this is why we need analysis)
     ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
+    RETURN_VALUE_IF (!fn_infos, RZ_CMD_STATUS_ERROR, "Failed to get binary function names.");
+    if (!fn_infos->count) {
+        eprintf ("Current binary does not have any function.\n");
+        return RZ_CMD_STATUS_OK;
+    }
     RETURN_VALUE_IF (
         !(fn_infos = reai_fn_info_vec_clone_create (fn_infos)),
         RZ_CMD_STATUS_ERROR,
-        "Failed to get binary current function names."
+        "FnInfos vector clone failed"
     );
 
+    // get names of functions to rename to
     Size               max_results_per_function = rz_num_math (core->num, argv[1]);
     Float64            max_distance             = rz_num_get_float (core->num, argv[2]);
     Float64            min_confidence           = rz_num_get_float (core->num, argv[3]);
@@ -179,12 +195,24 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         max_distance,
         Null
     );
+    if (!fn_matches) {
+        PRINT_ERR ("Failed to get ANN binary symbol similarity result.");
+        reai_fn_info_vec_destroy (fn_infos);
+        return RZ_CMD_STATUS_ERROR;
+    }
+    if (!fn_matches->count) {
+        PRINT_ERR ("Current binary had no function similarity matches.");
+        reai_fn_info_vec_destroy (fn_infos);
+        reai_ann_fn_match_vec_destroy (fn_matches);
+        return RZ_CMD_STATUS_OK;
+    }
     RETURN_VALUE_IF (
         !(fn_matches = reai_ann_fn_match_vec_clone_create (fn_matches)),
         RZ_CMD_STATUS_ERROR,
-        "Failed to get ANN binary symbol similarity result (auto analysis)."
+        "ANN Fn Match vector clone failed."
     );
 
+    // new vector where new names of functions will be stored
     ReaiFnInfoVec* new_name_mapping = reai_fn_info_vec_create();
     RETURN_VALUE_IF (
         !new_name_mapping,
@@ -192,59 +220,53 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         "Failed to create new name mapping vector object."
     );
 
-    printf ("The analysis will perform the following function renames : \n");
-    REAI_VEC_FOREACH (fn_matches, match, {
-        CString origin_fn_name = Null;
-        REAI_VEC_FOREACH (fn_infos, fn, {
-            if (match->origin_function_id == fn->id) {
-                origin_fn_name = fn->name;
+    // display information about what renames will be performed
+    // add rename information to new name mapping
+    // rename the functions in rizin
+    REAI_VEC_FOREACH (fn_infos, fn, {
+        Float64 confidence = min_confidence;
+        CString new_name   = Null;
+        CString old_name   = fn->name;
+
+        // if we get a match with required confidence level then we add to rename
+        if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
+            // If functions already are same then no need to rename
+            if (!strcmp (new_name, old_name)) {
+                continue;
             }
-        });
 
-        if (!origin_fn_name) {
-            PRINT_ERR (
-                "Failed to find orign function name in loaded binary. This might be an error in "
-                "RevEng.AI server. Please contact developers."
-            );
-            reai_fn_info_vec_destroy (fn_infos);
-            reai_ann_fn_match_vec_destroy (fn_matches);
-            return RZ_CMD_STATUS_ERROR;
-        }
-
-        // TODO: can we do some type of sorting of confidence level here?
-        // I'd like to select a function with max confidence
-        if (match->confidence >= min_confidence) {
-            printf (
-                "%s -> %s (confidence : %lf)\n",
-                origin_fn_name,
-                match->nn_function_name,
-                match->confidence
-            );
-            LOG_TRACE (
-                "%s -> %s (confidence : %lf)\n",
-                origin_fn_name,
-                match->nn_function_name,
-                match->confidence
-            );
-
-            /* append the rename info to new name mapping */
-            reai_fn_info_vec_append (
-                new_name_mapping,
-                &((ReaiFnInfo) {.id = match->origin_function_id, .name = match->nn_function_name})
-            );
-
-            /* rename function in rizin */
-            RzListIter*         func_iter = Null;
-            RzAnalysisFunction* func      = Null;
-            rz_list_foreach (core->analysis->fcns, func_iter, func) {
-                if (!strcmp (func->name, origin_fn_name) &&
-                    !!strcmp (func->name, match->nn_function_name)) {
-                    rz_analysis_function_rename (func, match->nn_function_name);
-                }
+            // if append fails then destroy everything and return error
+            if (!reai_fn_info_vec_append (
+                    new_name_mapping,
+                    &((ReaiFnInfo) {.name = new_name, .id = fn->id})
+                )) {
+                PRINT_ERR ("Failed to append item to FnInfoVec.");
+                reai_fn_info_vec_destroy (new_name_mapping);
+                reai_fn_info_vec_destroy (fn_infos);
+                reai_ann_fn_match_vec_destroy (fn_matches);
+                return RZ_CMD_STATUS_ERROR;
             }
+
+            // print rename information
+            printf ("'%s' -> '%s' (confidence : %lf)\n", old_name, new_name, confidence);
+
+            // get function
+            RzAnalysisFunction* rz_fn = rz_analysis_get_function_byname (core->analysis, fn->name);
+            if (!rz_fn || !rz_analysis_function_rename (rz_fn, new_name)) {
+                PRINT_ERR ("Function rename failed in Rizin. '%s' -> '%s'", old_name, new_name);
+            }
+        } else {
+            eprintf (
+                "Function match not found for '%s' with required confidence %lf (has confidence : "
+                "%lf)\n",
+                old_name,
+                min_confidence,
+                confidence
+            );
         }
     });
 
+    // destroy cloned objects
     reai_fn_info_vec_destroy (fn_infos);
     reai_ann_fn_match_vec_destroy (fn_matches);
 
@@ -253,6 +275,8 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         Bool res = reai_batch_renames_functions (reai(), reai_response(), new_name_mapping);
         reai_fn_info_vec_destroy (new_name_mapping);
         RETURN_VALUE_IF (!res, RZ_CMD_STATUS_ERROR, "Failed to rename all functions in binary.");
+    } else {
+        eprintf ("No function will be renamed.\n");
     }
 
     return RZ_CMD_STATUS_OK;
@@ -513,4 +537,50 @@ PRIVATE RzBinFile* get_opened_bin_file (RzCore* core) {
 PRIVATE CString get_opened_bin_file_path (RzCore* core) {
     RzBinFile* binfile = get_opened_bin_file (core);
     return binfile ? binfile->file : Null;
+}
+
+/**
+ * @b Get name of function with given origin function id having max
+ *    confidence.
+ *
+ * If multiple functions have same confidence level then the one that appears
+ * first in the array will be returned.
+ *
+ * Returned pointer is not to be freed because it is owned by given @c fn_matches
+ * vector. Destroying the vector will automatically free the returned string.
+ *
+ * @param fn_matches Array that contains all functions with their confidence levels.
+ * @param origin_fn_id Function ID to search for.
+ * @param confidence Pointer to @c Float64 value specifying min confidence level.
+ *        If not @c Null then value of max confidence of returned function name will
+ *        be stored in this pointer.
+ *        If @c Null then just the function with max confidence will be selected.
+ *
+ * @return @c Name of function if present and has a confidence level greater than or equal to
+ *            given confidence.
+ * @return @c Null otherwise.
+ * */
+PRIVATE CString get_function_name_with_max_confidence (
+    ReaiAnnFnMatchVec* fn_matches,
+    ReaiFunctionId     origin_fn_id,
+    Float64*           required_confidence
+) {
+    RETURN_VALUE_IF (!fn_matches || !origin_fn_id, Null, ERR_INVALID_ARGUMENTS);
+
+    Float64 max_confidence = 0;
+    CString fn_name        = Null;
+    REAI_VEC_FOREACH (fn_matches, fn_match, {
+        if ((fn_match->confidence > max_confidence) &&
+            (fn_match->origin_function_id == origin_fn_id)) {
+            fn_name        = fn_match->nn_function_name;
+            max_confidence = fn_match->confidence;
+        }
+    });
+
+    if (required_confidence) {
+        fn_name              = max_confidence >= *required_confidence ? fn_name : Null;
+        *required_confidence = max_confidence;
+    }
+
+    return fn_name;
 }
