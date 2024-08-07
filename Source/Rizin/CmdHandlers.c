@@ -25,6 +25,7 @@
 #include <rz_list.h>
 #include <rz_util/rz_assert.h>
 #include <rz_util/rz_num.h>
+#include <rz_util/rz_table.h>
 #include <rz_vector.h>
 
 /* local includes */
@@ -139,7 +140,13 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
  * @b Perform a Batch Symbol ANN request with current binary ID and
  *    automatically rename all methods.
  * */
-RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const char** argv) {
+RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
+    RzCore*      core,
+    int          argc,
+    const char** argv,
+    RzOutputMode output_mode
+) {
+    UNUSED (output_mode);
     RETURN_VALUE_IF (argc < 4, RZ_CMD_STATUS_WRONG_ARGS, ERR_INVALID_ARGUMENTS);
     LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
@@ -184,10 +191,12 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
     );
 
     // get names of functions to rename to
-    Size               max_results_per_function = rz_num_math (core->num, argv[1]);
-    Float64            max_distance             = rz_num_get_float (core->num, argv[2]);
-    Float64            min_confidence           = rz_num_get_float (core->num, argv[3]);
-    ReaiAnnFnMatchVec* fn_matches               = reai_batch_binary_symbol_ann (
+    Float64 max_distance             = rz_num_get_float (core->num, argv[1]);
+    Size    max_results_per_function = rz_num_math (core->num, argv[2]);
+    Float64 min_confidence           = rz_num_get_float (core->num, argv[3]);
+    // BUG: this call takes some time and curl is probably not able to hold the connection for that log
+    // need to fix this in evening.
+    ReaiAnnFnMatchVec* fn_matches = reai_batch_binary_symbol_ann (
         reai(),
         reai_response(),
         bin_id,
@@ -196,7 +205,11 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         Null
     );
     if (!fn_matches) {
-        PRINT_ERR ("Failed to get ANN binary symbol similarity result.");
+        PRINT_ERR (
+            "Failed to get ANN binary symbol similarity result : %zu\n%s.",
+            reai_response()->raw.length,
+            reai_response()->raw.data
+        );
         reai_fn_info_vec_destroy (fn_infos);
         return RZ_CMD_STATUS_ERROR;
     }
@@ -220,6 +233,11 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         "Failed to create new name mapping vector object."
     );
 
+    // prepare table and print info
+    RzTable* table = rz_table_new();
+    RETURN_VALUE_IF (!table, RZ_CMD_STATUS_ERROR, "Failed to create table.");
+    rz_table_set_columnsf (table, "ssns", "old_name", "new_name", "confidence", "success");
+
     // display information about what renames will be performed
     // add rename information to new name mapping
     // rename the functions in rizin
@@ -232,6 +250,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             // If functions already are same then no need to rename
             if (!strcmp (new_name, old_name)) {
+                rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "true");
                 continue;
             }
 
@@ -244,31 +263,39 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const ch
                 reai_fn_info_vec_destroy (new_name_mapping);
                 reai_fn_info_vec_destroy (fn_infos);
                 reai_ann_fn_match_vec_destroy (fn_matches);
+                rz_table_free (table);
                 return RZ_CMD_STATUS_ERROR;
             }
 
             // print rename information
-            printf ("'%s' -> '%s' (confidence : %lf)\n", old_name, new_name, confidence);
 
             // get function
             RzAnalysisFunction* rz_fn = rz_analysis_get_function_byname (core->analysis, fn->name);
             if (!rz_fn || !rz_analysis_function_rename (rz_fn, new_name)) {
-                PRINT_ERR ("Function rename failed in Rizin. '%s' -> '%s'", old_name, new_name);
+                rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "error");
+            } else {
+                rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "true");
             }
         } else {
-            eprintf (
-                "Function match not found for '%s' with required confidence %lf (has confidence : "
-                "%lf)\n",
-                old_name,
-                min_confidence,
-                confidence
-            );
+            rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "match not found");
         }
     });
 
     // destroy cloned objects
     reai_fn_info_vec_destroy (fn_infos);
     reai_ann_fn_match_vec_destroy (fn_matches);
+
+    CString table_str = rz_table_tofancystring (table);
+    if (!table_str) {
+        PRINT_ERR ("Failed to convert table to string.");
+        rz_table_free (table);
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    rz_cons_printf ("%s\n", table_str);
+
+    FREE (table_str);
+    rz_table_free (table);
 
     /* perform a batch rename */
     if (new_name_mapping->count) {
@@ -333,20 +360,12 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
     LOG_TRACE ("[CMD] get analysis status");
     RETURN_VALUE_IF (!state, RZ_CMD_STATUS_WRONG_ARGS, ERR_INVALID_ARGUMENTS);
 
-    /* not required really but we call it when we have a chance
-     * we don't really need to use the database to get analysis status */
-    if (!reai_update_all_analyses_status_in_db (reai())) {
-        LOG_TRACE (
-            "Failed to update all analysis status in DB. JSON = \"%s\"",
-            reai_response()->raw.data
-        );
-    }
-
     ReaiBinaryId binary_id = 0;
     if (argc == 2) {
         binary_id = rz_num_math (core->num, argv[1]);
 
         RETURN_VALUE_IF (!binary_id, RZ_CMD_STATUS_ERROR, "Invalid binary id provided.");
+        LOG_TRACE ("Using provided binary id : %llu.", binary_id);
     } else {
         binary_id =
             reai_db_get_latest_analysis_for_file (reai_db(), get_opened_bin_file_path (core));
@@ -356,10 +375,17 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
             RZ_CMD_STATUS_ERROR,
             "No analysis exists for currently opened binary in database."
         );
+
+        LOG_TRACE (
+            "Using binary id of latest analysis for loaded binary present in database : %llu.",
+            binary_id
+        );
     }
 
     /* if analyses already exists in db */
     if (reai_db_check_analysis_exists (reai_db(), binary_id)) {
+        LOG_TRACE ("Analysis already exists in database. Fetching status from database.");
+
         ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
         RETURN_VALUE_IF (
             !analysis_status,
@@ -371,6 +397,8 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
             reai_analysis_status_to_cstr (analysis_status)
         );
     } else {
+        LOG_TRACE ("Analysis does not exist in database. Fetching status from RevEng.AI servers.");
+
         ReaiAnalysisStatus status = reai_get_analysis_status (reai(), reai_response(), binary_id);
         RETURN_VALUE_IF (!status, RZ_CMD_STATUS_ERROR, "Failed to get analysis status.");
         rz_cons_printf ("Analysis status = \"%s\"\n", reai_analysis_status_to_cstr (status));
@@ -394,12 +422,12 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
  *       with an error.
  * */
 RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
-    RzCore*           core,
-    int               argc,
-    const char**      argv,
-    RzCmdStateOutput* state
+    RzCore*      core,
+    int          argc,
+    const char** argv,
+    RzOutputMode output_mode
 ) {
-    UNUSED (core && argc && argv);
+    UNUSED (argc && argv && output_mode);
     LOG_TRACE ("[CMD] get basic function info");
 
     /* get file path of opened binary file */
@@ -413,14 +441,6 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
         RZ_CMD_STATUS_ERROR,
         "No analysis created for opened binary file."
     );
-
-    /* check analyses status before proceeding further */
-    if (!reai_update_all_analyses_status_in_db (reai())) {
-        LOG_TRACE (
-            "Failed to update analysis status of all binaries in database. JSON = \"%s\"",
-            reai_response()->raw.data
-        );
-    }
 
     /* get analysis status from db after an update and check for completion */
     ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
@@ -436,7 +456,6 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
         );
         return RZ_CMD_STATUS_OK; // It's ok, check again after sometime
     }
-    FREE (analysis_status);
 
     /* make request to get function infos */
     ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), binary_id);
@@ -445,33 +464,27 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
         return RZ_CMD_STATUS_ERROR;
     }
 
-    switch (state->mode) {
-        case RZ_OUTPUT_MODE_TABLE : {
-            rz_cmd_state_output_array_end (state);
-            rz_cmd_state_output_set_columnsf (
-                state,
-                "nsxx",
-                "function_id",
-                "name",
-                "vaddr",
-                "size"
-            );
 
-            RzTable* table = state->d.t;
-            REAI_VEC_FOREACH (fn_infos, fn, {
-                rz_table_add_rowf (table, "nsxx", fn->id, fn->name, fn->vaddr, fn->size);
-            });
+    // prepare table and print info
+    RzTable* table = rz_table_new();
+    RETURN_VALUE_IF (!table, RZ_CMD_STATUS_ERROR, "Failed to create table.");
 
-            rz_cmd_state_output_array_end (state);
-            break;
-        }
+    rz_table_set_columnsf (table, "nsxx", "function_id", "name", "vaddr", "size");
+    REAI_VEC_FOREACH (fn_infos, fn, {
+        rz_table_add_rowf (table, "nsxx", fn->id, fn->name, fn->vaddr, fn->size);
+    });
 
-        default : {
-            PRINT_ERR ("Unsupported output format %d.", state->mode);
-            rz_warn_if_reached();
-            break;
-        }
+    CString table_str = rz_table_tofancystring (table);
+    if (!table_str) {
+        PRINT_ERR ("Failed to convert table to string.");
+        rz_table_free (table);
+        return RZ_CMD_STATUS_ERROR;
     }
+
+    rz_cons_printf ("%s\n", table_str);
+
+    FREE (table_str);
+    rz_table_free (table);
 
     return RZ_CMD_STATUS_OK;
 }

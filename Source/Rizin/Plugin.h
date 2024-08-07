@@ -37,10 +37,8 @@ typedef struct ReaiPlugin {
     ReaiResponse* reai_response;
     ReaiLog*      reai_logger;
 
-    // TODO: This is temporary, database to be added to keep track of multiple
-    // uploaded binaries and created analysis
-    ReaiBinaryId bin_id;
-    CString      sha_256_hash;
+    // Periodically updates the database in background
+    RzThread* background_worker;
 } ReaiPlugin;
 
 ReaiPlugin* reai_plugin();

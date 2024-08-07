@@ -21,6 +21,8 @@ commands:
   - name: REau
     cname: ann_auto_analyze
     summary: Auto analyze binary functions using ANN and perform batch rename.
+    modes:
+      - RZ_OUTPUT_MODE_STANDARD
     args:
       - name: distance
         type: RZ_CMD_ARG_TYPE_NUM
@@ -51,9 +53,8 @@ commands:
   - name: REfl
     cname: get_basic_function_info
     summary: Get & show basic function info for selected binary.
-    type: RZ_CMD_DESC_TYPE_ARGV_STATE
     modes:
-      - RZ_OUTPUT_MODE_TABLE
+      - RZ_OUTPUT_MODE_STANDARD
     args: []
   - name: REfr
     cname: rename_function

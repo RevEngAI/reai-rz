@@ -102,6 +102,7 @@ PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
     if (plugin) {
         if (plugin->reai) {
             reai_update_all_analyses_status_in_db (plugin->reai);
+            LOG_INFO ("Updating dabatase");
         }
     }
 
@@ -149,9 +150,13 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
         "Failed to create and set Reai DB object."
     );
 
-    RzThread* background_worker =
+    reai_plugin()->background_worker =
         rz_th_new ((RzThreadFunction)reai_db_background_worker, reai_plugin());
-    RETURN_VALUE_IF (!background_worker, False, "Failed to create background worker");
+    RETURN_VALUE_IF (
+        !reai_plugin()->background_worker,
+        False,
+        "Failed to start RevEng.AI background worker."
+    );
 
     /* initialize command descriptors */
     rzshell_cmddescs_init (core);
@@ -164,6 +169,11 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
  * */
 RZ_IPI Bool reai_plugin_fini (RzCore* core) {
     RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
+
+    if (reai_plugin()->background_worker) {
+        rz_th_free (reai_plugin()->background_worker);
+        reai_plugin()->background_worker = Null;
+    }
 
     if (reai_response()) {
         reai_response_deinit (reai_response());
