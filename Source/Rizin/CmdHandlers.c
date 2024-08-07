@@ -205,11 +205,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
         Null
     );
     if (!fn_matches) {
-        PRINT_ERR (
-            "Failed to get ANN binary symbol similarity result : %zu\n%s.",
-            reai_response()->raw.length,
-            reai_response()->raw.data
-        );
+        PRINT_ERR ("Failed to get ANN binary symbol similarity result");
         reai_fn_info_vec_destroy (fn_infos);
         return RZ_CMD_STATUS_ERROR;
     }
@@ -236,12 +232,20 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     // prepare table and print info
     RzTable* table = rz_table_new();
     RETURN_VALUE_IF (!table, RZ_CMD_STATUS_ERROR, "Failed to create table.");
-    rz_table_set_columnsf (table, "ssns", "old_name", "new_name", "confidence", "success");
+    rz_table_set_columnsf (
+        table,
+        "sssns",
+        "rizin name",
+        "old_name",
+        "new_name",
+        "confidence",
+        "success"
+    );
 
     // display information about what renames will be performed
     // add rename information to new name mapping
     // rename the functions in rizin
-    REAI_VEC_FOREACH (fn_infos, fn, {
+    for (ReaiFnInfo* fn = fn_infos->items; fn < fn_infos->items + fn_infos->count; fn++) {
         Float64 confidence = min_confidence;
         CString new_name   = Null;
         CString old_name   = fn->name;
@@ -250,7 +254,15 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             // If functions already are same then no need to rename
             if (!strcmp (new_name, old_name)) {
-                rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "true");
+                rz_table_add_rowf (
+                    table,
+                    "sssfs",
+                    "not required",
+                    old_name,
+                    new_name,
+                    (Float64)1.0,
+                    "true"
+                );
                 continue;
             }
 
@@ -271,15 +283,45 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
 
             // get function
             RzAnalysisFunction* rz_fn = rz_analysis_get_function_byname (core->analysis, fn->name);
-            if (!rz_fn || !rz_analysis_function_rename (rz_fn, new_name)) {
-                rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "error");
+            if (rz_fn) {
+                CString rz_old_name = strdup (rz_fn->name);
+                if (!rz_analysis_function_rename (rz_fn, new_name)) {
+                    rz_table_add_rowf (
+                        table,
+                        "sssfs",
+                        rz_old_name,
+                        old_name,
+                        new_name,
+                        confidence,
+                        "rename error"
+                    );
+                } else {
+                    rz_table_add_rowf (
+                        table,
+                        "sssfs",
+                        rz_old_name,
+                        old_name,
+                        new_name,
+                        confidence,
+                        "true"
+                    );
+                }
+                FREE (rz_old_name);
             } else {
-                rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "true");
+                rz_table_add_rowf (
+                    table,
+                    "sssfs",
+                    "(null)",
+                    old_name,
+                    new_name,
+                    (Float64)0.0,
+                    "function not found"
+                );
             }
         } else {
-            rz_table_add_rowf (table, "ssns", old_name, new_name, confidence, "match not found");
+            rz_table_add_rowf (table, "ssfs", old_name, "-.-", confidence, "match not found");
         }
-    });
+    };
 
     // destroy cloned objects
     reai_fn_info_vec_destroy (fn_infos);

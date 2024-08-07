@@ -150,13 +150,13 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
         "Failed to create and set Reai DB object."
     );
 
-    reai_plugin()->background_worker =
-        rz_th_new ((RzThreadFunction)reai_db_background_worker, reai_plugin());
-    RETURN_VALUE_IF (
-        !reai_plugin()->background_worker,
-        False,
-        "Failed to start RevEng.AI background worker."
-    );
+    /* reai_plugin()->background_worker = */
+    /*     rz_th_new ((RzThreadFunction)reai_db_background_worker, reai_plugin()); */
+    /* RETURN_VALUE_IF ( */
+    /*     !reai_plugin()->background_worker, */
+    /*     False, */
+    /*     "Failed to start RevEng.AI background worker." */
+    /* ); */
 
     /* initialize command descriptors */
     rzshell_cmddescs_init (core);
