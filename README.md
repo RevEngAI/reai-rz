@@ -24,6 +24,17 @@ plugin name will be visible as `reai_rizin`
 
 ## Basic Usage
 
+Before being able to use anything in the plugin, a config file in the user's home
+directory is required.
+
+``` toml
+apikey = "libr3" # Replace this with your own API key
+host = "https://api.reveng.ai/v1"
+model = "binnet-0.3-x86"
+db_dir_path = "/home/<user>/.reai"
+log_dir_path = "/tmp"
+```
+
 After installing rizin plugin, you'll see the following commands listed when you execute the
 `RE?` command in rizin shell.
 

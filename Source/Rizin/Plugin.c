@@ -25,6 +25,7 @@
 #include <Reai/Types.h>
 
 /* libc */
+#include <rz_util/rz_sys.h>
 #include <stdarg.h>
 
 /* local includes */
@@ -133,6 +134,9 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
     reai() = reai_create (reai_config()->host, reai_config()->apikey);
     RETURN_VALUE_IF (!reai(), False, "Failed to create Reai object.");
 
+    /* create log directory if not present before creating new log files */
+    rz_sys_mkdirp (reai_config()->log_dir_path);
+
     /* create logger */
     reai_logger() = reai_log_create (Null);
     RETURN_VALUE_IF (
@@ -144,6 +148,9 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
     /* create response object */
     reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
     RETURN_VALUE_IF (!reai_response(), False, "Failed to create/init ReaiResponse object.");
+
+    /* create the database directory if not present before creating/opening database */
+    rz_sys_mkdirp (reai_config()->db_dir_path);
 
     /* create database and set it to reai database */
     Size db_path_strlen = snprintf (Null, 0, "%s/reai.db", reai_config()->db_dir_path) + 1;
