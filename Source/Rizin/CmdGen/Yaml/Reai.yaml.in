@@ -3,6 +3,29 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Reai.yaml 
 commands:
+  - name: REi
+    cname: plugin_initialize
+    summary: Initialize plugin config.
+    args:
+      - name: host
+        type: RZ_CMD_ARG_TYPE_STRING
+      - name: api_key
+        type: RZ_CMD_ARG_TYPE_STRING
+      - name: model
+        type: RZ_CMD_ARG_TYPE_STRING
+    details:
+      - name: Host
+        entries:
+          - text: https://api.reveng.ai/v1
+            comment: Replace v1 with the current version you want to use.
+      - name: API KEY
+        entries:
+          - text: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+            comment: API Key provided in RevEng.AI dashboard
+      - name: AI Model
+        entries:
+          - text: binnet-0.3
+            comment: Name and versionof AI model to be used.
   - name: REh
     cname: health_check
     summary: Check connection status with RevEngAI servers.

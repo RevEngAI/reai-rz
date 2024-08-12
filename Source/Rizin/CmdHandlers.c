@@ -52,6 +52,55 @@ PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
 );
 
 /**
+ * @b To be used on first setup of rizin plugin.
+ *
+ * This will create a new config file everytime it's called with correct arguments.
+ * Requires a restart of rizin plugin after issue.
+ * */
+RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (core && argc);
+
+    CString reai_config_file_path = Null, db_dir_path = Null, log_dir_path = Null;
+
+    reai_config_file_path = rz_str_home (".reait.toml");
+    GOTO_HANDLER_IF (!reai_config_file_path, FAILED, "Failed to get config file path in home dir.");
+
+    db_dir_path = rz_str_home (".reai");
+    GOTO_HANDLER_IF (!db_dir_path, FAILED, "Failed to get database directory path in home dir.");
+
+    log_dir_path = rz_file_tmpdir();
+    GOTO_HANDLER_IF (!log_dir_path, FAILED, "Failed to get log storage directory path.");
+
+    FILE* reai_config_file = fopen (reai_config_file_path, "w");
+    GOTO_HANDLER_IF (!reai_config_file, FAILED, "Failed to open config file.");
+
+    fprintf (reai_config_file, "host         = \"%s\"\n", argv[1]);
+    fprintf (reai_config_file, "apikey       = \"%s\"\n", argv[2]);
+    fprintf (reai_config_file, "model        = \"%s\"\n", argv[3]);
+    fprintf (reai_config_file, "db_dir_path  = \"%s\"\n", db_dir_path);
+    fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
+
+    fclose (reai_config_file);
+    FREE (reai_config_file_path);
+    FREE (log_dir_path);
+    FREE (db_dir_path);
+
+    return RZ_CMD_STATUS_OK;
+
+FAILED:
+    if (reai_config_file_path) {
+        FREE (reai_config_file_path);
+    }
+    if (db_dir_path) {
+        FREE (db_dir_path);
+    }
+    if (log_dir_path) {
+        FREE (log_dir_path);
+    }
+    return RZ_CMD_STATUS_ERROR;
+}
+
+/**
  * "REh"
  *
  * @b Perform a health-check api call to check connection.
@@ -564,26 +613,28 @@ PRIVATE RzBinFile* get_opened_bin_file (RzCore* core) {
  *
  * @param core
  *
- * @return @c REAI_MODEL_BINNET_0_3_UNKNOWN on failure.
+ * @return @c REAI_MODEL_UNKNOWN on failure.
  * */
 PRIVATE ReaiModel get_ai_model_for_opened_bin_file (RzCore* core) {
-    RETURN_VALUE_IF (!core, REAI_MODEL_BINNET_0_3_UNKNOWN, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (!core, REAI_MODEL_UNKNOWN, ERR_INVALID_ARGUMENTS);
 
     RzBinFile* binfile = get_opened_bin_file (core);
     if (binfile->o->info->os) {
         CString os = binfile->o->info->os;
         if (!strcmp (os, "linux")) {
-            return REAI_MODEL_BINNET_0_3_X86_LINUX;
+            return REAI_MODEL_X86_LINUX;
         } else if (!strncmp (os, "Windows", 7)) {
-            return REAI_MODEL_BINNET_0_3_X86_WINDOWS;
+            return REAI_MODEL_X86_WINDOWS;
         } else if (!strcmp (os, "iOS") || !strcmp (os, "darwin")) {
-            return REAI_MODEL_BINNET_0_3_X86_MACOS;
+            return REAI_MODEL_X86_MACOS;
         } else if (!strcmp (os, "android")) {
-            return REAI_MODEL_BINNET_0_3_X86_ANDROID;
+            return REAI_MODEL_X86_ANDROID;
         } else {
-            return REAI_MODEL_BINNET_0_3_UNKNOWN;
+            return REAI_MODEL_UNKNOWN;
         }
     }
+
+    return REAI_MODEL_UNKNOWN;
 }
 
 /**

@@ -11,6 +11,7 @@
 #include <Reai/Api/Reai.h>
 #include <rz_analysis.h>
 #include <rz_asm.h>
+#include <rz_cmd.h>
 #include <rz_core.h>
 #include <rz_lib.h>
 #include <rz_th.h>
@@ -92,7 +93,11 @@ ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core) {
 PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
     RETURN_IF (!plugin, ERR_INVALID_ARGUMENTS);
 
-    Reai* reai = reai_create (plugin->reai_config->host, plugin->reai_config->apikey);
+    Reai* reai = reai_create (
+        plugin->reai_config->host,
+        plugin->reai_config->apikey,
+        plugin->reai_config->model
+    );
     RETURN_IF (!reai, "Background worker failed to make connection with RevEng.AI servers.");
 
     /* we're allowed to use same db as long as the concurrency method is sequential */
@@ -120,12 +125,22 @@ PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
 RZ_IPI Bool reai_plugin_init (RzCore* core) {
     RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
 
+    /* initialize command descriptors */
+    rzshell_cmddescs_init (core);
+
     /* load default config */
     reai_config() = reai_config_load (Null);
-    RETURN_VALUE_IF (!reai_config(), False, "Failed to load RevEng.AI toolkit config file.");
+    if (!reai_config()) {
+        rz_cons_print (
+            "Failed to load RevEng.AI toolkit config file. If does not exist then please use "
+            "\"REi\" command & restart.\n"
+        );
+
+        return True;
+    }
 
     /* initialize reai object. */
-    reai() = reai_create (reai_config()->host, reai_config()->apikey);
+    reai() = reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
     RETURN_VALUE_IF (!reai(), False, "Failed to create Reai object.");
 
     /* create log directory if not present before creating new log files */
@@ -165,9 +180,6 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
         False,
         "Failed to start RevEng.AI background worker."
     );
-
-    /* initialize command descriptors */
-    rzshell_cmddescs_init (core);
 
     return True;
 }

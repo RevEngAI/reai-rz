@@ -11,7 +11,7 @@
 # plugin code.
 
 cmake_minimum_required(VERSION 3.5)
-project(rz-reai VERSION 0 LANGUAGES C CXX)
+project(reai-rz VERSION 0 LANGUAGES C CXX)
 
 include(FetchContent)
 
@@ -54,16 +54,24 @@ if(MSVC) # Windows
 	# (http://stackoverflow.com/questions/1904635/warning-c4003-and-errors-c2589-and-c2059-on-x-stdnumeric-limitsintmax).
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOMINMAX")
 elseif(UNIX) # Linux or macOS
-	# Common options.
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-
 	# Set C flags
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra -fsanitize=address")
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+	    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+	else()
+  	    # Set the sanitizer flags
+        set(SANITIZER_FLAGS "-fsanitize=address,undefined")
+
+        # Apply the sanitizer flags to all configurations
+        if (CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
+            add_compile_options(${SANITIZER_FLAGS})
+            add_link_options(${SANITIZER_FLAGS})
+        endif()
+
+  	    # Compile flags
+  	    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra")
+  	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Wextra")
+	endif()
 else()
 	message(FATAL_ERROR "Unsupported system type: ${CMAKE_SYSTEM_NAME}")
 endif()
@@ -93,11 +101,11 @@ endif()
 # This way you don't need to build the two libraries separately and just
 # build the plugin.
 if(AUTOINSTALL_REQUIRED)
-  FetchContent_Declare(CREAIT
-    GIT_REPOSITORY  "git@github.com:RevEngAI/creait.git"
-    GIT_TAG         master
-  )
-  FetchContent_MakeAvailable(CREAIT)
+    FetchContent_Declare(CREAIT
+      GIT_REPOSITORY  "git@github.com:RevEngAI/creait.git"
+      GIT_TAG         master
+    )
+    FetchContent_MakeAvailable(CREAIT)
 endif()
 
 # This will give us path where plugins are installed on this sytem, also libraries to be linked.
@@ -105,8 +113,8 @@ find_package(Rizin REQUIRED)
 set(RIZIN_INSTALL_PLUGDIR "${Rizin_PLUGINDIR}" CACHE STRING "Directory to install Rizin plugins into")
 
 if(NOT BUILD_RIZIN_PLUGIN_ONLY)
-  find_package(Cutter REQUIRED)
-  set(CUTTER_INSTALL_PLUGDIR "${Cutter_USER_PLUGINDIR}" CACHE STRING "Directory to install Cutter plugin into")
+    find_package(Cutter REQUIRED)
+    set(CUTTER_INSTALL_PLUGDIR "${Cutter_USER_PLUGINDIR}" CACHE STRING "Directory to install Cutter plugin into")
 endif()
 
 # --------------------------------------
