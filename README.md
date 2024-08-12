@@ -35,11 +35,21 @@ db_dir_path = "/home/<user>/.reai"
 log_dir_path = "/tmp"
 ```
 
+This config file can be generated using the `REi` command after plugin installation.
+Without a config, the plugin will keep erroring out for all other commands.  
+
+`REi https://api.reveng.ai/v1 <apikey> binnet-0.3`  
+
+Execute the above command to automatically create a config file similar to the one above.
+You can get the api key in `https://portal.reveng.ai/settings` API Key section. Once
+the config file is generated, exit rizin using `q` command and then run rizin again.
+
 After installing rizin plugin, you'll see the following commands listed when you execute the
 `RE?` command in rizin shell.
 
 ``` sh
-Usage: RE<huas?>   # RevEngAI Plugin Commands
+Usage: RE<ihuas?>   # RevEngAI Plugin Commands
+| REi <host> <api_key> <model> # Initialize plugin config.
 | REh                     # Check connection status with RevEngAI servers.
 | REu                     # Upload currently loaded binary to RevEngAI servers.
 | REa                     # Upload and analyse currently loaded binary
