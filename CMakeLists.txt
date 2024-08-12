@@ -11,8 +11,9 @@
 # plugin code.
 
 cmake_minimum_required(VERSION 3.5)
-
 project(rz-reai VERSION 0 LANGUAGES C CXX)
+
+include(FetchContent)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(BUILD_RIZIN_PLUGIN_ONLY "Whether to build rizin plugin only" ON)
@@ -75,6 +76,18 @@ if(APPLE)
 elseif(UNIX)
         set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 endif()
+
+# RevEng.AI plugins depend heavily on the creait library to interact with
+# RevEng.AI servers using a C API. This will download the master branch
+# and will automatically build and link required libraries with plugin.
+#
+# This way you don't need to build the two libraries separately and just
+# build the plugin.
+FetchContent_Declare(CREAIT
+  GIT_REPOSITORY  "git@github.com:RevEngAI/creait.git"
+  GIT_TAG         master
+)
+FetchContent_MakeAvailable(CREAIT)
 
 # This will give us path where plugins are installed on this sytem, also libraries to be linked.
 find_package(Rizin REQUIRED)

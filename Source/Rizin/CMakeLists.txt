@@ -24,17 +24,17 @@ target_link_libraries(
   reai_rizin PUBLIC
   Rizin::Core
   reai_cmdescs
-  reai
-  CURL::libcurl
-  ${cJSON_LIBRARIES}
-  ${cJSON_LINK_LIBRARIES}
-  ${toml_LIBRARIES}
-  ${SQLite3_LIBRARIES}
+  ${CREAIT_LINK_LIBRARIES}
+  # CURL::libcurl
+  # ${cJSON_LIBRARIES}
+  # ${cJSON_LINK_LIBRARIES}
+  # ${toml_LIBRARIES}
+  # ${SQLite3_LIBRARIES}
 )
 target_link_directories(
   reai_rizin PUBLIC
-  ${cJSON_LIBRARY_DIRS}
-  ${SQLite3_INCLUDE_DIRS}
+  # ${cJSON_LIBRARY_DIRS}
+  # ${SQLite3_INCLUDE_DIRS}
 )
 
 # install the built binaries to cutter's plugin directory
