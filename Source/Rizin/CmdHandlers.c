@@ -289,7 +289,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
 
     /* display information about what renames will be performed */    /* add rename information to new name mapping */
     /* rename the functions in rizin */
-    REAI_VEC_FOREACH (fn_infos, fn, {
+    REAI_VEC_FOREACH(fn_infos, fn, {
         Float64 confidence = min_confidence;
         CString new_name   = Null;
         CString old_name   = fn->name;
@@ -311,9 +311,10 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
             RzAnalysisFunction* rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr + get_opened_bin_file_baseaddr(core));
             if (rz_fn) {
                 /* check if fucntion size matches */
-                CString rz_old_name = rz_fn->name;
+                CString rz_old_name = strdup(rz_fn->name);
                 if(rz_analysis_function_linear_size(rz_fn) != fn->size) {
                     rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "function size mismatch", fn_addr);
+                    FREE(rz_old_name);
                     continue;
                 }
 
@@ -323,6 +324,8 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
                 } else {
                     rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "true", fn_addr);
                 }
+
+                FREE(rz_old_name);
             } else {
                 rz_table_add_rowf (table, "sssfsx", "(null)", old_name, new_name, (Float64)0.0, "function not found", fn_addr);
             }
