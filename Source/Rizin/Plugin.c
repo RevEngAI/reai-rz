@@ -13,6 +13,7 @@
 #include <rz_asm.h>
 #include <rz_core.h>
 #include <rz_lib.h>
+#include <rz_th.h>
 #include <rz_types.h>
 
 /* revengai */
@@ -94,16 +95,20 @@ PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
     Reai* reai = reai_create (plugin->reai_config->host, plugin->reai_config->apikey);
     RETURN_IF (!reai, "Background worker failed to make connection with RevEng.AI servers.");
 
+    /* we're allowed to use same db as long as the concurrency method is sequential */
     reai_set_db (reai, plugin->reai_db);
     reai_set_logger (reai, plugin->reai_logger);
 
-    while (True) {
+    /* this is a HACK to signal the thread to stop */
+    while (plugin->reai) {
         if (plugin) {
             reai_update_all_analyses_status_in_db (reai);
         }
 
         rz_sys_sleep (BACKGROUND_WORKER_UPDATE_INTERVAL);
     }
+
+    reai_destroy (reai);
 }
 
 /**
@@ -173,18 +178,32 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
 RZ_IPI Bool reai_plugin_fini (RzCore* core) {
     RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
 
+    /* this must be destroyed first and set to Null to signal the background worker
+     * thread to stop working */
+    if (reai()) {
+        reai_destroy (reai());
+        reai_plugin()->reai = Null;
+    }
+
     if (reai_plugin()->background_worker) {
+        rz_th_wait (reai_plugin()->background_worker);
         rz_th_free (reai_plugin()->background_worker);
         reai_plugin()->background_worker = Null;
+    }
+
+    if (reai_db()) {
+        reai_db_destroy (reai_db());
+        reai_plugin()->reai_db = Null;
+    }
+
+    if (reai_logger()) {
+        reai_log_destroy (reai_logger());
+        reai_plugin()->reai_logger = Null;
     }
 
     if (reai_response()) {
         reai_response_deinit (reai_response());
         FREE (reai_response());
-    }
-
-    if (reai()) {
-        reai_destroy (reai());
     }
 
     if (reai_config()) {

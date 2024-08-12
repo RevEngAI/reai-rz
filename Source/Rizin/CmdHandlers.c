@@ -34,6 +34,7 @@
 #include "CmdGen/Output/CmdDescs.h"
 #include "Plugin.h"
 
+PRIVATE ReaiModel  get_ai_model_for_opened_bin_file (RzCore* core);
 PRIVATE RzBinFile* get_opened_bin_file (RzCore* core);
 PRIVATE CString    get_opened_bin_file_path (RzCore* core);
 PRIVATE Uint64     get_opened_bin_file_baseaddr (RzCore* core);
@@ -133,7 +134,7 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     ReaiBinaryId bin_id = reai_create_analysis (
         reai(),
         reai_response(),
-        REAI_MODEL_BINNET_0_3_X86_LINUX, // TODO: make this depend on the binary and not hardcoded liek this
+        get_ai_model_for_opened_bin_file (core),
         get_opened_bin_file_baseaddr (core),
         fn_boundaries,
         True,
@@ -142,7 +143,12 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         Null,
         binfile->size
     );
-    GOTO_HANDLER_IF (!bin_id, ANALYSIS_CREATION_FAILED, "Failed to create analysis");
+    GOTO_HANDLER_IF (
+        !bin_id,
+        ANALYSIS_CREATION_FAILED,
+        "Failed to create analysis : %s",
+        reai_response()->raw.data
+    );
 
     /* destroy after use */
     FREE (sha256);
@@ -543,13 +549,41 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
  * @return @c Null otherwise.
  * */
 PRIVATE RzBinFile* get_opened_bin_file (RzCore* core) {
-    return core ? core->bin ? core->bin->binfiles ?
-                              core->bin->binfiles->length ?
-                              core->bin->binfiles->head ? core->bin->binfiles->head->elem : Null :
-                              Null :
-                              Null :
-                              Null :
-                  Null;
+    RETURN_VALUE_IF (!core, Null, ERR_INVALID_ARGUMENTS);
+
+    return core->bin ? core->bin->binfiles ?
+                       core->bin->binfiles->length ?
+                       core->bin->binfiles->head ? core->bin->binfiles->head->elem : Null :
+                       Null :
+                       Null :
+                       Null;
+}
+
+/**
+ * @b Get operating AI model to use with currently opened binary file.
+ *
+ * @param core
+ *
+ * @return @c REAI_MODEL_BINNET_0_3_UNKNOWN on failure.
+ * */
+PRIVATE ReaiModel get_ai_model_for_opened_bin_file (RzCore* core) {
+    RETURN_VALUE_IF (!core, REAI_MODEL_BINNET_0_3_UNKNOWN, ERR_INVALID_ARGUMENTS);
+
+    RzBinFile* binfile = get_opened_bin_file (core);
+    if (binfile->o->info->os) {
+        CString os = binfile->o->info->os;
+        if (!strcmp (os, "linux")) {
+            return REAI_MODEL_BINNET_0_3_X86_LINUX;
+        } else if (!strncmp (os, "Windows", 7)) {
+            return REAI_MODEL_BINNET_0_3_X86_WINDOWS;
+        } else if (!strcmp (os, "iOS") || !strcmp (os, "darwin")) {
+            return REAI_MODEL_BINNET_0_3_X86_MACOS;
+        } else if (!strcmp (os, "android")) {
+            return REAI_MODEL_BINNET_0_3_X86_ANDROID;
+        } else {
+            return REAI_MODEL_BINNET_0_3_UNKNOWN;
+        }
+    }
 }
 
 /**

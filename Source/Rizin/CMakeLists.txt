@@ -20,22 +20,35 @@ set(ReaiRzPluginSources "Plugin.c" "CmdHandlers.c")
 
 # Rizin only accepts shared libraries for plugins
 add_library(reai_rizin MODULE SHARED ${ReaiRzPluginSources})
-target_link_libraries(
-  reai_rizin PUBLIC
-  Rizin::Core
-  reai_cmdescs
-  ${CREAIT_LINK_LIBRARIES}
-  # CURL::libcurl
-  # ${cJSON_LIBRARIES}
-  # ${cJSON_LINK_LIBRARIES}
-  # ${toml_LIBRARIES}
-  # ${SQLite3_LIBRARIES}
-)
-target_link_directories(
-  reai_rizin PUBLIC
-  # ${cJSON_LIBRARY_DIRS}
-  # ${SQLite3_INCLUDE_DIRS}
-)
+if(AUTOINSTALL_REQUIRED)
+  target_link_libraries(
+    reai_rizin PUBLIC
+    Rizin::Core
+    reai_cmdescs
+    reai
+    ${CREAIT_LINK_LIBRARIES}
+  )
+
+  target_link_directories(reai_rizin PUBLIC)
+else()
+  target_link_libraries(
+    reai_rizin PUBLIC
+    Rizin::Core
+    reai_cmdescs
+    reai
+    CURL::libcurl
+    ${cJSON_LIBRARIES}
+    ${cJSON_LINK_LIBRARIES}
+    ${toml_LIBRARIES}
+    ${SQLite3_LIBRARIES}
+  )
+
+  target_link_directories(
+    reai_rizin PUBLIC
+    ${cJSON_LIBRARY_DIRS}
+    ${SQLite3_INCLUDE_DIRS}
+  )
+endif()
 
 # install the built binaries to cutter's plugin directory
 install(TARGETS reai_rizin DESTINATION "${RIZIN_INSTALL_PLUGDIR}")

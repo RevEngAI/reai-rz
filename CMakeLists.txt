@@ -18,6 +18,15 @@ include(FetchContent)
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(BUILD_RIZIN_PLUGIN_ONLY "Whether to build rizin plugin only" ON)
 
+# If enabled build will automatically download, build, link and install all the
+# required libraries by the plugin. If disabled the plugin will make use of externally
+# managed installation of required libraries.
+#
+# This option should generally be OFF when in use by developers, and be ON when used by end-user
+# This is because generally in development mode, there exists some code in other libraries
+# that is not in sync with remove repository and we need to test it without pushing it.
+option(AUTOINSTALL_REQUIRED "Whether to automatically get all required libraries" ON)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ----------------------------------------
@@ -83,11 +92,13 @@ endif()
 #
 # This way you don't need to build the two libraries separately and just
 # build the plugin.
-FetchContent_Declare(CREAIT
-  GIT_REPOSITORY  "git@github.com:RevEngAI/creait.git"
-  GIT_TAG         master
-)
-FetchContent_MakeAvailable(CREAIT)
+if(AUTOINSTALL_REQUIRED)
+  FetchContent_Declare(CREAIT
+    GIT_REPOSITORY  "git@github.com:RevEngAI/creait.git"
+    GIT_TAG         master
+  )
+  FetchContent_MakeAvailable(CREAIT)
+endif()
 
 # This will give us path where plugins are installed on this sytem, also libraries to be linked.
 find_package(Rizin REQUIRED)
