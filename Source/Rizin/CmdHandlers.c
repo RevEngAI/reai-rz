@@ -36,6 +36,7 @@
 
 PRIVATE RzBinFile* get_opened_bin_file (RzCore* core);
 PRIVATE CString    get_opened_bin_file_path (RzCore* core);
+PRIVATE Uint64     get_opened_bin_file_baseaddr (RzCore* core);
 PRIVATE CString    get_function_name_with_max_confidence (
        ReaiAnnFnMatchVec* fn_matches,
        ReaiFunctionId     origin_fn_id,
@@ -96,14 +97,10 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     LOG_TRACE ("[CMD] create analysis");
 
     RzBinFile* binfile = get_opened_bin_file (core);
-    GOTO_HANDLER_IF (
-        !binfile,
-        NO_BINFILE_OPENED,
-        "No binary file opened. Cannot create analysis.\n"
-    );
+    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "No binary file opened. Cannot create analysis.");
 
     CString binfile_path = get_opened_bin_file_path (core);
-    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "Failed to get binary file full path.\n");
+    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "Failed to get binary file full path.");
 
     /* check if file is already uploaded or otherwise upload */
     CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
@@ -117,8 +114,15 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         LOG_TRACE ("using previously uploaded file with latest hash = \"%s\"", sha256);
     }
 
+    /* warn the use if no analysis exists */
+    GOTO_HANDLER_IF (
+        !core->analysis->fcns->length,
+        NONEXISTENT_RZ_ANALYSIS,
+        "Rizin analysis not performed yet. Please issue an analysis command, eg: \"aaaa\""
+    );
+
     /* get function boundaries to create analysis */
-    ReaiFnInfoVec* fn_boundaries = reai_plugin_get_fn_boundaries (binfile);
+    ReaiFnInfoVec* fn_boundaries = reai_plugin_get_fn_boundaries (core);
     GOTO_HANDLER_IF (
         !fn_boundaries,
         NO_FUNCTION_BOUNDARIES,
@@ -130,6 +134,7 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         reai(),
         reai_response(),
         REAI_MODEL_BINNET_0_3_X86_LINUX, // TODO: make this depend on the binary and not hardcoded liek this
+        get_opened_bin_file_baseaddr (core),
         fn_boundaries,
         True,
         sha256,
@@ -147,6 +152,7 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     return RZ_CMD_STATUS_OK;
 
 ANALYSIS_CREATION_FAILED: { reai_fn_info_vec_destroy (fn_boundaries); }
+NONEXISTENT_RZ_ANALYSIS:
 NO_FUNCTION_BOUNDARIES: { FREE (sha256); }
 UPLOAD_FAILED: { FREE (binfile_path); }
 
@@ -172,10 +178,10 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
 
     // get opened binary file and print error if no binary is loaded
     RzBinFile* binfile = get_opened_bin_file (core);
-    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "No binary file opened.\n");
+    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "No binary file opened.");
 
     CString binfile_path = get_opened_bin_file_path (core);
-    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "Failed to get binary file full path.\n");
+    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "Failed to get binary file full path.");
 
     /* try to get latest analysis for loaded binary (if exists) */
     ReaiBinaryId bin_id = reai_db_get_latest_analysis_for_file (reai_db(), binfile_path);
@@ -224,7 +230,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     /* clang-format off */
     RzTable* table = rz_table_new();
     GOTO_HANDLER_IF (!table, TABLE_CREATE_FAILED, "Failed to create table.");
-    rz_table_set_columnsf (table, "sssns", "rizin name", "old_name", "new_name", "confidence", "success");
+    rz_table_set_columnsf (table, "sssnsn", "rizin name", "old_name", "new_name", "confidence", "success", "address");
 
     /* display information about what renames will be performed */    /* add rename information to new name mapping */
     /* rename the functions in rizin */
@@ -232,12 +238,13 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
         Float64 confidence = min_confidence;
         CString new_name   = Null;
         CString old_name   = fn->name;
+        Uint64 fn_addr = fn->vaddr + get_opened_bin_file_baseaddr(core);
 
         /* if we get a match with required confidence level then we add to rename */
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (new_name, old_name)) {
-                rz_table_add_rowf (table, "sssfs", "not required", old_name, new_name, (Float64)1.0, "true");
+                rz_table_add_rowf (table, "sssfsx", "not required", old_name, new_name, (Float64)1.0, "true", fn_addr);
                 continue;
             }
 
@@ -245,21 +252,27 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
             Bool append = !!reai_fn_info_vec_append (new_name_mapping, &((ReaiFnInfo) {.name = new_name, .id = fn->id}));
             GOTO_HANDLER_IF(!append, NEW_NAME_APPEND_FAILED, "Failed to apend item to FnInfoVec.");
 
-            // get function
-            RzAnalysisFunction* rz_fn = rz_analysis_get_function_byname (core->analysis, fn->name);
+            /* get function */
+            RzAnalysisFunction* rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr + get_opened_bin_file_baseaddr(core));
             if (rz_fn) {
-                CString rz_old_name = strdup (rz_fn->name);
-                if (!rz_analysis_function_rename (rz_fn, new_name)) {
-                    rz_table_add_rowf (table, "sssfs", rz_old_name, old_name, new_name, confidence, "rename error");
-                } else {
-                    rz_table_add_rowf (table, "sssfs", rz_old_name, old_name, new_name, confidence, "true");
+                /* check if fucntion size matches */
+                CString rz_old_name = rz_fn->name;
+                if(rz_analysis_function_linear_size(rz_fn) != fn->size) {
+                    rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "function size mismatch", fn_addr);
+                    continue;
                 }
-                FREE (rz_old_name);
+
+                /* rename function */
+                if (!rz_analysis_function_rename (rz_fn, new_name)) {
+                    rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "rename error", fn_addr);
+                } else {
+                    rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "true", fn_addr);
+                }
             } else {
-                rz_table_add_rowf (table, "sssfs", "(null)", old_name, new_name, (Float64)0.0, "function not found");
+                rz_table_add_rowf (table, "sssfsx", "(null)", old_name, new_name, (Float64)0.0, "function not found", fn_addr);
             }
         } else {
-            rz_table_add_rowf (table, "sssfs", "not required", old_name, "n/a", (Float64)0.0, "match not found" );
+            rz_table_add_rowf (table, "sssfsx", "not required", old_name, "n/a", (Float64)0.0, "match not found", fn_addr );
         }
     });
     /* clang-format on */
@@ -323,7 +336,7 @@ RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** a
     RETURN_VALUE_IF (
         !binfile_path,
         RZ_CMD_STATUS_ERROR,
-        "No binary file opened. Cannot perform upload.\n"
+        "No binary file opened. Cannot perform upload."
     );
 
     /* check if file is already uploaded or otherwise upload */
@@ -555,6 +568,19 @@ PRIVATE CString get_opened_bin_file_path (RzCore* core) {
 }
 
 /**
+ * @b Get base address of currently opened binary file.
+ *
+ * @param core
+ *
+ * @return @c Base address if a binary file is opened.
+ * @return @c 0 otherwise.
+ * */
+PRIVATE Uint64 get_opened_bin_file_baseaddr (RzCore* core) {
+    RzBinFile* binfile = get_opened_bin_file (core);
+    return binfile ? binfile->o->opts.baseaddr : 0;
+}
+
+/**
  * @b Get name of function with given origin function id having max
  *    confidence.
  *
@@ -622,7 +648,7 @@ PRIVATE ReaiFnInfoVec* get_fn_infos (ReaiBinaryId bin_id) {
     /* get function names for all functions in the binary (this is why we need analysis) */
     ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
     RETURN_VALUE_IF (!fn_infos, Null, "Failed to get binary function names.");
-    RETURN_VALUE_IF (!fn_infos->count, Null, "Current binary does not have any function.\n");
+    RETURN_VALUE_IF (!fn_infos->count, Null, "Current binary does not have any function.");
 
     /* try cloning */
     fn_infos = reai_fn_info_vec_clone_create (fn_infos);

@@ -50,7 +50,7 @@ ReaiPlugin* reai_plugin();
 #define reai_config()   reai_plugin()->reai_config
 
 /* helpers */
-ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzBinFile* binfile);
+ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core);
 
 #include "Override.h"
 

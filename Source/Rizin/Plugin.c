@@ -53,42 +53,31 @@ ReaiPlugin* reai_plugin() {
  * @NOTE: returned vector is owned by the caller and hence is
  * responsible for destroying the vector after use.
  *
- * @param binfile
+ * @param core
  *
  * @return @c ReaiFnInfoVec reference on success.
  * @return @c Null otherwise.
  *  */
-ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzBinFile* binfile) {
-    RETURN_VALUE_IF (!binfile, Null, ERR_INVALID_ARGUMENTS);
+ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core) {
+    RETURN_VALUE_IF (!core, Null, ERR_INVALID_ARGUMENTS);
 
     /* prepare symbols info  */
-    RzPVector*     psymbols      = binfile->o->symbols;
+    RzList*        fns           = core->analysis->fcns;
     ReaiFnInfoVec* fn_boundaries = reai_fn_info_vec_create();
 
     /* add all symbols corresponding to functions */
-    void** psym = Null;
-    rz_pvector_foreach (psymbols, psym) {
-        RzBinSymbol* symbol = *(RzBinSymbol**)psym;
+    RzListIter*         fn_iter = Null;
+    RzAnalysisFunction* fn      = Null;
+    rz_list_foreach (fns, fn_iter, fn) {
+        ReaiFnInfo fn_info = {
+            .name  = fn->name,
+            .vaddr = fn->addr,
+            .size  = rz_analysis_function_linear_size (fn)
+        };
 
-        /* if symbol is of function type */
-        if (!strcmp (symbol->type, "FUNC") && symbol->name) {
-            ReaiFnInfo fn_info = {
-                .name  = symbol->name,
-                .vaddr = symbol->vaddr,
-                .size  = symbol->size
-            };
-
-            if (!reai_fn_info_vec_append (fn_boundaries, &fn_info)) {
-                reai_fn_info_vec_destroy (fn_boundaries);
-                return Null;
-            }
-
-            LOG_TRACE (
-                "FUNCTION .name = %16s, .vaddr = 0x%08llx, .size = 0x%08llx",
-                fn_info.name,
-                fn_info.vaddr,
-                fn_info.size
-            );
+        if (!reai_fn_info_vec_append (fn_boundaries, &fn_info)) {
+            reai_fn_info_vec_destroy (fn_boundaries);
+            return Null;
         }
     }
 
