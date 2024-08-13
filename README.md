@@ -4,23 +4,31 @@ RevEng.AI plugins for Rizin & Cutter.
 
 ## Installation
 
-Before any of the following commands are executed, you must first build & install
-[`creait`](https://github.com/RevEngAI/creait).
+PyYaml is a required dependency for the plugin commands. If your package manager manages
+python packages instead of `pip`, then `pipx` will help get an easy installation.
+`pipx` needs to be installed from package manager.
 
 ``` sh
-git clone git@github.com:RevEngAI/reai-rz.git
-cd reai-rz
-mkdir Build
-cd Build
-cmake .. -G Ninja -D CMAKE_BUILD_TYPE=Debug
-ninja
-ninja install # Prepend "sudo" if required, or change prefix path using -D CMAKE_INSTALL_PREFIX=/to/install/path in configure step
+# Get plugin or download a release
+git clone git@github.com:RevEngAI/reai-rz.git && cd reai-rz
+
+# Configure the build. Remove -G Ninja if you prefer GNU Makefiles (requires make)
+cmake -B Build -G Ninja
+
+# Build & Install plugin
+ninja -C Build && sudo ninja -C Build install
 ```
 
-The above sequence of commands will install rizin & cutter plugins automatically and when you
-launch rizin or cutter, the plugins will be automatically loaded. The rizin plugin is a core
-plugin so to check whether it's loaded or not, execute the command `Lc` in rizin shell. The
-plugin name will be visible as `reai_rizin`
+### Dependencies
+
+Before running any of the above commands, you must install cmake, make, ninja, meson, gcc/g++ (if required), pkg-config, libcurl (development package), sqlite3 (development package) and [rizin](https://github.com/rizinorg/rizin?tab=readme-ov-file#how-to-build).
+
+If while running rizin, you get address sanitizer (ASAN) issues, reconfigure rizin build again with `-bsanitize=address` and pass a `-D CMAKE_BUILD_TYPE=Debug` when building this plugin.
+
+## CMake Configure Options
+
+- `AUTOINSTALL_REQUIRED = ON/OFF` : When enabled, will automatically fetch required dependencies to build plugin. `ON` by default.
+- `BUILD_RIZIN_PLUGIN_ONLY = ON/OFF` : When enabled will build rizin plugin only. This is useful when you only have rizin installed. `ON` by default.
 
 ## Basic Usage
 
@@ -35,6 +43,8 @@ db_dir_path = "/home/<user>/.reai"
 log_dir_path = "/tmp"
 ```
 
+### Generating Config File
+
 This config file can be generated using the `REi` command after plugin installation.
 Without a config, the plugin will keep erroring out for all other commands.  
 
@@ -43,6 +53,8 @@ Without a config, the plugin will keep erroring out for all other commands.
 Execute the above command to automatically create a config file similar to the one above.
 You can get the api key in `https://portal.reveng.ai/settings` API Key section. Once
 the config file is generated, exit rizin using `q` command and then run rizin again.
+
+### Command List
 
 After installing rizin plugin, you'll see the following commands listed when you execute the
 `RE?` command in rizin shell.

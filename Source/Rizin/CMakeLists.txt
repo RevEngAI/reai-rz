@@ -46,7 +46,6 @@ else()
   target_link_directories(
     reai_rizin PUBLIC
     ${cJSON_LIBRARY_DIRS}
-    ${SQLite3_INCLUDE_DIRS}
   )
 endif()
 

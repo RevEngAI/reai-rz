@@ -44,22 +44,22 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 # Build parameters.
 if(MSVC) # Windows
-	# Disable warnings (there are too many of them, including warnings from
-	# third-party libraries, which cannot be selectively disabled when using MSVC).
-	string(REGEX REPLACE "/W[0-4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0")
+    # Disable warnings (there are too many of them, including warnings from
+    # third-party libraries, which cannot be selectively disabled when using MSVC).
+    string(REGEX REPLACE "/W[0-4]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W0")
 
-	# Disable the min() and max() macros to prevent errors when using e.g.
-	# std::numeric_limits<...>::max()
-	# (http://stackoverflow.com/questions/1904635/warning-c4003-and-errors-c2589-and-c2059-on-x-stdnumeric-limitsintmax).
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOMINMAX")
+    # Disable the min() and max() macros to prevent errors when using e.g.
+    # std::numeric_limits<...>::max()
+    # (http://stackoverflow.com/questions/1904635/warning-c4003-and-errors-c2589-and-c2059-on-x-stdnumeric-limitsintmax).
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOMINMAX")
 elseif(UNIX) # Linux or macOS
-	# Set C flags
-	if(CMAKE_BUILD_TYPE STREQUAL "Release")
-	    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
-	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-	else()
-  	    # Set the sanitizer flags
+    # Set C flags
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    else()
+          # Set the sanitizer flags
         set(SANITIZER_FLAGS "-fsanitize=address,undefined")
 
         # Apply the sanitizer flags to all configurations
@@ -68,12 +68,12 @@ elseif(UNIX) # Linux or macOS
             add_link_options(${SANITIZER_FLAGS})
         endif()
 
-  	    # Compile flags
-  	    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra")
-  	    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Wextra")
-	endif()
+          # Compile flags
+          set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra")
+          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Wextra")
+    endif()
 else()
-	message(FATAL_ERROR "Unsupported system type: ${CMAKE_SYSTEM_NAME}")
+    message(FATAL_ERROR "Unsupported system type: ${CMAKE_SYSTEM_NAME}")
 endif()
 
 # On Linux and macOS, set RPATH relative to the origin of the installed
@@ -102,10 +102,12 @@ endif()
 # build the plugin.
 if(AUTOINSTALL_REQUIRED)
     FetchContent_Declare(CREAIT
-      GIT_REPOSITORY  "git@github.com:RevEngAI/creait.git"
-      GIT_TAG         master
+      URL "https://github.com/RevEngAI/creait/archive/refs/tags/v0.1.1.tar.gz"
+      DOWNLOAD_EXTRACT_TIMESTAMP true
     )
     FetchContent_MakeAvailable(CREAIT)
+    FetchContent_GetProperties(CREAIT SOURCE_DIR CREAIT_SOURCE_DIR)
+    set(CREAIT_INCLUDE_DIRS ${CREAIT_SOURCE_DIR} CACHE PATH "Include directory for creait library.")
 endif()
 
 # This will give us path where plugins are installed on this sytem, also libraries to be linked.

@@ -25,6 +25,7 @@
 #include <rz_cons.h>
 #include <rz_list.h>
 #include <rz_util/rz_assert.h>
+#include <rz_util/rz_file.h>
 #include <rz_util/rz_num.h>
 #include <rz_util/rz_path.h>
 #include <rz_util/rz_table.h>
@@ -188,7 +189,7 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         fn_boundaries,
         True,
         sha256,
-        binfile->file,
+        rz_file_basename (binfile_path),
         Null,
         binfile->size
     );
