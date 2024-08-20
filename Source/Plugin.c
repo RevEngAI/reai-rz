@@ -3,8 +3,6 @@
  * @date : 13th June 2024
  * @author : Siddharth Mishra (admin@brightprogrammer.in)
  * @copyright: Copyright (c) 2024 RevEngAI. All Rights Reserved.
- *
- * @brief Main plugin entry point.
  * */
 
 /* rizin */
@@ -19,22 +17,19 @@
 
 /* revengai */
 #include <Reai/AnalysisInfo.h>
-#include <Reai/Db.h>
-#include <Reai/Log.h>
 #include <Reai/Api/Api.h>
 #include <Reai/Common.h>
 #include <Reai/Config.h>
+#include <Reai/Db.h>
+#include <Reai/Log.h>
 #include <Reai/Types.h>
 
 /* libc */
 #include <rz_util/rz_sys.h>
 #include <stdarg.h>
 
-/* local includes */
-#include "CmdGen/Output/CmdDescs.h"
-#include "Plugin.h"
-
-#define BACKGROUND_WORKER_UPDATE_INTERVAL 2
+/* plugin includes */
+#include <Plugin.h>
 
 /**
  * Get Reai Plugin object.
@@ -93,6 +88,8 @@ ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core) {
 PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
     RETURN_IF (!plugin, ERR_INVALID_ARGUMENTS);
 
+    Size update_interval = 4;
+
     Reai* reai = reai_create (
         plugin->reai_config->host,
         plugin->reai_config->apikey,
@@ -110,7 +107,7 @@ PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
             reai_update_all_analyses_status_in_db (reai);
         }
 
-        rz_sys_sleep (BACKGROUND_WORKER_UPDATE_INTERVAL);
+        rz_sys_sleep (update_interval);
     }
 
     reai_destroy (reai);
@@ -122,16 +119,14 @@ PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
  *
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
-RZ_IPI Bool reai_plugin_init (RzCore* core) {
+Bool reai_plugin_init (RzCore* core) {
     RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
-
-    /* initialize command descriptors */
-    rzshell_cmddescs_init (core);
 
     /* load default config */
     reai_config() = reai_config_load (Null);
     if (!reai_config()) {
-        rz_cons_print (
+        reai_plugin_display_msg (
+            REAI_LOG_LEVEL_FATAL,
             "Failed to load RevEng.AI toolkit config file. If does not exist then please use "
             "\"REi\" command & restart.\n"
         );
@@ -147,7 +142,7 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
     rz_sys_mkdirp (reai_config()->log_dir_path);
 
     /* create logger */
-    reai_logger() = reai_log_create (Null);
+    reai_logger() = reai_log_create ((CString)Null);
     RETURN_VALUE_IF (
         !reai_logger() || !reai_set_logger (reai(), reai_logger()),
         False,
@@ -185,9 +180,14 @@ RZ_IPI Bool reai_plugin_init (RzCore* core) {
 }
 
 /**
- * @b Will be called by rizin before unloading the reai_plugin()->
- * */
-RZ_IPI Bool reai_plugin_fini (RzCore* core) {
+ * @b Must be called before unloading the plugin.
+ *
+ * @param core
+ *
+ * @return True on successful plugin init.
+ * @return False otherwise.
+* */
+Bool reai_plugin_deinit (RzCore* core) {
     RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
 
     /* this must be destroyed first and set to Null to signal the background worker
@@ -222,35 +222,5 @@ RZ_IPI Bool reai_plugin_fini (RzCore* core) {
         reai_config_destroy (reai_config());
     }
 
-    /* Remove command group from rzshell. The name of this comamnd group must match
-     * with the one specified in Root.yaml */
-    RzCmd*     rcmd          = core->rcmd;
-    RzCmdDesc* reai_cmd_desc = rz_cmd_get_desc (rcmd, "RE");
-    return rz_cmd_desc_remove (rcmd, reai_cmd_desc);
+    return True;
 }
-
-/* plugin data */
-RzCorePlugin core_plugin_reai = {
-    .name    = "reai_rizin",
-    .author  = "Siddharth Mishra",
-    .desc    = "Reai Rizin Analysis Plugin",
-    .license = "Copyright (c) 2024 RevEngAI. All Rights Reserved.",
-    .version = "0.0",
-    .init    = (RzCorePluginCallback)reai_plugin_init,
-    .fini    = (RzCorePluginCallback)reai_plugin_fini,
-    // .analysis = (RzCorePluginCallback)reai_plugin_analysis,
-};
-
-#ifdef _MSC_VER
-#    define RZ_EXPORT __declspec (dllexport)
-#else
-#    define RZ_EXPORT
-#endif
-
-#ifndef CORELIB
-RZ_EXPORT RzLibStruct rizin_plugin = {
-    .type    = RZ_LIB_TYPE_CORE,
-    .data    = &core_plugin_reai,
-    .version = RZ_VERSION,
-};
-#endif

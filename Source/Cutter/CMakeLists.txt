@@ -8,8 +8,6 @@ set(CMAKE_AUTOMOC ON) # Auto Meta Object Compiler
 set(CMAKE_AUTOUIC ON) # Auto User Interface Compiler
 set(CMAKE_AUTORCC ON) # Auto Resource Compile
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
 # main plugin library and sources
 file(GLOB_RECURSE ReaiCutterPluginSource ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.c)
 add_library(reai_cutter STATIC MODULE ${ReaiCutterPluginSource})

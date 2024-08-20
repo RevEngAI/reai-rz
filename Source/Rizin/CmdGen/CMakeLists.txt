@@ -36,6 +36,7 @@ add_custom_command(
 
 add_library(reai_cmdescs ${CmdDescOutputFiles})
 target_link_libraries(reai_cmdescs PUBLIC Rizin::Core)
+target_include_directories(reai_cmdescs PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../..)
 set_target_properties(
     reai_cmdescs
     PROPERTIES

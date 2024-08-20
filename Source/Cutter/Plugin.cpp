@@ -10,6 +10,9 @@
 #include <cutter/core/MainWindow.h>
 #include <cutter/plugins/CutterPlugin.h>
 
+/* rizin */
+#include <rz_core.h>
+
 /* qt includes */
 #include <qt6/QtCore/QDebug>
 #include <qt6/QtCore/QObject>
@@ -22,39 +25,23 @@
 #include <Reai/Api/Api.h>
 #include <Reai/Common.h>
 #include <Reai/Config.h>
+#include <Reai/Log.h>
+
+/* plugin */
+#include <Plugin.h>
 
 /**
- * @b Override default message handler by this one.
+ * Display a message of given level in rizin shell.
  *
- * @param[in] type
- * @param[in] context
- * @param[in] msg
+ * If message is below error level then it's sent to log file,
+ * otherwise it's displayed on screen as well as in log file.
+ *
+ * @param level
+ * @param msg
  * */
-void reai_custom_qt_message_handler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
-{
-    Q_UNUSED(context);
-
-    QByteArray localMsg = msg.toLocal8Bit();
-    switch (type) {
-    case QtDebugMsg:
-        fprintf(stderr, "REAI::Debug: %s\n", localMsg.constData());
-        break;
-    case QtInfoMsg:
-        fprintf(stderr, "REAI::Info: %s\n", localMsg.constData());
-        break;
-    case QtWarningMsg:
-        fprintf(stderr, "REAI::Warning: %s\n", localMsg.constData());
-        break;
-    case QtCriticalMsg:
-        fprintf(stderr, "REAI::Critical: %s\n", localMsg.constData());
-        break;
-    case QtFatalMsg:
-        fprintf(stderr, "REAI::Fatal: %s\n", localMsg.constData());
-        abort();
-    }
-
-    // Flush the output to ensure it's not buffered
-    fflush(stderr);
+void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
+    RETURN_IF (!msg, ERR_INVALID_ARGUMENTS);
+    UNUSED (level);
 }
 
 /**
@@ -65,8 +52,8 @@ void reai_custom_qt_message_handler(QtMsgType type, const QMessageLogContext& co
  * */
 class ReaiCutterPlugin : public QObject, public CutterPlugin {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "re.rizin.cutter.plugins.revengai")
-    Q_INTERFACES(CutterPlugin)
+    Q_PLUGIN_METADATA (IID "re.rizin.cutter.plugins.revengai")
+    Q_INTERFACES (CutterPlugin)
 
     /* to create separate menu for revengai plugin in cutter's main window's menu bar */
     QMenu* reaiMenu = nullptr;
@@ -75,27 +62,30 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction* actToggleReaiPlugin = nullptr;
 
     /* revengai's menu item actions */
-    QAction* actUploadBin = nullptr;
-    QAction* actCheckAnalysisStatus = nullptr;
-    QAction* actAutoAnalyzeBinSym = nullptr;
+    QAction* actUploadBin                   = nullptr;
+    QAction* actCheckAnalysisStatus         = nullptr;
+    QAction* actAutoAnalyzeBinSym           = nullptr;
     QAction* actPerformRenameFromSimilarFns = nullptr;
-    QAction* actDownloadBinAnalysisLogs = nullptr;
-    QAction* actBinAnalysisHistory = nullptr;
+    QAction* actDownloadBinAnalysisLogs     = nullptr;
+    QAction* actBinAnalysisHistory          = nullptr;
 
-    Reai* reai = nullptr;
-    ReaiResponse* response;
-    ReaiRequest* request;
+    Bool isInitialized = False;
 
-public:
+   public:
     void setupPlugin() override;
-    void setupInterface(MainWindow* mainWin) override;
+    void setupInterface (MainWindow* mainWin) override;
     ~ReaiCutterPlugin();
 
-    QString getName() const override { return "RevEngAI Plugin (rz-reai)"; }
-    QString getAuthor() const override { return "Siddharth Mishra"; }
-    QString getVersion() const override { return "0"; }
-    QString getDescription() const override
-    {
+    QString getName() const override {
+        return "RevEngAI Plugin (rz-reai)";
+    }
+    QString getAuthor() const override {
+        return "Siddharth Mishra";
+    }
+    QString getVersion() const override {
+        return "0";
+    }
+    QString getDescription() const override {
         return "AI based reverse engineering helper API & Toolkit";
     }
 
@@ -108,32 +98,14 @@ public:
     void on_BinAnalysisHistory();
 };
 
-void ReaiCutterPlugin::setupPlugin()
-{
+void ReaiCutterPlugin::setupPlugin() {
+    RzCoreLocked core (Core());
 
-    /* turn off output buffering */
-    setbuf(stdout, nullptr);
-    setbuf(stderr, nullptr);
-
-    /* install custom message handler */
-    qInstallMessageHandler(reai_custom_qt_message_handler);
-
-    qInfo() << __FUNCTION__;
-
-    if (!(response = reai_response_init(new ReaiResponse))) {
-        qCritical() << "Failed to initialize response data object\n";
+    if (!reai_plugin_init (core)) {
+        terminate();
     }
 
-    ReaiConfig* config = reai_config_load(Null);
-    reai = reai_create(config->host, config->apikey);
-    if (!reai) {
-        qCritical() << "Failed to create Reai instance";
-    }
-    reai_config_destroy(config);
-
-    request = new ReaiRequest;
-
-    qInfo() << __FUNCTION__;
+    isInitialized = True;
 };
 
 /**
@@ -141,9 +113,11 @@ void ReaiCutterPlugin::setupPlugin()
  *
  * @param mainWin Reference to main window provided by Cutter
  * */
-void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
-{
-    qInfo() << __FUNCTION__;
+void ReaiCutterPlugin::setupInterface (MainWindow* mainWin) {
+    if (!isInitialized) {
+        return;
+    }
+
     /* get main window's menu bar */
     QMenuBar* menuBar = mainWin->menuBar();
     if (!menuBar) {
@@ -165,7 +139,7 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
         QMenu* windowsMenu = nullptr;
         for (QMenu* menu : menuBarMenuList) {
             if (menu) {
-                if (menu->title() == QString("Windows")) {
+                if (menu->title() == QString ("Windows")) {
                     windowsMenu = menu;
                     break;
                 }
@@ -180,7 +154,7 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
         QList<QMenu*> windowsMenuList = windowsMenu->findChildren<QMenu*>();
         for (QMenu* menu : windowsMenuList) {
             if (menu) {
-                if (menu->title() == QString("Plugins")) {
+                if (menu->title() == QString ("Plugins")) {
                     pluginsMenu = menu;
                     break;
                 }
@@ -188,87 +162,89 @@ void ReaiCutterPlugin::setupInterface(MainWindow* mainWin)
         }
 
         if (!pluginsMenu) {
-            qCritical() << "Cutter main window has no 'Plugins' sub-menu in 'Windows' menu of it's menu bar.";
+            qCritical(
+            ) << "Cutter main window has no 'Plugins' sub-menu in 'Windows' menu of it's menu bar.";
             return;
         }
     }
 
-    actToggleReaiPlugin = pluginsMenu->addAction("RevEngAI");
+    actToggleReaiPlugin = pluginsMenu->addAction ("RevEngAI");
     if (!actToggleReaiPlugin) {
         qCritical() << "Failed to add action to trigger RevEngAI Plugin on/off in Plugins menu.";
         return;
     }
-    actToggleReaiPlugin->setCheckable(true);
-    actToggleReaiPlugin->setChecked(true);
+    actToggleReaiPlugin->setCheckable (true);
+    actToggleReaiPlugin->setChecked (true);
 
-    connect(actToggleReaiPlugin, &QAction::toggled, this, &ReaiCutterPlugin::on_ToggleReaiPlugin);
+    connect (actToggleReaiPlugin, &QAction::toggled, this, &ReaiCutterPlugin::on_ToggleReaiPlugin);
 
     /* add revengai's own plugin menu */
-    reaiMenu = menuBar->addMenu("RevEngAI");
+    reaiMenu = menuBar->addMenu ("RevEngAI");
     if (!reaiMenu) {
         qCritical() << "Failed to add my own menu to Cutter's main window menu bar";
         return;
     }
 
-    actUploadBin = reaiMenu->addAction("Upload Binary");
-    actAutoAnalyzeBinSym = reaiMenu->addAction("Auto Analyze Binary");
-    actBinAnalysisHistory = reaiMenu->addAction("Binary Analysis History");
-    actCheckAnalysisStatus = reaiMenu->addAction("Check Analysis Status");
-    actDownloadBinAnalysisLogs = reaiMenu->addAction("Download Binary Analysis Logs");
-    actPerformRenameFromSimilarFns = reaiMenu->addAction("Rename From Similar Functions");
+    actUploadBin                   = reaiMenu->addAction ("Upload Binary");
+    actAutoAnalyzeBinSym           = reaiMenu->addAction ("Auto Analyze Binary");
+    actBinAnalysisHistory          = reaiMenu->addAction ("Binary Analysis History");
+    actCheckAnalysisStatus         = reaiMenu->addAction ("Check Analysis Status");
+    actDownloadBinAnalysisLogs     = reaiMenu->addAction ("Download Binary Analysis Logs");
+    actPerformRenameFromSimilarFns = reaiMenu->addAction ("Rename From Similar Functions");
 
-    connect(actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
-    connect(actAutoAnalyzeBinSym, &QAction::triggered, this, &ReaiCutterPlugin::on_AutoAnalyzeBinSym);
-    connect(actBinAnalysisHistory, &QAction::triggered, this, &ReaiCutterPlugin::on_BinAnalysisHistory);
-    connect(actCheckAnalysisStatus, &QAction::triggered, this, &ReaiCutterPlugin::on_CheckAnalysisStatus);
-    connect(actDownloadBinAnalysisLogs, &QAction::triggered, this, &ReaiCutterPlugin::on_DownloadBinAnalysisLogs);
-    connect(actPerformRenameFromSimilarFns, &QAction::triggered, this, &ReaiCutterPlugin::on_PerformRenameFromSimilarFns);
-    qInfo() << __FUNCTION__;
+    connect (actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
+    connect (
+        actAutoAnalyzeBinSym,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_AutoAnalyzeBinSym
+    );
+    connect (
+        actBinAnalysisHistory,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_BinAnalysisHistory
+    );
+    connect (
+        actCheckAnalysisStatus,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_CheckAnalysisStatus
+    );
+    connect (
+        actDownloadBinAnalysisLogs,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_DownloadBinAnalysisLogs
+    );
+    connect (
+        actPerformRenameFromSimilarFns,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_PerformRenameFromSimilarFns
+    );
 }
 
-ReaiCutterPlugin::~ReaiCutterPlugin()
-{
-    if (request) {
-        delete request;
+ReaiCutterPlugin::~ReaiCutterPlugin() {
+    if (!isInitialized) {
+        return;
     }
 
-    if (response) {
-        delete response;
-    }
+    RzCoreLocked core (Core());
 
-    if (reai) {
-        reai_destroy(reai);
-    }
+    reai_plugin_deinit (core);
 }
 
-/**
- * @b Called when
- * */
-void ReaiCutterPlugin::on_ToggleReaiPlugin()
-{
-    qInfo() << __FUNCTION__;
-    reaiMenu->menuAction()->setVisible(actToggleReaiPlugin->isChecked());
-    qInfo() << __FUNCTION__;
+void ReaiCutterPlugin::on_ToggleReaiPlugin() {
+    reaiMenu->menuAction()->setVisible (actToggleReaiPlugin->isChecked());
 }
 
-void ReaiCutterPlugin::on_UploadBin()
-{
-    qInfo() << __FUNCTION__;
-    request->type = REAI_REQUEST_TYPE_UPLOAD_FILE;
-    request->upload_file.file_path = "/home/misra/Desktop/RevEngAI/plugins/native/Build/Source/libreai_cutter.so";
-    if (!reai_request(reai, request, response)) {
-        qCritical() << "Failed to make request";
-    }
-
-    qInfo() << response->raw.data;
-    qInfo() << __FUNCTION__;
-}
-
-void ReaiCutterPlugin::on_CheckAnalysisStatus() { qInfo() << __FUNCTION__; }
-void ReaiCutterPlugin::on_AutoAnalyzeBinSym() { qInfo() << __FUNCTION__; }
-void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() { qInfo() << __FUNCTION__; }
-void ReaiCutterPlugin::on_DownloadBinAnalysisLogs() { qInfo() << __FUNCTION__; }
-void ReaiCutterPlugin::on_BinAnalysisHistory() { qInfo() << __FUNCTION__; }
+void ReaiCutterPlugin::on_UploadBin() {}
+void ReaiCutterPlugin::on_CheckAnalysisStatus() {}
+void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {}
+void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {}
+void ReaiCutterPlugin::on_DownloadBinAnalysisLogs() {}
+void ReaiCutterPlugin::on_BinAnalysisHistory() {}
 
 /* Required by the meta object compiler, otherwise build fails */
 #include "Plugin.moc"

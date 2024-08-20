@@ -34,13 +34,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ----------------------------------------
 
 # Minimal required version
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-set(CMAKE_C_STANDARD 23)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
 
 # Build parameters.
 if(MSVC) # Windows
@@ -68,9 +64,9 @@ elseif(UNIX) # Linux or macOS
             add_link_options(${SANITIZER_FLAGS})
         endif()
 
-          # Compile flags
-          set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra")
-          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Wextra")
+        # Compile flags
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Wextra -Wno-error")
     endif()
 else()
     message(FATAL_ERROR "Unsupported system type: ${CMAKE_SYSTEM_NAME}")
@@ -93,6 +89,10 @@ if(APPLE)
 elseif(UNIX)
         set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 endif()
+
+# --------------------------------------
+# ---- LGPL-3.0 LICENSED REGION END ----
+# --------------------------------------
 
 # RevEng.AI plugins depend heavily on the creait library to interact with
 # RevEng.AI servers using a C API. This will download the master branch
@@ -118,9 +118,5 @@ if(NOT BUILD_RIZIN_PLUGIN_ONLY)
     find_package(Cutter REQUIRED)
     set(CUTTER_INSTALL_PLUGDIR "${Cutter_USER_PLUGINDIR}" CACHE STRING "Directory to install Cutter plugin into")
 endif()
-
-# --------------------------------------
-# ---- LGPL-3.0 LICENSED REGION END ----
-# --------------------------------------
 
 add_subdirectory(Source)

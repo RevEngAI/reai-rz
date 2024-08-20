@@ -32,8 +32,8 @@
 #include <rz_vector.h>
 
 /* local includes */
-#include "CmdGen/Output/CmdDescs.h"
-#include "Plugin.h"
+#include <Rizin/CmdGen/Output/CmdDescs.h>
+#include <Plugin.h>
 
 PRIVATE ReaiModel  get_ai_model_for_opened_bin_file (RzCore* core);
 PRIVATE RzBinFile* get_opened_bin_file (RzCore* core);
@@ -606,7 +606,9 @@ PRIVATE RzBinFile* get_opened_bin_file (RzCore* core) {
 
     return core->bin ? core->bin->binfiles ?
                        core->bin->binfiles->length ?
-                       core->bin->binfiles->head ? core->bin->binfiles->head->elem : Null :
+                       rz_list_head (core->bin->binfiles) ?
+                       rz_list_iter_get_data (rz_list_head (core->bin->binfiles)) :
+                       Null :
                        Null :
                        Null :
                        Null;
