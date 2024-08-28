@@ -15,8 +15,10 @@
 #include <Reai/Api/Request.h>
 #include <Reai/Api/Response.h>
 #include <Reai/Common.h>
+#include <Reai/Config.h>
 #include <Reai/Db.h>
 #include <Reai/FnInfo.h>
+#include <Reai/Log.h>
 #include <Reai/Types.h>
 
 /* rizin */
@@ -53,6 +55,8 @@ PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
 );
 
 /**
+ * REi
+ *
  * @b To be used on first setup of rizin plugin.
  *
  * This will create a new config file everytime it's called with correct arguments.
@@ -61,18 +65,42 @@ PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc);
 
+    /* check whether API key is correct or not */
+    RETURN_VALUE_IF (
+        !reai_config_check_api_key (argv[2]),
+        RZ_CMD_STATUS_ERROR,
+        "Invalid API key. API key must be in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    );
+
+    /* check whether version number is specified or not */
+    RETURN_VALUE_IF (
+        !strstr (argv[1], "v1") || !strstr (argv[1], "v2"),
+        RZ_CMD_STATUS_ERROR,
+        "Host needs a version number to communicate with. Please append a /v1, /v2, etc... at the "
+        "end of host."
+    );
+
     CString reai_config_file_path = Null, db_dir_path = Null, log_dir_path = Null;
 
-    reai_config_file_path = rz_str_home (".reait.toml");
-    GOTO_HANDLER_IF (!reai_config_file_path, FAILED, "Failed to get config file path in home dir.");
+    reai_config_file_path = reai_config_get_default_path();
+    GOTO_HANDLER_IF (!reai_config_file_path, FAILED, "Failed to get default config file path.");
 
-    db_dir_path = rz_str_home (".reai");
-    GOTO_HANDLER_IF (!db_dir_path, FAILED, "Failed to get database directory path in home dir.");
+    /* if file already exists then we don't make changes */
+    FILE* reai_config_file = fopen (reai_config_file_path, "r");
+    if (reai_config_file) {
+        fclose (reai_config_file);
+        rz_cons_printf (
+            "Config file already exists. Remove or rename old config file to create new one.\n"
+        );
+    }
+
+    db_dir_path = rz_str_home (".reai-rz");
+    GOTO_HANDLER_IF (!db_dir_path, FAILED, "Failed to get database directory path.");
 
     log_dir_path = rz_file_tmpdir();
     GOTO_HANDLER_IF (!log_dir_path, FAILED, "Failed to get log storage directory path.");
 
-    FILE* reai_config_file = fopen (reai_config_file_path, "w");
+    reai_config_file = fopen (reai_config_file_path, "w");
     GOTO_HANDLER_IF (!reai_config_file, FAILED, "Failed to open config file.");
 
     fprintf (reai_config_file, "host         = \"%s\"\n", argv[1]);
@@ -82,9 +110,15 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
 
     fclose (reai_config_file);
-    FREE (reai_config_file_path);
     FREE (log_dir_path);
     FREE (db_dir_path);
+
+    /* try to reinit config after creating config */
+    RETURN_VALUE_IF (
+        !reai_plugin_init (core),
+        RZ_CMD_STATUS_ERROR,
+        "Failed to init plugin after creating a new config."
+    );
 
     return RZ_CMD_STATUS_OK;
 

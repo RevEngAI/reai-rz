@@ -131,7 +131,7 @@ Bool reai_plugin_init (RzCore* core) {
             "\"REi\" command & restart.\n"
         );
 
-        return True;
+        return False;
     }
 
     /* initialize reai object. */

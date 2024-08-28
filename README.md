@@ -13,7 +13,8 @@ python packages instead of `pip`, then `pipx` will help get an easy installation
 git clone git@github.com:RevEngAI/reai-rz.git && cd reai-rz
 
 # Configure the build. Remove -G Ninja if you prefer GNU Makefiles (requires make)
-cmake -B Build -G Ninja
+# Turn AUTOINSTALL_REQUIRED to OFF when dependencies are built externally
+cmake -B Build -G Ninja -D AUTOINSTALL_REQUIRED=ON
 
 # Build & Install plugin
 ninja -C Build && sudo ninja -C Build install
@@ -27,20 +28,20 @@ If while running rizin, you get address sanitizer (ASAN) issues, reconfigure riz
 
 ## CMake Configure Options
 
-- `AUTOINSTALL_REQUIRED = ON/OFF` : When enabled, will automatically fetch required dependencies to build plugin. `ON` by default.
-- `BUILD_RIZIN_PLUGIN_ONLY = ON/OFF` : When enabled will build rizin plugin only. This is useful when you only have rizin installed. `ON` by default.
+- `AUTOINSTALL_REQUIRED = ON/OFF` : When enabled, will automatically fetch required dependencies to build plugin. `ON` by default. Turn this `OFF` when you've downloaded and built dependencies yourself.
+- `BUILD_RIZIN_PLUGIN_ONLY = ON/OFF` : When enabled will build rizin plugin only. This is useful when you only have rizin installed. `ON` by default. Turn this `OFF` when you don't have cutter installed.
 
 ## Basic Usage
 
 Before being able to use anything in the plugin, a config file in the user's home
-directory is required.
+directory is required. Name of file must be `.reai-rz.toml`
 
 ``` toml
-apikey = "libr3" # Replace this with your own API key
-host = "https://api.reveng.ai/v1"
-model = "binnet-0.3-x86"
-db_dir_path = "/home/<user>/.reai"
-log_dir_path = "/tmp"
+apikey = "libr3"                   # Replace this with your own API key
+host = "https://api.reveng.ai/v1"  # API version and base endpoint
+model = "binnet-0.3-x86"           # Set the latest AI model here.
+db_dir_path = "/home/<user>/.reai" # This path may change depending on your OS
+log_dir_path = "/tmp"              # This path may change depending on your OS
 ```
 
 ### Generating Config File
