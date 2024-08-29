@@ -1,5 +1,5 @@
 /**
- * @file      : Main.cpp
+ * @file      : Cutter.cpp
  * @author    : Siddharth Mishra
  * @date      : 07/06/2024
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
@@ -11,15 +11,20 @@
 #include <cutter/plugins/CutterPlugin.h>
 
 /* rizin */
+#include <qboxlayout.h>
+#include <qlineedit.h>
 #include <rz_core.h>
 
 /* qt includes */
-#include <qt6/QtCore/QDebug>
-#include <qt6/QtCore/QObject>
-#include <qt6/QtCore/QtPlugin>
-#include <qt6/QtGui/QAction>
-#include <qt6/QtWidgets/QMainWindow>
-#include <qt6/QtWidgets/QMenuBar>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMenuBar>
+#include <QAction>
+#include <QtPlugin>
+#include <QObject>
+#include <QDebug>
+#include <QMainWindow>
+#include <QVBoxLayout>
 
 /* creait lib */
 #include <Reai/Api/Api.h>
@@ -68,6 +73,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction* actPerformRenameFromSimilarFns = nullptr;
     QAction* actDownloadBinAnalysisLogs     = nullptr;
     QAction* actBinAnalysisHistory          = nullptr;
+    QAction* actSetup                       = nullptr;
 
     Bool isInitialized = False;
 
@@ -94,15 +100,16 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     void on_CheckAnalysisStatus();
     void on_AutoAnalyzeBinSym();
     void on_PerformRenameFromSimilarFns();
-    void on_DownloadBinAnalysisLogs();
     void on_BinAnalysisHistory();
+    void on_Setup();
 };
 
 void ReaiCutterPlugin::setupPlugin() {
     RzCoreLocked core (Core());
 
+    /* if plugin launch fails then terminate */
     if (!reai_plugin_init (core)) {
-        terminate();
+        qInfo() << "Config not found. Please create a config using installation wizard.";
     }
 
     isInitialized = True;
@@ -189,8 +196,8 @@ void ReaiCutterPlugin::setupInterface (MainWindow* mainWin) {
     actAutoAnalyzeBinSym           = reaiMenu->addAction ("Auto Analyze Binary");
     actBinAnalysisHistory          = reaiMenu->addAction ("Binary Analysis History");
     actCheckAnalysisStatus         = reaiMenu->addAction ("Check Analysis Status");
-    actDownloadBinAnalysisLogs     = reaiMenu->addAction ("Download Binary Analysis Logs");
     actPerformRenameFromSimilarFns = reaiMenu->addAction ("Rename From Similar Functions");
+    actSetup                       = reaiMenu->addAction ("Plugin Config Setup");
 
     connect (actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
     connect (
@@ -212,17 +219,12 @@ void ReaiCutterPlugin::setupInterface (MainWindow* mainWin) {
         &ReaiCutterPlugin::on_CheckAnalysisStatus
     );
     connect (
-        actDownloadBinAnalysisLogs,
-        &QAction::triggered,
-        this,
-        &ReaiCutterPlugin::on_DownloadBinAnalysisLogs
-    );
-    connect (
         actPerformRenameFromSimilarFns,
         &QAction::triggered,
         this,
         &ReaiCutterPlugin::on_PerformRenameFromSimilarFns
     );
+    connect (actSetup, &QAction::triggered, this, &ReaiCutterPlugin::on_Setup);
 }
 
 ReaiCutterPlugin::~ReaiCutterPlugin() {
@@ -239,12 +241,85 @@ void ReaiCutterPlugin::on_ToggleReaiPlugin() {
     reaiMenu->menuAction()->setVisible (actToggleReaiPlugin->isChecked());
 }
 
-void ReaiCutterPlugin::on_UploadBin() {}
-void ReaiCutterPlugin::on_CheckAnalysisStatus() {}
-void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {}
-void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {}
-void ReaiCutterPlugin::on_DownloadBinAnalysisLogs() {}
-void ReaiCutterPlugin::on_BinAnalysisHistory() {}
+void ReaiCutterPlugin::on_UploadBin() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+}
+
+void ReaiCutterPlugin::on_CheckAnalysisStatus() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+}
+
+void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+}
+
+void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+}
+
+void ReaiCutterPlugin::on_BinAnalysisHistory() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+}
+
+void ReaiCutterPlugin::on_Setup() {
+    if (reai_plugin_check_config_exists()) {
+        DISPLAY_WARN (
+            "Config already exists. Please remove/rename previous config to create new one."
+        );
+    }
+
+    QDialog* setupDialog = new QDialog ((QWidget*)this->parent());
+
+    setupDialog->setModal (True);
+    setupDialog->setWindowTitle ("Plugin Configuration Setup");
+
+    QVBoxLayout* mainLayout = new QVBoxLayout;
+    setupDialog->setLayout (mainLayout);
+
+#define ADD_LABEL_INPUT_ROW(labelName, labelValue, inputName, inputValue)                          \
+    QLabel*    labelName = new QLabel (tr (labelValue));                                           \
+    QLineEdit* inputName = new QLineEdit();                                                        \
+    inputName->setPlaceholderText (inputValue);                                                    \
+    QHBoxLayout* row##labelName##inputName = new QHBoxLayout;                                      \
+    row##labelName##inputName->addWidget (labelName);                                              \
+    row##labelName##inputName->addWidget (inputName);                                              \
+    mainLayout->addLayout (row##labelName##inputName);
+
+    ADD_LABEL_INPUT_ROW (
+        apiLabel,
+        "RevEng.AI API Key",
+        apiInput,
+        "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    );
+    ADD_LABEL_INPUT_ROW (hostLabel, "RevEng.AI Host", hostInput, "https://api.reveng.ai/v1");
+    ADD_LABEL_INPUT_ROW (modelLabel, "RevEng.AI AI Model", modelInput, "binnet-0.3");
+    ADD_LABEL_INPUT_ROW (
+        dbDirPathLabel,
+        "Plugin Local Database Path",
+        dbDirPathInput,
+        reai_plugin_get_default_database_dir_path()
+    );
+    ADD_LABEL_INPUT_ROW (
+        logDirPathLabel,
+        "Plugin Local Log Storage Path",
+        logDirPathInput,
+        reai_plugin_get_default_log_dir_path()
+    );
+
+#undef ADD_LABEL_INPUT_ROW
+
+    setupDialog->show();
+}
 
 /* Required by the meta object compiler, otherwise build fails */
-#include "Plugin.moc"
+#include "Cutter.moc"

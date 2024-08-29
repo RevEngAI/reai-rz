@@ -15,6 +15,9 @@
 extern "C" {
 #endif
 
+    /* libc */
+#include <stdio.h>
+
 /* revenai */
 #include <Reai/Api/Api.h>
 #include <Reai/Config.h>
@@ -41,6 +44,9 @@ extern "C" {
     Bool           reai_plugin_deinit (RzCore* core);
     ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core);
     void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
+    Bool           reai_plugin_check_config_exists();
+    CString        reai_plugin_get_default_database_dir_path();
+    CString        reai_plugin_get_default_log_dir_path();
 
 #include "Override.h"
 
@@ -64,15 +70,15 @@ extern "C" {
      * @param strname Name of variable
      * @param fmt Format string
      * */
-#define FMT(strname, fmt, ...)                                                                     \
-    Size strsz = snprintf (Null, 0, fmt, __VA_ARGS__) + 1;                                         \
+#define FMT(strname, ...)                                                                          \
+    Size strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                                 \
     Char strname[strsz];                                                                           \
-    snprintf (strname, strsz, fmt, __VA_ARGS__);
+    snprintf (strname, strsz, __VA_ARGS__);
 
 #define DISPLAY_MSG(level, ...)                                                                    \
     do {                                                                                           \
         FMT (msg, __VA_ARGS__);                                                                    \
-        reai_plugin_display_msg (level, msg)                                                       \
+        reai_plugin_display_msg (level, msg);                                                      \
     } while (0)
 
 #define DISPLAY_TRACE(...) DISPLAY_MSG (REAI_LOG_LEVEL_TRACE, __VA_ARGS__)
@@ -81,8 +87,6 @@ extern "C" {
 #define DISPLAY_WARN(...)  DISPLAY_MSG (REAI_LOG_LEVEL_WARN, __VA_ARGS__)
 #define DISPLAY_ERROR(...) DISPLAY_MSG (REAI_LOG_LEVEL_ERROR, __VA_ARGS__)
 #define DISPLAY_FATAL(...) DISPLAY_MSG (REAI_LOG_LEVEL_FATAL, __VA_ARGS__)
-
-#undef DISPLAY_MSG
 
 #ifdef __cplusplus
 }

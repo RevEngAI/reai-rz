@@ -224,3 +224,66 @@ Bool reai_plugin_deinit (RzCore* core) {
 
     return True;
 }
+
+/**
+ * @b Check whether or not the default config exists.
+ *
+ * @return @c True on success.
+ * @return @c Null otherwise.
+ * */
+Bool reai_plugin_check_config_exists() {
+    CString reai_config_file_path = reai_config_get_default_path();
+
+    /* if file already exists then we don't make changes */
+    FILE* reai_config_file = fopen (reai_config_file_path, "r");
+    if (reai_config_file) {
+        fclose (reai_config_file);
+        return True;
+    }
+
+    return False;
+}
+
+/**
+ * @b Get default database path.
+ *
+ * @return Database directory path on success.
+ * @return Null otherwise
+ * */
+CString reai_plugin_get_default_database_dir_path() {
+    static Bool    is_created = False;
+    static CString path       = Null;
+
+    if (is_created) {
+        return path;
+    }
+
+    FMT (buf, "%s/%s", reai_config_get_default_path(), ".reai-rz");
+    static Char static_buf[512] = {0};
+    memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
+
+    is_created = True;
+    return (path = static_buf);
+}
+
+/**
+ * @b Get default database path.
+ *
+ * @return Database directory path on success.
+ * @return Null otherwise
+ * */
+CString reai_plugin_get_default_log_dir_path() {
+    static Bool    is_created = False;
+    static CString path       = Null;
+
+    if (is_created) {
+        return path;
+    }
+
+    FMT (buf, "%s/%s", reai_config_get_default_path(), ".reai-rz/log");
+    static Char static_buf[512] = {0};
+    memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
+
+    is_created = True;
+    return (path = static_buf);
+}

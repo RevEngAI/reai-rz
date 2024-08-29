@@ -9,7 +9,7 @@ set(CMAKE_AUTOUIC ON) # Auto User Interface Compiler
 set(CMAKE_AUTORCC ON) # Auto Resource Compile
 
 # main plugin library and sources
-file(GLOB_RECURSE ReaiCutterPluginSource ${CMAKE_CURRENT_SOURCE_DIR} *.cpp *.c)
+set(ReaiCutterPluginSource "Cutter.cpp" "../Plugin.c")
 add_library(reai_cutter STATIC MODULE ${ReaiCutterPluginSource})
 target_link_libraries(reai_cutter PUBLIC Cutter::Cutter Rizin::Core reai)
 

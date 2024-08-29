@@ -63,7 +63,11 @@ PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
  * Requires a restart of rizin plugin after issue.
  * */
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (core && argc);
+    RETURN_VALUE_IF (
+        (argc < 4) || !argv[1] || !argv[2] || !argv[3],
+        RZ_CMD_STATUS_WRONG_ARGS,
+        ERR_INVALID_ARGUMENTS
+    );
 
     /* check whether API key is correct or not */
     RETURN_VALUE_IF (
@@ -77,7 +81,7 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
         !strstr (argv[1], "v1") || !strstr (argv[1], "v2"),
         RZ_CMD_STATUS_ERROR,
         "Host needs a version number to communicate with. Please append a /v1, /v2, etc... at the "
-        "end of host."
+        "end of host, depending on the API version you're using."
     );
 
     CString reai_config_file_path = Null, db_dir_path = Null, log_dir_path = Null;
@@ -86,22 +90,20 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     GOTO_HANDLER_IF (!reai_config_file_path, FAILED, "Failed to get default config file path.");
 
     /* if file already exists then we don't make changes */
-    FILE* reai_config_file = fopen (reai_config_file_path, "r");
-    if (reai_config_file) {
-        fclose (reai_config_file);
-        rz_cons_printf (
-            "Config file already exists. Remove or rename old config file to create new one.\n"
+    if (reai_plugin_check_config_exists()) {
+        rz_cons_println (
+            "Config file already exists. Remove/rename previous config to create new one."
         );
     }
 
-    db_dir_path = rz_str_home (".reai-rz");
+    FILE* reai_config_file = fopen (reai_config_file_path, "w");
+    GOTO_HANDLER_IF (!reai_config_file, FAILED, "Failed to open config file.");
+
+    db_dir_path = reai_plugin_get_default_database_dir_path();
     GOTO_HANDLER_IF (!db_dir_path, FAILED, "Failed to get database directory path.");
 
-    log_dir_path = rz_file_tmpdir();
+    log_dir_path = reai_plugin_get_default_log_dir_path();
     GOTO_HANDLER_IF (!log_dir_path, FAILED, "Failed to get log storage directory path.");
-
-    reai_config_file = fopen (reai_config_file_path, "w");
-    GOTO_HANDLER_IF (!reai_config_file, FAILED, "Failed to open config file.");
 
     fprintf (reai_config_file, "host         = \"%s\"\n", argv[1]);
     fprintf (reai_config_file, "apikey       = \"%s\"\n", argv[2]);
