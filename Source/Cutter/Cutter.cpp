@@ -12,6 +12,7 @@
 
 /* rizin */
 #include <qboxlayout.h>
+#include <qdialog.h>
 #include <qlineedit.h>
 #include <rz_core.h>
 
@@ -25,6 +26,7 @@
 #include <QDebug>
 #include <QMainWindow>
 #include <QVBoxLayout>
+#include <QPushButton>
 
 /* creait lib */
 #include <Reai/Api/Api.h>
@@ -34,6 +36,7 @@
 
 /* plugin */
 #include <Plugin.h>
+#include <Cutter/Ui/ConfigSetupDialog.hpp>
 
 /**
  * Display a message of given level in rizin shell.
@@ -71,7 +74,6 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction* actCheckAnalysisStatus         = nullptr;
     QAction* actAutoAnalyzeBinSym           = nullptr;
     QAction* actPerformRenameFromSimilarFns = nullptr;
-    QAction* actDownloadBinAnalysisLogs     = nullptr;
     QAction* actBinAnalysisHistory          = nullptr;
     QAction* actSetup                       = nullptr;
 
@@ -278,46 +280,7 @@ void ReaiCutterPlugin::on_Setup() {
         );
     }
 
-    QDialog* setupDialog = new QDialog ((QWidget*)this->parent());
-
-    setupDialog->setModal (True);
-    setupDialog->setWindowTitle ("Plugin Configuration Setup");
-
-    QVBoxLayout* mainLayout = new QVBoxLayout;
-    setupDialog->setLayout (mainLayout);
-
-#define ADD_LABEL_INPUT_ROW(labelName, labelValue, inputName, inputValue)                          \
-    QLabel*    labelName = new QLabel (tr (labelValue));                                           \
-    QLineEdit* inputName = new QLineEdit();                                                        \
-    inputName->setPlaceholderText (inputValue);                                                    \
-    QHBoxLayout* row##labelName##inputName = new QHBoxLayout;                                      \
-    row##labelName##inputName->addWidget (labelName);                                              \
-    row##labelName##inputName->addWidget (inputName);                                              \
-    mainLayout->addLayout (row##labelName##inputName);
-
-    ADD_LABEL_INPUT_ROW (
-        apiLabel,
-        "RevEng.AI API Key",
-        apiInput,
-        "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-    );
-    ADD_LABEL_INPUT_ROW (hostLabel, "RevEng.AI Host", hostInput, "https://api.reveng.ai/v1");
-    ADD_LABEL_INPUT_ROW (modelLabel, "RevEng.AI AI Model", modelInput, "binnet-0.3");
-    ADD_LABEL_INPUT_ROW (
-        dbDirPathLabel,
-        "Plugin Local Database Path",
-        dbDirPathInput,
-        reai_plugin_get_default_database_dir_path()
-    );
-    ADD_LABEL_INPUT_ROW (
-        logDirPathLabel,
-        "Plugin Local Log Storage Path",
-        logDirPathInput,
-        reai_plugin_get_default_log_dir_path()
-    );
-
-#undef ADD_LABEL_INPUT_ROW
-
+    ConfigSetupDialog* setupDialog = new ConfigSetupDialog();
     setupDialog->show();
 }
 
