@@ -35,10 +35,10 @@
  * Get Reai Plugin object.
  * */
 ReaiPlugin* reai_plugin() {
-    static ReaiPlugin* plugin = Null;
+    static ReaiPlugin* plugin = NULL;
 
     if (!plugin) {
-        RETURN_VALUE_IF (!(plugin = NEW (ReaiPlugin)), Null, ERR_OUT_OF_MEMORY);
+        RETURN_VALUE_IF (!(plugin = NEW (ReaiPlugin)), NULL, ERR_OUT_OF_MEMORY);
     }
 
     return plugin;
@@ -53,18 +53,18 @@ ReaiPlugin* reai_plugin() {
  * @param core
  *
  * @return @c ReaiFnInfoVec reference on success.
- * @return @c Null otherwise.
+ * @return @c NULL otherwise.
  *  */
 ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core) {
-    RETURN_VALUE_IF (!core, Null, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
 
     /* prepare symbols info  */
     RzList*        fns           = core->analysis->fcns;
     ReaiFnInfoVec* fn_boundaries = reai_fn_info_vec_create();
 
     /* add all symbols corresponding to functions */
-    RzListIter*         fn_iter = Null;
-    RzAnalysisFunction* fn      = Null;
+    RzListIter*         fn_iter = NULL;
+    RzAnalysisFunction* fn      = NULL;
     rz_list_foreach (fns, fn_iter, fn) {
         ReaiFnInfo fn_info = {
             .name  = fn->name,
@@ -74,7 +74,7 @@ ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core) {
 
         if (!reai_fn_info_vec_append (fn_boundaries, &fn_info)) {
             reai_fn_info_vec_destroy (fn_boundaries);
-            return Null;
+            return NULL;
         }
     }
 
@@ -120,10 +120,10 @@ PRIVATE void reai_db_background_worker (ReaiPlugin* plugin) {
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
 Bool reai_plugin_init (RzCore* core) {
-    RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (!core, false, ERR_INVALID_ARGUMENTS);
 
     /* load default config */
-    reai_config() = reai_config_load (Null);
+    reai_config() = reai_config_load (NULL);
     if (!reai_config()) {
         reai_plugin_display_msg (
             REAI_LOG_LEVEL_FATAL,
@@ -131,40 +131,40 @@ Bool reai_plugin_init (RzCore* core) {
             "\"REi\" command & restart.\n"
         );
 
-        return False;
+        return false;
     }
 
     /* initialize reai object. */
     reai() = reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
-    RETURN_VALUE_IF (!reai(), False, "Failed to create Reai object.");
+    RETURN_VALUE_IF (!reai(), false, "Failed to create Reai object.");
 
     /* create log directory if not present before creating new log files */
     rz_sys_mkdirp (reai_config()->log_dir_path);
 
     /* create logger */
-    reai_logger() = reai_log_create ((CString)Null);
+    reai_logger() = reai_log_create ((CString)NULL);
     RETURN_VALUE_IF (
         !reai_logger() || !reai_set_logger (reai(), reai_logger()),
-        False,
+        false,
         "Failed to create and set Reai logger."
     );
 
     /* create response object */
     reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
-    RETURN_VALUE_IF (!reai_response(), False, "Failed to create/init ReaiResponse object.");
+    RETURN_VALUE_IF (!reai_response(), false, "Failed to create/init ReaiResponse object.");
 
     /* create the database directory if not present before creating/opening database */
     rz_sys_mkdirp (reai_config()->db_dir_path);
 
     /* create database and set it to reai database */
-    Size db_path_strlen = snprintf (Null, 0, "%s/reai.db", reai_config()->db_dir_path) + 1;
+    Size db_path_strlen = snprintf (NULL, 0, "%s/reai.db", reai_config()->db_dir_path) + 1;
     Char db_path[db_path_strlen];
     snprintf (db_path, db_path_strlen, "%s/reai.db", reai_config()->db_dir_path);
 
     reai_db() = reai_db_create (db_path);
     RETURN_VALUE_IF (
         !reai_db() || !reai_set_db (reai(), reai_db()),
-        False,
+        false,
         "Failed to create and set Reai DB object."
     );
 
@@ -172,11 +172,11 @@ Bool reai_plugin_init (RzCore* core) {
         rz_th_new ((RzThreadFunction)reai_db_background_worker, reai_plugin());
     RETURN_VALUE_IF (
         !reai_plugin()->background_worker,
-        False,
+        false,
         "Failed to start RevEng.AI background worker."
     );
 
-    return True;
+    return true;
 }
 
 /**
@@ -184,33 +184,33 @@ Bool reai_plugin_init (RzCore* core) {
  *
  * @param core
  *
- * @return True on successful plugin init.
- * @return False otherwise.
+ * @return true on successful plugin init.
+ * @return false otherwise.
 * */
 Bool reai_plugin_deinit (RzCore* core) {
-    RETURN_VALUE_IF (!core, False, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (!core, false, ERR_INVALID_ARGUMENTS);
 
-    /* this must be destroyed first and set to Null to signal the background worker
+    /* this must be destroyed first and set to NULL to signal the background worker
      * thread to stop working */
     if (reai()) {
         reai_destroy (reai());
-        reai_plugin()->reai = Null;
+        reai_plugin()->reai = NULL;
     }
 
     if (reai_plugin()->background_worker) {
         rz_th_wait (reai_plugin()->background_worker);
         rz_th_free (reai_plugin()->background_worker);
-        reai_plugin()->background_worker = Null;
+        reai_plugin()->background_worker = NULL;
     }
 
     if (reai_db()) {
         reai_db_destroy (reai_db());
-        reai_plugin()->reai_db = Null;
+        reai_plugin()->reai_db = NULL;
     }
 
     if (reai_logger()) {
         reai_log_destroy (reai_logger());
-        reai_plugin()->reai_logger = Null;
+        reai_plugin()->reai_logger = NULL;
     }
 
     if (reai_response()) {
@@ -222,14 +222,14 @@ Bool reai_plugin_deinit (RzCore* core) {
         reai_config_destroy (reai_config());
     }
 
-    return True;
+    return true;
 }
 
 /**
  * @b Check whether or not the default config exists.
  *
- * @return @c True on success.
- * @return @c Null otherwise.
+ * @return @c true on success.
+ * @return @c NULL otherwise.
  * */
 Bool reai_plugin_check_config_exists() {
     CString reai_config_file_path = reai_config_get_default_path();
@@ -238,21 +238,21 @@ Bool reai_plugin_check_config_exists() {
     FILE* reai_config_file = fopen (reai_config_file_path, "r");
     if (reai_config_file) {
         fclose (reai_config_file);
-        return True;
+        return true;
     }
 
-    return False;
+    return false;
 }
 
 /**
  * @b Get default database path.
  *
  * @return Database directory path on success.
- * @return Null otherwise
+ * @return NULL otherwise
  * */
 CString reai_plugin_get_default_database_dir_path() {
-    static Bool    is_created = False;
-    static CString path       = Null;
+    static Bool    is_created = false;
+    static CString path       = NULL;
 
     if (is_created) {
         return path;
@@ -262,7 +262,7 @@ CString reai_plugin_get_default_database_dir_path() {
     static Char static_buf[512] = {0};
     memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
 
-    is_created = True;
+    is_created = true;
     return (path = static_buf);
 }
 
@@ -270,11 +270,11 @@ CString reai_plugin_get_default_database_dir_path() {
  * @b Get default database path.
  *
  * @return Database directory path on success.
- * @return Null otherwise
+ * @return NULL otherwise
  * */
 CString reai_plugin_get_default_log_dir_path() {
-    static Bool    is_created = False;
-    static CString path       = Null;
+    static Bool    is_created = false;
+    static CString path       = NULL;
 
     if (is_created) {
         return path;
@@ -284,6 +284,6 @@ CString reai_plugin_get_default_log_dir_path() {
     static Char static_buf[512] = {0};
     memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
 
-    is_created = True;
+    is_created = true;
     return (path = static_buf);
 }

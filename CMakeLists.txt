@@ -55,15 +55,6 @@ elseif(UNIX) # Linux or macOS
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
     else()
-          # Set the sanitizer flags
-        set(SANITIZER_FLAGS "-fsanitize=address,undefined")
-
-        # Apply the sanitizer flags to all configurations
-        if (CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
-            add_compile_options(${SANITIZER_FLAGS})
-            add_link_options(${SANITIZER_FLAGS})
-        endif()
-
         # Compile flags
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -Wextra")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Wextra -Wno-error")
@@ -86,10 +77,11 @@ endif()
 #  - https://cmake.org/Wiki/CMake_RPATH_handling
 if(APPLE)
         set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+        list(APPEND CMAKE_MODULE_PATH "/Applications/Cutter.app/Contents/Resources/lib/cmake")
 elseif(UNIX)
         set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 endif()
-
+message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 # --------------------------------------
 # ---- LGPL-3.0 LICENSED REGION END ----
 # --------------------------------------

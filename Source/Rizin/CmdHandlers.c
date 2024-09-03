@@ -84,7 +84,7 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
         "end of host, depending on the API version you're using."
     );
 
-    CString reai_config_file_path = Null, db_dir_path = Null, log_dir_path = Null;
+    CString reai_config_file_path = NULL, db_dir_path = NULL, log_dir_path = NULL;
 
     reai_config_file_path = reai_config_get_default_path();
     GOTO_HANDLER_IF (!reai_config_file_path, FAILED, "Failed to get default config file path.");
@@ -223,10 +223,10 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
         get_ai_model_for_opened_bin_file (core),
         get_opened_bin_file_baseaddr (core),
         fn_boundaries,
-        True,
+        true,
         sha256,
         rz_file_basename (binfile_path),
-        Null,
+        NULL,
         binfile->size
     );
     GOTO_HANDLER_IF (
@@ -303,7 +303,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
 
     /* function matches */
     ReaiAnnFnMatchVec* fn_matches =
-        get_fn_matches (bin_id, max_results_per_function, max_distance, Null);
+        get_fn_matches (bin_id, max_results_per_function, max_distance, NULL);
     GOTO_HANDLER_IF (
         !fn_matches,
         GET_FN_MATCHES_FAILED,
@@ -328,7 +328,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     /* rename the functions in rizin */
     REAI_VEC_FOREACH(fn_infos, fn, {
         Float64 confidence = min_confidence;
-        CString new_name   = Null;
+        CString new_name   = NULL;
         CString old_name   = fn->name;
         Uint64 fn_addr = fn->vaddr + get_opened_bin_file_baseaddr(core);
 
@@ -635,19 +635,19 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
  * @param core
  *
  * @return @c RzBinFile if a binary file is opened (on success).
- * @return @c Null otherwise.
+ * @return @c NULL otherwise.
  * */
 PRIVATE RzBinFile* get_opened_bin_file (RzCore* core) {
-    RETURN_VALUE_IF (!core, Null, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
 
     return core->bin ? core->bin->binfiles ?
                        core->bin->binfiles->length ?
                        rz_list_head (core->bin->binfiles) ?
                        rz_list_iter_get_data (rz_list_head (core->bin->binfiles)) :
-                       Null :
-                       Null :
-                       Null :
-                       Null;
+                       NULL :
+                       NULL :
+                       NULL :
+                       NULL;
 }
 
 /**
@@ -687,11 +687,11 @@ PRIVATE ReaiModel get_ai_model_for_opened_bin_file (RzCore* core) {
  * @param core
  *
  * @return @c CString if a binary file is opened.
- * @return @c Null otherwise.
+ * @return @c NULL otherwise.
  * */
 PRIVATE CString get_opened_bin_file_path (RzCore* core) {
     RzBinFile* binfile = get_opened_bin_file (core);
-    return binfile ? rz_path_realpath (binfile->file) : Null;
+    return binfile ? rz_path_realpath (binfile->file) : NULL;
 }
 
 /**
@@ -720,23 +720,23 @@ PRIVATE Uint64 get_opened_bin_file_baseaddr (RzCore* core) {
  * @param fn_matches Array that contains all functions with their confidence levels.
  * @param origin_fn_id Function ID to search for.
  * @param confidence Pointer to @c Float64 value specifying min confidence level.
- *        If not @c Null then value of max confidence of returned function name will
+ *        If not @c NULL then value of max confidence of returned function name will
  *        be stored in this pointer.
- *        If @c Null then just the function with max confidence will be selected.
+ *        If @c NULL then just the function with max confidence will be selected.
  *
  * @return @c Name of function if present and has a confidence level greater than or equal to
  *            given confidence.
- * @return @c Null otherwise.
+ * @return @c NULL otherwise.
  * */
 PRIVATE CString get_function_name_with_max_confidence (
     ReaiAnnFnMatchVec* fn_matches,
     ReaiFunctionId     origin_fn_id,
     Float64*           required_confidence
 ) {
-    RETURN_VALUE_IF (!fn_matches || !origin_fn_id, Null, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (!fn_matches || !origin_fn_id, NULL, ERR_INVALID_ARGUMENTS);
 
     Float64 max_confidence = 0;
-    CString fn_name        = Null;
+    CString fn_name        = NULL;
     REAI_VEC_FOREACH (fn_matches, fn_match, {
         /* if function name starts with FUN_ then no need to rename */
         if (!strncmp (fn_match->nn_function_name, "FUN_", 4)) {
@@ -752,7 +752,7 @@ PRIVATE CString get_function_name_with_max_confidence (
     });
 
     if (required_confidence) {
-        fn_name              = max_confidence >= *required_confidence ? fn_name : Null;
+        fn_name              = max_confidence >= *required_confidence ? fn_name : NULL;
         *required_confidence = max_confidence;
     }
 
@@ -767,19 +767,19 @@ PRIVATE CString get_function_name_with_max_confidence (
  * @param bin_id
  *
  * @return @c ReaiFnInfoVec on success.
- * @return @c Null otherwise.
+ * @return @c NULL otherwise.
  * */
 PRIVATE ReaiFnInfoVec* get_fn_infos (ReaiBinaryId bin_id) {
-    RETURN_VALUE_IF (!bin_id, Null, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (!bin_id, NULL, ERR_INVALID_ARGUMENTS);
 
     /* get function names for all functions in the binary (this is why we need analysis) */
     ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
-    RETURN_VALUE_IF (!fn_infos, Null, "Failed to get binary function names.");
-    RETURN_VALUE_IF (!fn_infos->count, Null, "Current binary does not have any function.");
+    RETURN_VALUE_IF (!fn_infos, NULL, "Failed to get binary function names.");
+    RETURN_VALUE_IF (!fn_infos->count, NULL, "Current binary does not have any function.");
 
     /* try cloning */
     fn_infos = reai_fn_info_vec_clone_create (fn_infos);
-    RETURN_VALUE_IF (!fn_infos, Null, "FnInfos vector clone failed");
+    RETURN_VALUE_IF (!fn_infos, NULL, "FnInfos vector clone failed");
 
     return fn_infos;
 }
@@ -795,7 +795,7 @@ PRIVATE ReaiFnInfoVec* get_fn_infos (ReaiBinaryId bin_id) {
  * @param collections
  *
  * @return @c ReaiAnnFnMatchVec on success.
- * @return @c Null otherwise.
+ * @return @c NULL otherwise.
  * */
 PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
     ReaiBinaryId bin_id,
@@ -811,12 +811,12 @@ PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
         max_dist,
         collections
     );
-    RETURN_VALUE_IF (!fn_matches, Null, "Failed to get ANN binary symbol similarity result");
-    RETURN_VALUE_IF (!fn_matches->count, Null, "No similar functions found");
+    RETURN_VALUE_IF (!fn_matches, NULL, "Failed to get ANN binary symbol similarity result");
+    RETURN_VALUE_IF (!fn_matches->count, NULL, "No similar functions found");
 
     /* try clone */
     fn_matches = reai_ann_fn_match_vec_clone_create (fn_matches);
-    RETURN_VALUE_IF (!fn_matches, Null, "ANN Fn Match vector clone failed.");
+    RETURN_VALUE_IF (!fn_matches, NULL, "ANN Fn Match vector clone failed.");
 
     return fn_matches;
 }

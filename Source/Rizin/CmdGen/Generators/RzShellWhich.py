@@ -114,7 +114,7 @@ def main():
 
     if args.grep:
         print("--------")
-        sys.exit(subprocess.run(grep_cmd, check=False).returncode)
+        sys.exit(subprocess.run(grep_cmd, check=false).returncode)
 
 
 if __name__ == "__main__":

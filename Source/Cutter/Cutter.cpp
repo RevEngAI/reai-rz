@@ -77,7 +77,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction* actBinAnalysisHistory          = nullptr;
     QAction* actSetup                       = nullptr;
 
-    Bool isInitialized = False;
+    Bool isInitialized = false;
 
    public:
     void setupPlugin() override;
@@ -114,7 +114,7 @@ void ReaiCutterPlugin::setupPlugin() {
         qInfo() << "Config not found. Please create a config using installation wizard.";
     }
 
-    isInitialized = True;
+    isInitialized = true;
 };
 
 /**

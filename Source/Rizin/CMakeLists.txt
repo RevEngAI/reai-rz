@@ -6,27 +6,12 @@
 # Generate command descriptors
 add_subdirectory(CmdGen)
 
-find_package(CURL REQUIRED)
-find_package(SQLite3 REQUIRED)
-
 # main plugin library and sources
 set(ReaiRzPluginSources "Rizin.c" "../Plugin.c" "CmdHandlers.c")
 
 # Rizin only accepts shared libraries for plugins
 add_library(reai_rizin MODULE SHARED ${ReaiRzPluginSources})
-target_link_libraries(
-  reai_rizin PUBLIC
-  Rizin::Core
-  reai_cmdescs
-  reai
-  cjson
-  toml
-  CURL::libcurl
-  SQLite::SQLite3
-)
-target_link_directories(
-  reai_rizin PUBLIC
-)
+target_link_libraries(reai_rizin PUBLIC Rizin::Core reai_cmdescs ${CREAIT_LIBRARIES})
 
 # install the built binaries to cutter's plugin directory
 install(TARGETS reai_rizin DESTINATION "${RIZIN_INSTALL_PLUGDIR}")
