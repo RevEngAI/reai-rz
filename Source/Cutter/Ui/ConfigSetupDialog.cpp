@@ -14,12 +14,18 @@
 #include <QHBoxLayout>
 #include <QLabel>
 
-ConfigSetupDialog::ConfigSetupDialog() {
+ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
     setWindowTitle ("Plugin Configuration Setup");
 
     QVBoxLayout* mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
 
+    /* macro to generate code for different input fields.
+     * labelName  : Variable name of QLabel typedef. Must not be pre-declared.
+     * labelValue : Label string value.
+     * inputName  : Variable name for input field. Must already be declared.
+     * inputValue : Placeholder text to be displayed inside input field.
+     * */
 #define ADD_LABEL_INPUT_ROW(labelName, labelValue, inputName, inputValue)                          \
     QLabel* labelName = new QLabel (tr (labelValue), this);                                        \
     inputName         = new QLineEdit (this);                                                      \
@@ -52,50 +58,58 @@ ConfigSetupDialog::ConfigSetupDialog() {
 
 #undef ADD_LABEL_INPUT_ROW
 
-    QHBoxLayout* btnsRow = new QHBoxLayout;
-    mainLayout->addLayout (btnsRow);
+    /* add ok and cancel buttons */
+    buttonBox = new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    connect (buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect (buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-    btnOk     = new QPushButton ("Ok", this);
-    btnCancel = new QPushButton ("Cancel", this);
-    btnsRow->addStretch();
-    btnsRow->addWidget (btnCancel);
-    btnsRow->addWidget (btnOk);
+    mainLayout->addWidget (buttonBox);
+}
 
-
-    // TODO: connect the wires
+/**
+ * @b Check whether all fields were filled with a non-empty string or not.
+ *
+ * @return true when all fields are filled with a non empty string.
+ * @return false otherwise.
+ * */
+Bool ConfigSetupDialog::allFieldsFilled() {
+    return !(
+        leHost->text().isEmpty() || leApiKey->text().isEmpty() || leModel->text().isEmpty() ||
+        leDbDirPath->text().isEmpty() || leLogDirPath->text().isEmpty()
+    );
 }
 
 /**
  * @b Get value of host line edit.
  * */
-QString ConfigSetupDialog::getHost() {
-    return leHost->text();
+CString ConfigSetupDialog::getHost() {
+    return leHost->text().toLocal8Bit();
 }
 
 /**
  * @b Get value of api key line edit.
  * */
-QString ConfigSetupDialog::getApiKey() {
-    return leApiKey->text();
+CString ConfigSetupDialog::getApiKey() {
+    return leApiKey->text().toLocal8Bit();
 }
 
 /**
  * @b Get value of model line edit.
  * */
-QString ConfigSetupDialog::getModel() {
-    return leModel->text();
+CString ConfigSetupDialog::getModel() {
+    return leModel->text().toLocal8Bit();
 }
 
 /**
  * @b Get value of db dir path line edit.
  * */
-QString ConfigSetupDialog::getDbDirPath() {
-    return leDbDirPath->text();
+CString ConfigSetupDialog::getDbDirPath() {
+    return leDbDirPath->text().toLocal8Bit();
 }
 
 /**
  * @b Get value of log dir path line edit.
  * */
-QString ConfigSetupDialog::getLogDirPath() {
-    return leLogDirPath->text();
+CString ConfigSetupDialog::getLogDirPath() {
+    return leLogDirPath->text().toLocal8Bit();
 }

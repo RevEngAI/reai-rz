@@ -63,41 +63,48 @@ PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
  * Requires a restart of rizin plugin after issue.
  * */
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
+    /* if file already exists then we don't make changes */
+    if (reai_plugin_check_config_exists()) {
+        DISPLAY_ERROR (
+            "Config file already exists. Remove/rename previous config to create new one."
+        );
+    }
+
+    /* no need to check whether these strings are empty or not in rizin
+     * because rizin shell automatically checks this */
+    CString host    = argv[1];
+    CString api_key = argv[2];
+    CString model   = argv[3];
+
     RETURN_VALUE_IF (
-        (argc < 4) || !argv[1] || !argv[2] || !argv[3],
+        (argc < 4) || !host || api_key || model,
         RZ_CMD_STATUS_WRONG_ARGS,
         ERR_INVALID_ARGUMENTS
     );
 
     /* check whether API key is correct or not */
     RETURN_VALUE_IF (
-        !reai_config_check_api_key (argv[2]),
+        !reai_config_check_api_key (api_key),
         RZ_CMD_STATUS_ERROR,
         "Invalid API key. API key must be in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     );
 
     /* check whether version number is specified or not */
     RETURN_VALUE_IF (
-        !strstr (argv[1], "v1") || !strstr (argv[1], "v2"),
+        !strstr (host, "v1") || !strstr (host, "v2"),
         RZ_CMD_STATUS_ERROR,
-        "Host needs a version number to communicate with. Please append a /v1, /v2, etc... at the "
-        "end of host, depending on the API version you're using."
+        "Cannot detect API version. Host needs a version number to communicate with. Please append "
+        "a /v1, /v2, etc... at the end of host, depending on the API version you're using."
     );
 
-    CString reai_config_file_path = NULL, db_dir_path = NULL, log_dir_path = NULL;
+    CString db_dir_path = NULL, log_dir_path = NULL;
 
-    reai_config_file_path = reai_config_get_default_path();
-    GOTO_HANDLER_IF (!reai_config_file_path, FAILED, "Failed to get default config file path.");
-
-    /* if file already exists then we don't make changes */
-    if (reai_plugin_check_config_exists()) {
-        rz_cons_println (
-            "Config file already exists. Remove/rename previous config to create new one."
+    if (!reai_config_check_api_key (argv[2])) {
+        DISPLAY_ERROR (
+            "Provided API key is invalid. It's recommended to directly copy paste the API key from "
+            "RevEng.AI dashboard."
         );
     }
-
-    FILE* reai_config_file = fopen (reai_config_file_path, "w");
-    GOTO_HANDLER_IF (!reai_config_file, FAILED, "Failed to open config file.");
 
     db_dir_path = reai_plugin_get_default_database_dir_path();
     GOTO_HANDLER_IF (!db_dir_path, FAILED, "Failed to get database directory path.");
@@ -105,29 +112,24 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     log_dir_path = reai_plugin_get_default_log_dir_path();
     GOTO_HANDLER_IF (!log_dir_path, FAILED, "Failed to get log storage directory path.");
 
-    fprintf (reai_config_file, "host         = \"%s\"\n", argv[1]);
-    fprintf (reai_config_file, "apikey       = \"%s\"\n", argv[2]);
-    fprintf (reai_config_file, "model        = \"%s\"\n", argv[3]);
-    fprintf (reai_config_file, "db_dir_path  = \"%s\"\n", db_dir_path);
-    fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
+    /* attempt saving config */
+    if (reai_plugin_save_config (host, api_key, model, db_dir_path, log_dir_path)) {
+        /* try to reinit config after creating config */
+        RETURN_VALUE_IF (
+            !reai_plugin_init (core),
+            RZ_CMD_STATUS_ERROR,
+            "Failed to init plugin after creating a new config."
+        );
+    } else {
+        DISPLAY_ERROR ("Failed to save config.");
+    }
 
-    fclose (reai_config_file);
     FREE (log_dir_path);
     FREE (db_dir_path);
-
-    /* try to reinit config after creating config */
-    RETURN_VALUE_IF (
-        !reai_plugin_init (core),
-        RZ_CMD_STATUS_ERROR,
-        "Failed to init plugin after creating a new config."
-    );
 
     return RZ_CMD_STATUS_OK;
 
 FAILED:
-    if (reai_config_file_path) {
-        FREE (reai_config_file_path);
-    }
     if (db_dir_path) {
         FREE (db_dir_path);
     }

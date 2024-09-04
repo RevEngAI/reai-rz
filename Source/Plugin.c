@@ -258,7 +258,7 @@ CString reai_plugin_get_default_database_dir_path() {
         return path;
     }
 
-    FMT (buf, "%s/%s", reai_config_get_default_path(), ".reai-rz");
+    FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz");
     static Char static_buf[512] = {0};
     memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
 
@@ -280,10 +280,50 @@ CString reai_plugin_get_default_log_dir_path() {
         return path;
     }
 
-    FMT (buf, "%s/%s", reai_config_get_default_path(), ".reai-rz/log");
+    FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz/log");
     static Char static_buf[512] = {0};
     memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
 
     is_created = true;
     return (path = static_buf);
+}
+
+/**
+ * @b Save given config to a file.
+ *
+ * @param host
+ * @param api_key
+ * @param model
+ * @param db_dir_path
+ * @param log_dir_path
+ * */
+Bool reai_plugin_save_config (
+    CString host,
+    CString api_key,
+    CString model,
+    CString db_dir_path,
+    CString log_dir_path
+) {
+    RETURN_VALUE_IF(!host || !api_key || !model || !db_dir_path || !log_dir_path, false, ERR_INVALID_ARGUMENTS);
+
+    CString reai_config_file_path = reai_config_get_default_path();
+    RETURN_VALUE_IF(!reai_config_file_path, false, "Failed to get config file default path.");
+
+    FILE* reai_config_file = fopen (reai_config_file_path, "w");
+    if(!reai_config_file) {
+        FREE(reai_config_file_path);
+        DISPLAY_ERROR("Failed to open config file. %s", strerror(errno));
+        return false;
+    }
+
+    fprintf (reai_config_file, "host         = \"%s\"\n", host);
+    fprintf (reai_config_file, "apikey       = \"%s\"\n", api_key);
+    fprintf (reai_config_file, "model        = \"%s\"\n", model);
+    fprintf (reai_config_file, "db_dir_path  = \"%s\"\n", db_dir_path);
+    fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
+
+    fclose (reai_config_file);
+    FREE(reai_config_file_path);
+
+    return true;
 }

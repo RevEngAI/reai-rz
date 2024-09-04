@@ -1,37 +1,42 @@
 /**
  * @file      : ConfigSetupDialog.hpp
  * @author    : Siddharth Mishra
- * @date      : 30/09/2024
+ * @date      : 30/08/2024
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
+#ifndef REAI_PLUGIN_CUTTER_CONFIG_SETUP_DIALOG_HPP
+#define REAI_PLUGIN_CUTTER_CONFIG_SETUP_DIALOG_HPP
 
-#ifndef CONFIGSETUPDIALOG_H_
-#define CONFIGSETUPDIALOG_H_
-
+/* qt */
 #include <QDialog>
-#include <QPushButton>
 #include <QLineEdit>
+#include <QPushButton>
+#include <QDialogButtonBox>
 #include <QString>
+
+/* creait */
+#include <Reai/Types.h>
 
 class ConfigSetupDialog : public QDialog {
     Q_OBJECT
 
    public:
-    ConfigSetupDialog();
+    ConfigSetupDialog (QWidget* parent);
 
-    QString getHost();
-    QString getApiKey();
-    QString getModel();
-    QString getDbDirPath();
-    QString getLogDirPath();
+    Bool    allFieldsFilled();
+    CString getHost();
+    CString getApiKey();
+    CString getModel();
+    CString getDbDirPath();
+    CString getLogDirPath();
 
    private:
-    QPushButton *btnOk, *btnCancel;
-    QLineEdit   *leHost, *leApiKey, *leModel, *leDbDirPath, *leLogDirPath;
+    QDialogButtonBox* buttonBox;
+    QLineEdit *       leHost, *leApiKey, *leModel, *leDbDirPath, *leLogDirPath;
 
     void on_Ok();
     void on_Cancel();
 };
 
-#endif // CONFIGSETUPDIALOG_H_
+#endif // REAI_PLUGIN_CUTTER_CONFIG_SETUP_DIALOG_HPP

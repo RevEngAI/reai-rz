@@ -47,6 +47,13 @@ extern "C" {
     Bool           reai_plugin_check_config_exists();
     CString        reai_plugin_get_default_database_dir_path();
     CString        reai_plugin_get_default_log_dir_path();
+    Bool           reai_plugin_save_config (
+                  CString host,
+                  CString api_key,
+                  CString model,
+                  CString db_dir_path,
+                  CString log_dir_path
+              );
 
 #include "Override.h"
 

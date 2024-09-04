@@ -17,16 +17,16 @@
 #include <rz_core.h>
 
 /* qt includes */
+#include <QAction>
+#include <QDebug>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMenuBar>
-#include <QAction>
-#include <QtPlugin>
-#include <QObject>
-#include <QDebug>
 #include <QMainWindow>
-#include <QVBoxLayout>
+#include <QMenuBar>
+#include <QObject>
 #include <QPushButton>
+#include <QVBoxLayout>
+#include <QtPlugin>
 
 /* creait lib */
 #include <Reai/Api/Api.h>
@@ -35,8 +35,8 @@
 #include <Reai/Log.h>
 
 /* plugin */
-#include <Plugin.h>
 #include <Cutter/Ui/ConfigSetupDialog.hpp>
+#include <Plugin.h>
 
 /**
  * Display a message of given level in rizin shell.
@@ -49,7 +49,46 @@
  * */
 void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     RETURN_IF (!msg, ERR_INVALID_ARGUMENTS);
-    UNUSED (level);
+
+    static CString win_title[] = {
+        [REAI_LOG_LEVEL_INFO]  = "Information",
+        [REAI_LOG_LEVEL_TRACE] = "Trace",
+        [REAI_LOG_LEVEL_DEBUG] = "Debug",
+        [REAI_LOG_LEVEL_WARN]  = "Warning",
+        [REAI_LOG_LEVEL_FATAL] = "Critical"
+    };
+
+    switch (level) {
+        case REAI_LOG_LEVEL_INFO :
+        case REAI_LOG_LEVEL_TRACE :
+        case REAI_LOG_LEVEL_DEBUG : {
+            QMessageBox::information (
+                nullptr,
+                win_title[level],
+                msg,
+                QMessageBox::Ok,
+                QMessageBox::Ok
+            );
+            break;
+        }
+        case REAI_LOG_LEVEL_WARN : {
+            QMessageBox::warning (nullptr, win_title[level], msg, QMessageBox::Ok, QMessageBox::Ok);
+            break;
+        }
+        case REAI_LOG_LEVEL_ERROR :
+        case REAI_LOG_LEVEL_FATAL : {
+            QMessageBox::critical (
+                nullptr,
+                win_title[level],
+                msg,
+                QMessageBox::Ok,
+                QMessageBox::Ok
+            );
+            break;
+        }
+        default :
+            break;
+    }
 }
 
 /**
@@ -63,25 +102,29 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     Q_PLUGIN_METADATA (IID "re.rizin.cutter.plugins.revengai")
     Q_INTERFACES (CutterPlugin)
 
-    /* to create separate menu for revengai plugin in cutter's main window's menu bar */
-    QMenu* reaiMenu = nullptr;
+    /* to create separate menu for revengai plugin in cutter's main window's menu
+   * bar */
+    QMenu *reaiMenu = nullptr;
 
     /* action to enable/disable (show/hide) revengai plugin */
-    QAction* actToggleReaiPlugin = nullptr;
+    QAction *actToggleReaiPlugin = nullptr;
 
     /* revengai's menu item actions */
-    QAction* actUploadBin                   = nullptr;
-    QAction* actCheckAnalysisStatus         = nullptr;
-    QAction* actAutoAnalyzeBinSym           = nullptr;
-    QAction* actPerformRenameFromSimilarFns = nullptr;
-    QAction* actBinAnalysisHistory          = nullptr;
-    QAction* actSetup                       = nullptr;
+    QAction *actUploadBin                   = nullptr;
+    QAction *actCheckAnalysisStatus         = nullptr;
+    QAction *actAutoAnalyzeBinSym           = nullptr;
+    QAction *actPerformRenameFromSimilarFns = nullptr;
+    QAction *actBinAnalysisHistory          = nullptr;
+    QAction *actSetup                       = nullptr;
+
+    /* display dialog to get config settings */
+    ConfigSetupDialog *setupDialog;
 
     Bool isInitialized = false;
 
    public:
     void setupPlugin() override;
-    void setupInterface (MainWindow* mainWin) override;
+    void setupInterface (MainWindow *mainWin) override;
     ~ReaiCutterPlugin();
 
     QString getName() const override {
@@ -111,8 +154,12 @@ void ReaiCutterPlugin::setupPlugin() {
 
     /* if plugin launch fails then terminate */
     if (!reai_plugin_init (core)) {
-        qInfo() << "Config not found. Please create a config using installation wizard.";
+        qInfo() << "Config not found. Please create a config using installation "
+                   "wizard.";
     }
+
+    /* display dialog to get config settings */
+    setupDialog = new ConfigSetupDialog ((QWidget *)this->parent());
 
     isInitialized = true;
 };
@@ -122,31 +169,31 @@ void ReaiCutterPlugin::setupPlugin() {
  *
  * @param mainWin Reference to main window provided by Cutter
  * */
-void ReaiCutterPlugin::setupInterface (MainWindow* mainWin) {
+void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     if (!isInitialized) {
         return;
     }
 
     /* get main window's menu bar */
-    QMenuBar* menuBar = mainWin->menuBar();
+    QMenuBar *menuBar = mainWin->menuBar();
     if (!menuBar) {
         qCritical() << "Given Cutter main window has no menu bar.";
         return;
     }
 
     /* Find "Plugins" menu in "Windows" menu in Cutter window menu bar */
-    QMenu* pluginsMenu = nullptr;
+    QMenu *pluginsMenu = nullptr;
     {
         /* get list of all menus in menu bar */
-        QList<QMenu*> menuBarMenuList = menuBar->findChildren<QMenu*>();
+        QList<QMenu *> menuBarMenuList = menuBar->findChildren<QMenu *>();
         if (!menuBarMenuList.size()) {
             qCritical() << "Cutter main window has no menu items in it's menu bar.";
             return;
         }
 
         /* go through each one and compare title */
-        QMenu* windowsMenu = nullptr;
-        for (QMenu* menu : menuBarMenuList) {
+        QMenu *windowsMenu = nullptr;
+        for (QMenu *menu : menuBarMenuList) {
             if (menu) {
                 if (menu->title() == QString ("Windows")) {
                     windowsMenu = menu;
@@ -160,8 +207,8 @@ void ReaiCutterPlugin::setupInterface (MainWindow* mainWin) {
             return;
         }
 
-        QList<QMenu*> windowsMenuList = windowsMenu->findChildren<QMenu*>();
-        for (QMenu* menu : windowsMenuList) {
+        QList<QMenu *> windowsMenuList = windowsMenu->findChildren<QMenu *>();
+        for (QMenu *menu : windowsMenuList) {
             if (menu) {
                 if (menu->title() == QString ("Plugins")) {
                     pluginsMenu = menu;
@@ -171,15 +218,16 @@ void ReaiCutterPlugin::setupInterface (MainWindow* mainWin) {
         }
 
         if (!pluginsMenu) {
-            qCritical(
-            ) << "Cutter main window has no 'Plugins' sub-menu in 'Windows' menu of it's menu bar.";
+            qCritical() << "Cutter main window has no 'Plugins' sub-menu in "
+                           "'Windows' menu of it's menu bar.";
             return;
         }
     }
 
     actToggleReaiPlugin = pluginsMenu->addAction ("RevEngAI");
     if (!actToggleReaiPlugin) {
-        qCritical() << "Failed to add action to trigger RevEngAI Plugin on/off in Plugins menu.";
+        qCritical() << "Failed to add action to trigger RevEngAI Plugin on/off in "
+                       "Plugins menu.";
         return;
     }
     actToggleReaiPlugin->setCheckable (true);
@@ -276,12 +324,50 @@ void ReaiCutterPlugin::on_BinAnalysisHistory() {
 void ReaiCutterPlugin::on_Setup() {
     if (reai_plugin_check_config_exists()) {
         DISPLAY_WARN (
-            "Config already exists. Please remove/rename previous config to create new one."
+            "Config already exists. Please remove/rename previous config "
+            "to create new one."
         );
+        return;
     }
 
-    ConfigSetupDialog* setupDialog = new ConfigSetupDialog();
-    setupDialog->show();
+    int result = setupDialog->exec();
+
+    /* move ahead only if OK was pressed. */
+    if (result == QDialog::Rejected) {
+        return;
+    } else {
+        /* if you accept without filling all fields, then dispaly a warning. */
+        if (setupDialog->allFieldsFilled()) {
+            PRINT_ERR("Checking API KEY : %s", setupDialog->getApiKey());
+            /* check whether the API key is in the correct format */
+            if (reai_config_check_api_key (setupDialog->getApiKey())) {
+                /* if we reach here finally then we save the config and exit loop */
+                if (reai_plugin_save_config (
+                        setupDialog->getHost(),
+                        setupDialog->getApiKey(),
+                        setupDialog->getModel(),
+                        setupDialog->getDbDirPath(),
+                        setupDialog->getLogDirPath()
+                    )) {
+                    DISPLAY_INFO (
+                        "Config saved successfully to \"%s\".",
+                        reai_config_get_default_path()
+                    );
+                } else {
+                    DISPLAY_ERROR ("Failed to save config.");
+                }
+            } else {
+                DISPLAY_ERROR (
+                    "Invalid API Key. It's recommended to directly copy-paste "
+                    "the API key from RevEng.AI dashboard."
+                );
+                on_Setup(); /* continue setup */
+            }
+        } else {
+            DISPLAY_WARN ("Not all fields are filled. Please complete the configuration setup.");
+            on_Setup(); /* continue setup */
+        }
+    }
 }
 
 /* Required by the meta object compiler, otherwise build fails */
