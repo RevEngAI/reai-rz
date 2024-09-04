@@ -21,6 +21,12 @@
 class ConfigSetupDialog : public QDialog {
     Q_OBJECT
 
+    QByteArray host;
+    QByteArray apiKey;
+    QByteArray model;
+    QByteArray dbDirPath;
+    QByteArray logDirPath;
+
    public:
     ConfigSetupDialog (QWidget* parent);
 

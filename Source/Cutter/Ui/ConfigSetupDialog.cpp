@@ -83,33 +83,38 @@ Bool ConfigSetupDialog::allFieldsFilled() {
  * @b Get value of host line edit.
  * */
 CString ConfigSetupDialog::getHost() {
-    return leHost->text().toLocal8Bit();
+    host = leHost->text().toLatin1();
+    return host.constData();
 }
 
 /**
  * @b Get value of api key line edit.
  * */
 CString ConfigSetupDialog::getApiKey() {
-    return leApiKey->text().toLocal8Bit();
+    apiKey = leApiKey->text().toLatin1();
+    return apiKey.constData();
 }
 
 /**
  * @b Get value of model line edit.
  * */
 CString ConfigSetupDialog::getModel() {
-    return leModel->text().toLocal8Bit();
+    model = leModel->text().toLatin1();
+    return model.constData();
 }
 
 /**
  * @b Get value of db dir path line edit.
  * */
 CString ConfigSetupDialog::getDbDirPath() {
-    return leDbDirPath->text().toLocal8Bit();
+    dbDirPath = leDbDirPath->text().toLatin1();
+    return dbDirPath.constData();
 }
 
 /**
  * @b Get value of log dir path line edit.
  * */
 CString ConfigSetupDialog::getLogDirPath() {
-    return leLogDirPath->text().toLocal8Bit();
+    logDirPath = leLogDirPath->text().toLatin1();
+    return logDirPath.constData();
 }
