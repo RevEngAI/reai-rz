@@ -181,73 +181,7 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] create analysis");
 
-    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
-    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "No binary file opened. Cannot create analysis.");
-
-    CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
-    GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "Failed to get binary file full path.");
-
-    /* check if file is already uploaded or otherwise upload */
-    CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
-    if (!sha256) {
-        LOG_TRACE ("Binary not already uploaded. Uploading...");
-
-        sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
-        GOTO_HANDLER_IF (!sha256, UPLOAD_FAILED, "Failed to upload file.");
-        GOTO_HANDLER_IF (!(sha256 = strdup (sha256)), UPLOAD_FAILED, ERR_OUT_OF_MEMORY);
-    } else {
-        LOG_TRACE ("using previously uploaded file with latest hash = \"%s\"", sha256);
-    }
-
-    /* warn the use if no analysis exists */
-    GOTO_HANDLER_IF (
-        !core->analysis->fcns->length,
-        NONEXISTENT_RZ_ANALYSIS,
-        "Rizin analysis not performed yet. Please issue an analysis command, eg: \"aaaa\""
-    );
-
-    /* get function boundaries to create analysis */
-    ReaiFnInfoVec* fn_boundaries = reai_plugin_get_fn_boundaries (core);
-    GOTO_HANDLER_IF (
-        !fn_boundaries,
-        NO_FUNCTION_BOUNDARIES,
-        "Failed to get function boundaries for opened binary."
-    );
-
-    /* create analysis */
-    ReaiBinaryId bin_id = reai_create_analysis (
-        reai(),
-        reai_response(),
-        reai_plugin_get_ai_model_for_opened_binary_file (core),
-        reai_plugin_get_opened_binary_file_baseaddr (core),
-        fn_boundaries,
-        true,
-        sha256,
-        rz_file_basename (binfile_path),
-        NULL,
-        binfile->size
-    );
-    GOTO_HANDLER_IF (
-        !bin_id,
-        ANALYSIS_CREATION_FAILED,
-        "Failed to create analysis : %s",
-        reai_response()->raw.data
-    );
-
-    /* destroy after use */
-    FREE (sha256);
-    FREE (binfile_path);
-    reai_fn_info_vec_destroy (fn_boundaries);
-
-    return RZ_CMD_STATUS_OK;
-
-ANALYSIS_CREATION_FAILED: { reai_fn_info_vec_destroy (fn_boundaries); }
-NONEXISTENT_RZ_ANALYSIS:
-NO_FUNCTION_BOUNDARIES: { FREE (sha256); }
-UPLOAD_FAILED: { FREE (binfile_path); }
-
-NO_BINFILE_OPENED:
-    return RZ_CMD_STATUS_ERROR;
+    return reai_plugin_create_analysis_for_opened_binary_file(core) ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
 }
 
 /**

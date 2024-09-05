@@ -5,19 +5,13 @@
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-/* cutter includes */
-#include <cutter/CutterApplication.h>
-#include <cutter/core/MainWindow.h>
-#include <cutter/plugins/CutterPlugin.h>
 
 /* rizin */
-#include <qboxlayout.h>
-#include <qdialog.h>
-#include <qlineedit.h>
 #include <rz_core.h>
 
 /* qt includes */
 #include <QAction>
+#include <QMessageBox>
 #include <QDebug>
 #include <QLabel>
 #include <QLineEdit>
@@ -37,6 +31,7 @@
 /* plugin */
 #include <Cutter/Ui/ConfigSetupDialog.hpp>
 #include <Plugin.h>
+#include <Cutter/Cutter.hpp>
 
 /**
  * Display a message of given level in rizin shell.
@@ -90,64 +85,6 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
             break;
     }
 }
-
-/**
- * @b RevEngAI Cutter Plugin class.
- *
- * This is the actual plugin that's loaded by Cutter with help
- * of QtPluginLoader.
- * */
-class ReaiCutterPlugin : public QObject, public CutterPlugin {
-    Q_OBJECT
-    Q_PLUGIN_METADATA (IID "re.rizin.cutter.plugins.revengai")
-    Q_INTERFACES (CutterPlugin)
-
-    /* to create separate menu for revengai plugin in cutter's main window's menu
-   * bar */
-    QMenu *reaiMenu = nullptr;
-
-    /* action to enable/disable (show/hide) revengai plugin */
-    QAction *actToggleReaiPlugin = nullptr;
-
-    /* revengai's menu item actions */
-    QAction *actUploadBin                   = nullptr;
-    QAction *actCheckAnalysisStatus         = nullptr;
-    QAction *actAutoAnalyzeBinSym           = nullptr;
-    QAction *actPerformRenameFromSimilarFns = nullptr;
-    QAction *actBinAnalysisHistory          = nullptr;
-    QAction *actSetup                       = nullptr;
-
-    /* display dialog to get config settings */
-    ConfigSetupDialog *setupDialog;
-
-    Bool isInitialized = false;
-
-   public:
-    void setupPlugin() override;
-    void setupInterface (MainWindow *mainWin) override;
-    ~ReaiCutterPlugin();
-
-    QString getName() const override {
-        return "RevEngAI Plugin (rz-reai)";
-    }
-    QString getAuthor() const override {
-        return "Siddharth Mishra";
-    }
-    QString getVersion() const override {
-        return "0";
-    }
-    QString getDescription() const override {
-        return "AI based reverse engineering helper API & Toolkit";
-    }
-
-    void on_ToggleReaiPlugin();
-    void on_UploadBin();
-    void on_CheckAnalysisStatus();
-    void on_AutoAnalyzeBinSym();
-    void on_PerformRenameFromSimilarFns();
-    void on_BinAnalysisHistory();
-    void on_Setup();
-};
 
 void ReaiCutterPlugin::setupPlugin() {
     RzCoreLocked core (Core());
@@ -243,6 +180,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     }
 
     actUploadBin                   = reaiMenu->addAction ("Upload Binary");
+    actCreateAnalysis              = reaiMenu->addAction ("Create New Analysis");
     actAutoAnalyzeBinSym           = reaiMenu->addAction ("Auto Analyze Binary");
     actBinAnalysisHistory          = reaiMenu->addAction ("Binary Analysis History");
     actCheckAnalysisStatus         = reaiMenu->addAction ("Check Analysis Status");
@@ -250,6 +188,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     actSetup                       = reaiMenu->addAction ("Plugin Config Setup");
 
     connect (actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
+    connect (actCreateAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_CreateAnalysis);
     connect (
         actAutoAnalyzeBinSym,
         &QAction::triggered,
@@ -305,28 +244,50 @@ void ReaiCutterPlugin::on_UploadBin() {
     };
 }
 
+void ReaiCutterPlugin::on_CreateAnalysis() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+
+    RzCoreLocked core (Core());
+
+    if (reai_plugin_create_analysis_for_opened_binary_file (core)) {
+        DISPLAY_INFO ("RevEng.AI analysis created successfully!");
+    } else {
+        DISPLAY_ERROR ("Analysis creation failed!");
+    };
+}
+
 void ReaiCutterPlugin::on_CheckAnalysisStatus() {
     if (!reai_plugin_check_config_exists()) {
         on_Setup();
     }
+
+    DISPLAY_INFO("Method unimplemented. Coming soon...");
 }
 
 void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
     if (!reai_plugin_check_config_exists()) {
         on_Setup();
     }
+
+    DISPLAY_INFO("Method unimplemented. Coming soon...");
 }
 
 void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {
     if (!reai_plugin_check_config_exists()) {
         on_Setup();
     }
+
+    DISPLAY_INFO("Method unimplemented. Coming soon...");
 }
 
 void ReaiCutterPlugin::on_BinAnalysisHistory() {
     if (!reai_plugin_check_config_exists()) {
         on_Setup();
     }
+
+    DISPLAY_INFO("Method unimplemented. Coming soon...");
 }
 
 void ReaiCutterPlugin::on_Setup() {
@@ -376,6 +337,3 @@ void ReaiCutterPlugin::on_Setup() {
         }
     }
 }
-
-/* Required by the meta object compiler, otherwise build fails */
-#include "Cutter.moc"

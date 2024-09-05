@@ -55,7 +55,7 @@ ReaiPlugin* reai_plugin() {
  * @return @c ReaiFnInfoVec reference on success.
  * @return @c NULL otherwise.
  *  */
-ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core) {
+ReaiFnInfoVec* reai_plugin_get_function_boundaries (RzCore* core) {
     RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
 
     /* prepare symbols info  */
@@ -141,8 +141,20 @@ Bool reai_plugin_init (RzCore* core) {
     /* create log directory if not present before creating new log files */
     rz_sys_mkdirp (reai_config()->log_dir_path);
 
+    /* get current time */
+    Char current_time[64] = {0};
+    strftime (
+        current_time,
+        sizeof (current_time),
+        "y%Y_m%m_d%d_h%H_m%M_s%S",
+        localtime (&((time_t) {time (NULL)}))
+    );
+
+    /* create log file name */
+    FMT (log_file_path, "%s/reai_%s.log", reai_config()->log_dir_path, current_time);
+
     /* create logger */
-    reai_logger() = reai_log_create ((CString)NULL);
+    reai_logger() = reai_log_create (log_file_path);
     RETURN_VALUE_IF (
         !reai_logger() || !reai_set_logger (reai(), reai_logger()),
         false,
@@ -156,11 +168,10 @@ Bool reai_plugin_init (RzCore* core) {
     /* create the database directory if not present before creating/opening database */
     rz_sys_mkdirp (reai_config()->db_dir_path);
 
-    /* create database and set it to reai database */
-    Size db_path_strlen = snprintf (NULL, 0, "%s/reai.db", reai_config()->db_dir_path) + 1;
-    Char db_path[db_path_strlen];
-    snprintf (db_path, db_path_strlen, "%s/reai.db", reai_config()->db_dir_path);
+    /* create database file name */
+    FMT (db_path, "%s/reai.db", reai_config()->db_dir_path);
 
+    /* create database and set it to reai database */
     reai_db() = reai_db_create (db_path);
     RETURN_VALUE_IF (
         !reai_db() || !reai_set_db (reai(), reai_db()),
@@ -260,7 +271,7 @@ CString reai_plugin_get_default_database_dir_path() {
 
     FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz");
     static Char static_buf[512] = {0};
-    memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
+    memcpy (static_buf, buf, sizeof (buf));
 
     is_created = true;
     return (path = static_buf);
@@ -282,7 +293,7 @@ CString reai_plugin_get_default_log_dir_path() {
 
     FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz/log");
     static Char static_buf[512] = {0};
-    memcpy (static_buf, buf, strsz); // strsz declared in FMT macro
+    memcpy (static_buf, buf, sizeof (buf));
 
     is_created = true;
     return (path = static_buf);
@@ -341,25 +352,144 @@ Bool reai_plugin_save_config (
  * @return false otherwise.
  * */
 Bool reai_plugin_upload_opened_binary_file (RzCore* core) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot perform upload.");
+        return false;
+    }
+
     /* get file path */
     CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
-    RETURN_VALUE_IF (!binfile_path, false, "No binary file opened. Cannot perform upload.");
+    if (!binfile_path) {
+        DISPLAY_ERROR ("No binary file opened in rizin. Cannot perform upload.");
+        return false;
+    }
 
     /* check if file is already uploaded or otherwise upload */
     CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
     if (!sha256) {
         sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
-        GOTO_HANDLER_IF (!sha256, UPLOAD_FAILED, "Failed to upload binary file.");
+        if (!sha256) {
+            DISPLAY_ERROR ("Failed to upload binary file.");
+            FREE (binfile_path);
+            return false;
+        }
     } else {
-        LOG_TRACE ("File already uploaded (and recorded in db) with hash = \"%s\"", sha256);
+        LOG_INFO ("File already uploaded (and recorded in db) with hash = \"%s\"", sha256);
     }
 
     FREE (binfile_path);
     return true;
+}
 
-UPLOAD_FAILED:
+/**
+ * @b Create a new analysis for currently opened binary file.
+ *
+ * This method first checks whether upload already exists for a given file path.
+ * If upload does exist then the existing upload is used.
+ * TODO: this needs to be refactored. Check trello "General Refactoring".
+ *
+ * @param core To get currently opened binary file in rizin/cutter.
+ *
+ * @return true on success.
+ * @return false otherwise.
+ * */
+Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore* core) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot create analysis.");
+        return false;
+    }
+
+    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
+    if (!binfile) {
+        DISPLAY_ERROR ("No binary file opened. Cannot create analysis");
+        return false;
+    }
+
+    CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
+    if (!binfile_path) {
+        DISPLAY_ERROR ("Failed to get binary file full path. Cannot create analysis");
+        return false;
+    }
+
+    /* check if file is already uploaded or otherwise upload */
+    CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
+    if (!sha256) {
+        LOG_INFO ("Binary not already uploaded. Uploading...");
+
+        /* try uploading file */
+        sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
+
+        /* check whether upload worked */
+        if (!sha256) {
+            DISPLAY_ERROR ("Failed to upload file");
+            FREE (binfile_path);
+            return false;
+        }
+
+        /* make clone because making any new request will free the memory */
+        if (!(sha256 = strdup (sha256))) {
+            DISPLAY_ERROR ("Memory allocation failure.");
+            FREE (binfile_path);
+            return false;
+        }
+
+        LOG_INFO ("Binary uploaded successfully.");
+    } else {
+        LOG_INFO ("Using previously uploaded file with latest hash = \"%s\"", sha256);
+    }
+
+    /* warn the use if no analysis exists */
+    /* NOTE: this might not be the best way to check whether an analysis exists or not. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        DISPLAY_ERROR (
+            "It seems that rizin analysis hasn't been performed yet. Please create rizin analysis "
+            "first."
+        );
+        FREE (sha256);
+        FREE (binfile_path);
+        return false;
+    }
+
+    /* get function boundaries to create analysis */
+    ReaiFnInfoVec* fn_boundaries = reai_plugin_get_function_boundaries (core);
+    if (!fn_boundaries) {
+        DISPLAY_ERROR (
+            "Failed to get function boundary information from rizin analysis. Cannot create "
+            "RevEng.AI analysis."
+        );
+        FREE (sha256);
+        FREE (binfile_path);
+        return false;
+    }
+
+    /* create analysis */
+    ReaiBinaryId bin_id = reai_create_analysis (
+        reai(),
+        reai_response(),
+        reai_plugin_get_ai_model_for_opened_binary_file (core),
+        reai_plugin_get_opened_binary_file_baseaddr (core),
+        fn_boundaries,
+        true,
+        sha256,
+        rz_file_basename (binfile_path),
+        NULL,
+        binfile->size
+    );
+
+    if (!bin_id) {
+        DISPLAY_ERROR ("Failed to create RevEng.AI analysis.");
+        FREE (sha256);
+        FREE (binfile_path);
+        reai_fn_info_vec_destroy (fn_boundaries);
+        return false;
+    }
+
+    /* destroy after use */
+    FREE (sha256);
     FREE (binfile_path);
-    return false;
+    reai_fn_info_vec_destroy (fn_boundaries);
+
+    return true;
 }
 
 /**
@@ -438,4 +568,16 @@ CString reai_plugin_get_opened_binary_file_path (RzCore* core) {
 Uint64 reai_plugin_get_opened_binary_file_baseaddr (RzCore* core) {
     RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
     return binfile ? binfile->o->opts.baseaddr : 0;
+}
+
+/**
+ * @b Get number of functions detected by rizin's own analysis.
+ *
+ * @param core To get analysis information.
+ *
+ * @return number of functions on success.
+ * @return 0 otherwise.
+ * */
+Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore* core) {
+    return core ? core->analysis ? core->analysis->fcns ? core->analysis->fcns->length : 0 : 0 : 0;
 }

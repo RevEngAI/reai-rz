@@ -39,10 +39,11 @@ extern "C" {
         RzThread* background_worker;
     } ReaiPlugin;
 
-    ReaiPlugin*    reai_plugin();
-    Bool           reai_plugin_init (RzCore* core);
-    Bool           reai_plugin_deinit (RzCore* core);
-    ReaiFnInfoVec* reai_plugin_get_fn_boundaries (RzCore* core);
+    ReaiPlugin* reai_plugin();
+    Bool        reai_plugin_init (RzCore* core);
+    Bool        reai_plugin_deinit (RzCore* core);
+
+    ReaiFnInfoVec* reai_plugin_get_function_boundaries (RzCore* core);
     void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
     Bool           reai_plugin_check_config_exists();
     CString        reai_plugin_get_default_database_dir_path();
@@ -54,12 +55,16 @@ extern "C" {
                   CString db_dir_path,
                   CString log_dir_path
               );
-    CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
-    Bool       reai_plugin_upload_opened_binary_file (RzCore* core);
+
+    Bool reai_plugin_upload_opened_binary_file (RzCore* core);
+    Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore* core);
+
     RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
+    CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
     ReaiModel  reai_plugin_get_ai_model_for_opened_binary_file (RzCore* core);
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
     Uint64     reai_plugin_get_opened_binary_file_baseaddr (RzCore* core);
+    Uint64     reai_plugin_get_rizin_analysis_function_count (RzCore* core);
 
 
 #include "Override.h"
@@ -85,9 +90,9 @@ extern "C" {
      * @param fmt Format string
      * */
 #define FMT(strname, ...)                                                                          \
-    Size strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                                 \
-    Char strname[strsz];                                                                           \
-    snprintf (strname, strsz, __VA_ARGS__);
+    Size strname##_##strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                       \
+    Char strname[strname##_##strsz];                                                                 \
+    snprintf (strname, strname##_##strsz, __VA_ARGS__);
 
 #define DISPLAY_MSG(level, ...)                                                                    \
     do {                                                                                           \
