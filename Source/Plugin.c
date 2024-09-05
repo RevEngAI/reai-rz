@@ -304,15 +304,19 @@ Bool reai_plugin_save_config (
     CString db_dir_path,
     CString log_dir_path
 ) {
-    RETURN_VALUE_IF(!host || !api_key || !model || !db_dir_path || !log_dir_path, false, ERR_INVALID_ARGUMENTS);
+    RETURN_VALUE_IF (
+        !host || !api_key || !model || !db_dir_path || !log_dir_path,
+        false,
+        ERR_INVALID_ARGUMENTS
+    );
 
     CString reai_config_file_path = reai_config_get_default_path();
-    RETURN_VALUE_IF(!reai_config_file_path, false, "Failed to get config file default path.");
+    RETURN_VALUE_IF (!reai_config_file_path, false, "Failed to get config file default path.");
 
     FILE* reai_config_file = fopen (reai_config_file_path, "w");
-    if(!reai_config_file) {
-        FREE(reai_config_file_path);
-        DISPLAY_ERROR("Failed to open config file. %s", strerror(errno));
+    if (!reai_config_file) {
+        FREE (reai_config_file_path);
+        DISPLAY_ERROR ("Failed to open config file. %s", strerror (errno));
         return false;
     }
 
@@ -323,7 +327,115 @@ Bool reai_plugin_save_config (
     fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
 
     fclose (reai_config_file);
-    FREE(reai_config_file_path);
+    FREE (reai_config_file_path);
 
     return true;
+}
+
+/**
+ * @b If a binary file is opened, then upload the binary file.
+ *
+ * @param core To get the currently opened binary file in rizin.
+ *
+ * @return true on successful upload.
+ * @return false otherwise.
+ * */
+Bool reai_plugin_upload_opened_binary_file (RzCore* core) {
+    /* get file path */
+    CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
+    RETURN_VALUE_IF (!binfile_path, false, "No binary file opened. Cannot perform upload.");
+
+    /* check if file is already uploaded or otherwise upload */
+    CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
+    if (!sha256) {
+        sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
+        GOTO_HANDLER_IF (!sha256, UPLOAD_FAILED, "Failed to upload binary file.");
+    } else {
+        LOG_TRACE ("File already uploaded (and recorded in db) with hash = \"%s\"", sha256);
+    }
+
+    FREE (binfile_path);
+    return true;
+
+UPLOAD_FAILED:
+    FREE (binfile_path);
+    return false;
+}
+
+/**
+ * @b Get referfence to @c RzBinFile for currently opened binary file.
+ *
+ * @param core
+ *
+ * @return @c RzBinFile if a binary file is opened (on success).
+ * @return @c NULL otherwise.
+ * */
+RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core) {
+    RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
+
+    return core->bin ? core->bin->binfiles ?
+                       core->bin->binfiles->length ?
+                       rz_list_head (core->bin->binfiles) ?
+                       rz_list_iter_get_data (rz_list_head (core->bin->binfiles)) :
+                       NULL :
+                       NULL :
+                       NULL :
+                       NULL;
+}
+
+/**
+ * @b Get operating AI model to use with currently opened binary file.
+ *
+ * @param core
+ *
+ * @return @c REAI_MODEL_UNKNOWN on failure.
+ * */
+ReaiModel reai_plugin_get_ai_model_for_opened_binary_file (RzCore* core) {
+    RETURN_VALUE_IF (!core, REAI_MODEL_UNKNOWN, ERR_INVALID_ARGUMENTS);
+
+    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
+    if (binfile->o->info->os) {
+        CString os = binfile->o->info->os;
+        if (!strcmp (os, "linux")) {
+            return REAI_MODEL_X86_LINUX;
+        } else if (!strncmp (os, "Windows", 7)) {
+            return REAI_MODEL_X86_WINDOWS;
+        } else if (!strcmp (os, "iOS") || !strcmp (os, "darwin")) {
+            return REAI_MODEL_X86_MACOS;
+        } else if (!strcmp (os, "android")) {
+            return REAI_MODEL_X86_ANDROID;
+        } else {
+            return REAI_MODEL_UNKNOWN;
+        }
+    }
+
+    return REAI_MODEL_UNKNOWN;
+}
+
+/**
+ * @b Get path of currently opened binary file.
+ *
+ * The returned string is owned by caller and must be passed to FREE.
+ *
+ * @param core
+ *
+ * @return @c CString if a binary file is opened.
+ * @return @c NULL otherwise.
+ * */
+CString reai_plugin_get_opened_binary_file_path (RzCore* core) {
+    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
+    return binfile ? rz_path_realpath (binfile->file) : NULL;
+}
+
+/**
+ * @b Get base address of currently opened binary file.
+ *
+ * @param core
+ *
+ * @return @c Base address if a binary file is opened.
+ * @return @c 0 otherwise.
+ * */
+Uint64 reai_plugin_get_opened_binary_file_baseaddr (RzCore* core) {
+    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
+    return binfile ? binfile->o->opts.baseaddr : 0;
 }

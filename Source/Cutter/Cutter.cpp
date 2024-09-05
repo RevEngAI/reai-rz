@@ -295,6 +295,14 @@ void ReaiCutterPlugin::on_UploadBin() {
     if (!reai_plugin_check_config_exists()) {
         on_Setup();
     }
+
+    RzCoreLocked core (Core());
+
+    if (reai_plugin_upload_opened_binary_file (core)) {
+        DISPLAY_INFO ("Uploaded successfully!");
+    } else {
+        DISPLAY_ERROR ("Uploading failed!");
+    };
 }
 
 void ReaiCutterPlugin::on_CheckAnalysisStatus() {
@@ -338,18 +346,8 @@ void ReaiCutterPlugin::on_Setup() {
     } else {
         /* if you accept without filling all fields, then dispaly a warning. */
         if (setupDialog->allFieldsFilled()) {
-            PRINT_ERR ("Checking API KEY : %s", setupDialog->getApiKey());
             /* check whether the API key is in the correct format */
             if (reai_config_check_api_key (setupDialog->getApiKey())) {
-                PRINT_ERR (
-                    "%s, %s, %s, %s, %s",
-                    setupDialog->getHost(),
-                    setupDialog->getApiKey(),
-                    setupDialog->getModel(),
-                    setupDialog->getDbDirPath(),
-                    setupDialog->getLogDirPath()
-                );
-
                 /* if we reach here finally then we save the config and exit loop */
                 if (reai_plugin_save_config (
                         setupDialog->getHost(),

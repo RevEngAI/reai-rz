@@ -37,10 +37,6 @@
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
 
-PRIVATE ReaiModel  get_ai_model_for_opened_bin_file (RzCore* core);
-PRIVATE RzBinFile* get_opened_bin_file (RzCore* core);
-PRIVATE CString    get_opened_bin_file_path (RzCore* core);
-PRIVATE Uint64     get_opened_bin_file_baseaddr (RzCore* core);
 PRIVATE CString    get_function_name_with_max_confidence (
        ReaiAnnFnMatchVec* fn_matches,
        ReaiFunctionId     origin_fn_id,
@@ -185,10 +181,10 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] create analysis");
 
-    RzBinFile* binfile = get_opened_bin_file (core);
+    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
     GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "No binary file opened. Cannot create analysis.");
 
-    CString binfile_path = get_opened_bin_file_path (core);
+    CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
     GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "Failed to get binary file full path.");
 
     /* check if file is already uploaded or otherwise upload */
@@ -222,8 +218,8 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     ReaiBinaryId bin_id = reai_create_analysis (
         reai(),
         reai_response(),
-        get_ai_model_for_opened_bin_file (core),
-        get_opened_bin_file_baseaddr (core),
+        reai_plugin_get_ai_model_for_opened_binary_file (core),
+        reai_plugin_get_opened_binary_file_baseaddr (core),
         fn_boundaries,
         true,
         sha256,
@@ -271,10 +267,10 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
     // get opened binary file and print error if no binary is loaded
-    RzBinFile* binfile = get_opened_bin_file (core);
+    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
     GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "No binary file opened.");
 
-    CString binfile_path = get_opened_bin_file_path (core);
+    CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
     GOTO_HANDLER_IF (!binfile, NO_BINFILE_OPENED, "Failed to get binary file full path.");
 
     /* try to get latest analysis for loaded binary (if exists) */
@@ -332,7 +328,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
         Float64 confidence = min_confidence;
         CString new_name   = NULL;
         CString old_name   = fn->name;
-        Uint64 fn_addr = fn->vaddr + get_opened_bin_file_baseaddr(core);
+        Uint64 fn_addr = fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr(core);
 
         /* if we get a match with required confidence level then we add to rename */
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
@@ -347,7 +343,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
             GOTO_HANDLER_IF(!append, NEW_NAME_APPEND_FAILED, "Failed to apend item to FnInfoVec.");
 
             /* get function */
-            RzAnalysisFunction* rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr + get_opened_bin_file_baseaddr(core));
+            RzAnalysisFunction* rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr(core));
             if (rz_fn) {
                 /* check if fucntion size matches */
                 CString rz_old_name = strdup(rz_fn->name);
@@ -428,29 +424,8 @@ RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** a
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] upload binary");
 
-    /* get file path */
-    CString binfile_path = get_opened_bin_file_path (core);
-    RETURN_VALUE_IF (
-        !binfile_path,
-        RZ_CMD_STATUS_ERROR,
-        "No binary file opened. Cannot perform upload."
-    );
-
-    /* check if file is already uploaded or otherwise upload */
-    CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
-    if (!sha256) {
-        sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
-        GOTO_HANDLER_IF (!sha256, UPLOAD_FAILED, "Failed to upload binary file.");
-    } else {
-        LOG_TRACE ("File already uploaded (and recorded in db) with hash = \"%s\"", sha256);
-    }
-
-    FREE (binfile_path);
-    return RZ_CMD_STATUS_OK;
-
-UPLOAD_FAILED:
-    FREE (binfile_path);
-    return RZ_CMD_STATUS_ERROR;
+    return reai_plugin_upload_opened_binary_file (core) ? RZ_CMD_STATUS_OK :
+                                                                    RZ_CMD_STATUS_ERROR;
 }
 
 /**
@@ -476,7 +451,7 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
         RETURN_VALUE_IF (!binary_id, RZ_CMD_STATUS_ERROR, "Invalid binary id provided.");
         LOG_TRACE ("Using provided binary id : %llu.", binary_id);
     } else {
-        CString opened_binfile_path = get_opened_bin_file_path (core);
+        CString opened_binfile_path = reai_plugin_get_opened_binary_file_path (core);
         RETURN_VALUE_IF (!opened_binfile_path, RZ_CMD_STATUS_ERROR, "No binary file opened.");
 
         binary_id = reai_db_get_latest_analysis_for_file (reai_db(), opened_binfile_path);
@@ -543,7 +518,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     LOG_TRACE ("[CMD] get basic function info");
 
     /* get file path of opened binary file */
-    CString opened_file = get_opened_bin_file_path (core);
+    CString opened_file = reai_plugin_get_opened_binary_file_path (core);
     RETURN_VALUE_IF (!opened_file, RZ_CMD_STATUS_ERROR, "No binary file opened.");
 
     /* get binary id of opened file */
@@ -629,84 +604,6 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
     );
 
     return RZ_CMD_STATUS_OK;
-}
-
-/**
- * @b Get referfence to @c RzBinFile for currently opened binary file.
- *
- * @param core
- *
- * @return @c RzBinFile if a binary file is opened (on success).
- * @return @c NULL otherwise.
- * */
-PRIVATE RzBinFile* get_opened_bin_file (RzCore* core) {
-    RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
-
-    return core->bin ? core->bin->binfiles ?
-                       core->bin->binfiles->length ?
-                       rz_list_head (core->bin->binfiles) ?
-                       rz_list_iter_get_data (rz_list_head (core->bin->binfiles)) :
-                       NULL :
-                       NULL :
-                       NULL :
-                       NULL;
-}
-
-/**
- * @b Get operating AI model to use with currently opened binary file.
- *
- * @param core
- *
- * @return @c REAI_MODEL_UNKNOWN on failure.
- * */
-PRIVATE ReaiModel get_ai_model_for_opened_bin_file (RzCore* core) {
-    RETURN_VALUE_IF (!core, REAI_MODEL_UNKNOWN, ERR_INVALID_ARGUMENTS);
-
-    RzBinFile* binfile = get_opened_bin_file (core);
-    if (binfile->o->info->os) {
-        CString os = binfile->o->info->os;
-        if (!strcmp (os, "linux")) {
-            return REAI_MODEL_X86_LINUX;
-        } else if (!strncmp (os, "Windows", 7)) {
-            return REAI_MODEL_X86_WINDOWS;
-        } else if (!strcmp (os, "iOS") || !strcmp (os, "darwin")) {
-            return REAI_MODEL_X86_MACOS;
-        } else if (!strcmp (os, "android")) {
-            return REAI_MODEL_X86_ANDROID;
-        } else {
-            return REAI_MODEL_UNKNOWN;
-        }
-    }
-
-    return REAI_MODEL_UNKNOWN;
-}
-
-/**
- * @b Get path of currently opened binary file.
- *
- * The returned string is owned by caller and must be passed to FREE.
- *
- * @param core
- *
- * @return @c CString if a binary file is opened.
- * @return @c NULL otherwise.
- * */
-PRIVATE CString get_opened_bin_file_path (RzCore* core) {
-    RzBinFile* binfile = get_opened_bin_file (core);
-    return binfile ? rz_path_realpath (binfile->file) : NULL;
-}
-
-/**
- * @b Get base address of currently opened binary file.
- *
- * @param core
- *
- * @return @c Base address if a binary file is opened.
- * @return @c 0 otherwise.
- * */
-PRIVATE Uint64 get_opened_bin_file_baseaddr (RzCore* core) {
-    RzBinFile* binfile = get_opened_bin_file (core);
-    return binfile ? binfile->o->opts.baseaddr : 0;
 }
 
 /**

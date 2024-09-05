@@ -54,6 +54,13 @@ extern "C" {
                   CString db_dir_path,
                   CString log_dir_path
               );
+    CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
+    Bool       reai_plugin_upload_opened_binary_file (RzCore* core);
+    RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
+    ReaiModel  reai_plugin_get_ai_model_for_opened_binary_file (RzCore* core);
+    CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
+    Uint64     reai_plugin_get_opened_binary_file_baseaddr (RzCore* core);
+
 
 #include "Override.h"
 
