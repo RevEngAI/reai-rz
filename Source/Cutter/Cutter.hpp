@@ -80,6 +80,3 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
 };
 
 #endif // REAI_PLUGIN_CUTTER_CUTTER_HPP
-
-/* Required by the meta object compiler, otherwise build fails */
-#include "Cutter.moc"

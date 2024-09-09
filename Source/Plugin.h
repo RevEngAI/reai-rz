@@ -56,8 +56,10 @@ extern "C" {
                   CString log_dir_path
               );
 
-    Bool reai_plugin_upload_opened_binary_file (RzCore* core);
-    Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore* core);
+    Bool               reai_plugin_upload_opened_binary_file (RzCore* core);
+    Bool               reai_plugin_create_analysis_for_opened_binary_file (RzCore* core);
+    ReaiBinaryId       reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
+    ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
 
     RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
@@ -90,8 +92,8 @@ extern "C" {
      * @param fmt Format string
      * */
 #define FMT(strname, ...)                                                                          \
-    Size strname##_##strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                       \
-    Char strname[strname##_##strsz];                                                                 \
+    Size strname##_##strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                     \
+    Char strname[strname##_##strsz];                                                               \
     snprintf (strname, strname##_##strsz, __VA_ARGS__);
 
 #define DISPLAY_MSG(level, ...)                                                                    \

@@ -37,11 +37,11 @@
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
 
-PRIVATE CString    get_function_name_with_max_confidence (
-       ReaiAnnFnMatchVec* fn_matches,
-       ReaiFunctionId     origin_fn_id,
-       Float64*           confidence
-   );
+PRIVATE CString get_function_name_with_max_confidence (
+    ReaiAnnFnMatchVec* fn_matches,
+    ReaiFunctionId     origin_fn_id,
+    Float64*           confidence
+);
 PRIVATE ReaiFnInfoVec*     get_fn_infos (ReaiBinaryId bin_id);
 PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
     ReaiBinaryId bin_id,
@@ -181,7 +181,8 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] create analysis");
 
-    return reai_plugin_create_analysis_for_opened_binary_file(core) ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
+    return reai_plugin_create_analysis_for_opened_binary_file (core) ? RZ_CMD_STATUS_OK :
+                                                                       RZ_CMD_STATUS_ERROR;
 }
 
 /**
@@ -358,8 +359,7 @@ RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** a
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] upload binary");
 
-    return reai_plugin_upload_opened_binary_file (core) ? RZ_CMD_STATUS_OK :
-                                                                    RZ_CMD_STATUS_ERROR;
+    return reai_plugin_upload_opened_binary_file (core) ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
 }
 
 /**
@@ -379,53 +379,35 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
     RETURN_VALUE_IF (!state, RZ_CMD_STATUS_WRONG_ARGS, ERR_INVALID_ARGUMENTS);
 
     ReaiBinaryId binary_id = 0;
-    if (argc == 2) {
+
+    /* if arguments are provided then we need to use the provided binary id */
+    if (argc > 1) {
         binary_id = rz_num_math (core->num, argv[1]);
 
-        RETURN_VALUE_IF (!binary_id, RZ_CMD_STATUS_ERROR, "Invalid binary id provided.");
+        if (!binary_id) {
+            DISPLAY_ERROR ("Invalid binary id provided. Cannot fetch analysis status.");
+            return RZ_CMD_STATUS_ERROR;
+        }
+
         LOG_TRACE ("Using provided binary id : %llu.", binary_id);
     } else {
-        CString opened_binfile_path = reai_plugin_get_opened_binary_file_path (core);
-        RETURN_VALUE_IF (!opened_binfile_path, RZ_CMD_STATUS_ERROR, "No binary file opened.");
+        binary_id = reai_plugin_get_binary_id_for_opened_binary_file (core);
 
-        binary_id = reai_db_get_latest_analysis_for_file (reai_db(), opened_binfile_path);
-        FREE (opened_binfile_path);
-
-        RETURN_VALUE_IF (
-            !binary_id,
-            RZ_CMD_STATUS_ERROR,
-            "No analysis exists for currently opened binary in database."
-        );
-
-        LOG_TRACE (
-            "Using binary id of latest analysis for loaded binary present in database : %llu.",
-            binary_id
-        );
+        if (!binary_id) {
+            DISPLAY_ERROR ("Failed to get binary id for currently opened binary file.");
+            return RZ_CMD_STATUS_ERROR;
+        }
     }
 
-    /* if analyses already exists in db */
-    if (reai_db_check_analysis_exists (reai_db(), binary_id)) {
-        LOG_TRACE ("Analysis already exists in database. Fetching status from database.");
-
-        ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
-        RETURN_VALUE_IF (
-            !analysis_status,
-            RZ_CMD_STATUS_ERROR,
-            "reai_db_get_analysis_staus returned NULL."
-        );
-        rz_cons_printf (
-            "Analysis Status : \"%s\"\n",
-            reai_analysis_status_to_cstr (analysis_status)
-        );
+    /* get analysis status */
+    ReaiAnalysisStatus analysis_status = reai_plugin_get_analysis_status_for_binary_id (binary_id);
+    if (analysis_status) {
+        DISPLAY_INFO ("Analysis status : \"%s\"", reai_analysis_status_to_cstr (analysis_status));
+        return RZ_CMD_STATUS_OK;
     } else {
-        LOG_TRACE ("Analysis does not exist in database. Fetching status from RevEng.AI servers.");
-
-        ReaiAnalysisStatus status = reai_get_analysis_status (reai(), reai_response(), binary_id);
-        RETURN_VALUE_IF (!status, RZ_CMD_STATUS_ERROR, "Failed to get analysis status.");
-        rz_cons_printf ("Analysis status = \"%s\"\n", reai_analysis_status_to_cstr (status));
+        DISPLAY_ERROR ("Failed to get analysis status.");
+        return RZ_CMD_STATUS_ERROR;
     }
-
-    return RZ_CMD_STATUS_OK;
 }
 
 /**

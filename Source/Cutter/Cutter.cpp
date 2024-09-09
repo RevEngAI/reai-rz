@@ -263,7 +263,20 @@ void ReaiCutterPlugin::on_CheckAnalysisStatus() {
         on_Setup();
     }
 
-    DISPLAY_INFO("Method unimplemented. Coming soon...");
+    RzCoreLocked core (Core());
+    ReaiBinaryId binary_id = reai_plugin_get_binary_id_for_opened_binary_file (core);
+    if (!binary_id) {
+        DISPLAY_ERROR ("Failed to get binary id for currently opened binary file.");
+        return;
+    }
+
+    /* get analysis status */
+    ReaiAnalysisStatus analysis_status = reai_plugin_get_analysis_status_for_binary_id (binary_id);
+    if (analysis_status) {
+        DISPLAY_INFO ("Analysis status : \"%s\"", reai_analysis_status_to_cstr (analysis_status));
+    } else {
+        DISPLAY_ERROR ("Failed to get analysis status.");
+    }
 }
 
 void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
@@ -271,7 +284,7 @@ void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
         on_Setup();
     }
 
-    DISPLAY_INFO("Method unimplemented. Coming soon...");
+    DISPLAY_INFO ("Method unimplemented. Coming soon...");
 }
 
 void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {
@@ -279,7 +292,7 @@ void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {
         on_Setup();
     }
 
-    DISPLAY_INFO("Method unimplemented. Coming soon...");
+    DISPLAY_INFO ("Method unimplemented. Coming soon...");
 }
 
 void ReaiCutterPlugin::on_BinAnalysisHistory() {
@@ -287,16 +300,17 @@ void ReaiCutterPlugin::on_BinAnalysisHistory() {
         on_Setup();
     }
 
-    DISPLAY_INFO("Method unimplemented. Coming soon...");
+    DISPLAY_INFO ("Method unimplemented. Coming soon...");
 }
 
 void ReaiCutterPlugin::on_Setup() {
+    /* if config already exists then load the config into config setup dialog */
     if (reai_plugin_check_config_exists()) {
-        DISPLAY_WARN (
-            "Config already exists. Please remove/rename previous config "
-            "to create new one."
-        );
-        return;
+        setupDialog->setHost (reai_config()->host);
+        setupDialog->setApiKey (reai_config()->apikey);
+        setupDialog->setModel (reai_config()->model);
+        setupDialog->setDbDirPath (reai_config()->db_dir_path);
+        setupDialog->setLogDirPath (reai_config()->log_dir_path);
     }
 
     int result = setupDialog->exec();

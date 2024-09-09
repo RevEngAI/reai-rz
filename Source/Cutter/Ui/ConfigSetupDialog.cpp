@@ -118,3 +118,21 @@ CString ConfigSetupDialog::getLogDirPath() {
     logDirPath = leLogDirPath->text().toLatin1();
     return logDirPath.constData();
 }
+
+void ConfigSetupDialog::setHost (CString value) {
+    leHost->setText(value);
+}
+
+void ConfigSetupDialog::setApiKey (CString value) {
+    leApiKey->setText(value);
+}
+
+void ConfigSetupDialog::setModel (CString value){
+    leModel->setText(value);
+}
+void ConfigSetupDialog::setDbDirPath (CString value){
+    leDbDirPath->setText(value);
+}
+void ConfigSetupDialog::setLogDirPath (CString value){
+    leLogDirPath->setText(value);
+}

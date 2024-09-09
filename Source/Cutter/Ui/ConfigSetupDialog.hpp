@@ -30,12 +30,19 @@ class ConfigSetupDialog : public QDialog {
    public:
     ConfigSetupDialog (QWidget* parent);
 
-    Bool    allFieldsFilled();
+    Bool allFieldsFilled();
+
     CString getHost();
     CString getApiKey();
     CString getModel();
     CString getDbDirPath();
     CString getLogDirPath();
+
+    void setHost (CString value);
+    void setApiKey (CString value);
+    void setModel (CString value);
+    void setDbDirPath (CString value);
+    void setLogDirPath (CString value);
 
    private:
     QDialogButtonBox* buttonBox;

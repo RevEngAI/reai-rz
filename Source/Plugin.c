@@ -243,16 +243,16 @@ Bool reai_plugin_deinit (RzCore* core) {
  * @return @c NULL otherwise.
  * */
 Bool reai_plugin_check_config_exists() {
-    CString reai_config_file_path = reai_config_get_default_path();
+    /* CString reai_config_file_path = reai_config_get_default_path(); */
 
-    /* if file already exists then we don't make changes */
-    FILE* reai_config_file = fopen (reai_config_file_path, "r");
-    if (reai_config_file) {
-        fclose (reai_config_file);
-        return true;
-    }
+    /* /\* if file already exists then we don't make changes *\/ */
+    /* FILE* reai_config_file = fopen (reai_config_file_path, "r"); */
+    /* if (reai_config_file) { */
+    /*     fclose (reai_config_file); */
+    /*     return true; */
+    /* } */
 
-    return false;
+    return !!reai_config();
 }
 
 /**
@@ -462,6 +462,9 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore* core) {
         return false;
     }
 
+    /* ZENDBG_CHECK (reai_plugin_get_ai_model_for_opened_binary_file (core)); */
+    /* ZENDBG_CHECK (reai_plugin_get_opened_binary_file_baseaddr (core)); */
+
     /* create analysis */
     ReaiBinaryId bin_id = reai_create_analysis (
         reai(),
@@ -490,6 +493,84 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore* core) {
     reai_fn_info_vec_destroy (fn_boundaries);
 
     return true;
+}
+
+
+/**
+ * @b Get binary id (analysis id) for opened binary file.
+ *
+ * @param core To get currently opened binary file in rizin/cutter.
+ *
+ * @return Non zero @c ReaiBinaryId on success.
+ * @return 0 otherwise.
+ * */
+ReaiBinaryId reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot get a binary id without a binary file."
+        );
+        return 0;
+    }
+
+    /* get opened binary file path */
+    CString opened_binfile_path = reai_plugin_get_opened_binary_file_path (core);
+    if (!opened_binfile_path) {
+        DISPLAY_ERROR ("No binary file opeend.");
+        return 0;
+    }
+
+    /* get binary id for opened binary file path by searching in local database */
+    ReaiBinaryId binary_id = reai_db_get_latest_analysis_for_file (reai_db(), opened_binfile_path);
+    FREE (opened_binfile_path);
+    if (!binary_id) {
+        DISPLAY_ERROR ("No analysis exists for currently opened binary in database.");
+        return 0;
+    }
+
+    LOG_TRACE (
+        "Using binary id of latest analysis for loaded binary present in database : %llu.",
+        binary_id
+    );
+
+    return binary_id;
+}
+
+/**
+ * @b Get analysis status for given binary id (analyis id).
+ *
+ * @param core
+ * */
+ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id) {
+    if (!binary_id) {
+        DISPLAY_ERROR ("Invalid binary id provided. Cannot fetch analysis status.");
+        return REAI_ANALYSIS_STATUS_INVALID;
+    }
+
+    ReaiAnalysisStatus analysis_status = REAI_ANALYSIS_STATUS_INVALID;
+
+    /* if analyses already exists in db */
+    if (reai_db_check_analysis_exists (reai_db(), binary_id)) {
+        LOG_TRACE ("Analysis already exists in database. Fetching status from database.");
+
+        analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
+        if (!analysis_status) {
+            DISPLAY_ERROR (
+                "Analysis records exist in local database but ailed to get analysis status from "
+                "database."
+            );
+            return REAI_ANALYSIS_STATUS_INVALID;
+        }
+    } else {
+        LOG_TRACE ("Analysis does not exist in database. Fetching status from RevEng.AI servers.");
+
+        analysis_status = reai_get_analysis_status (reai(), reai_response(), binary_id);
+        if (!analysis_status) {
+            DISPLAY_ERROR ("Failed to get analysis status from RevEng.AI servers.");
+            return REAI_ANALYSIS_STATUS_INVALID;
+        }
+    }
+
+    LOG_TRACE ("Fetched analysis status \"%s\".", reai_analysis_status_to_cstr (analysis_status));
+    return analysis_status;
 }
 
 /**
