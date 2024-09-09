@@ -1,5 +1,5 @@
 /**
- * @file : ReaiPlugin.h
+ * @file : Plugin.h
  * @date : 13th June 2024
  * @author : Siddharth Mishra (admin@brightprogrammer.in)
  * @copyright: Copyright (c) 2024 RevEngAI. All Rights Reserved.
@@ -60,6 +60,12 @@ extern "C" {
     Bool               reai_plugin_create_analysis_for_opened_binary_file (RzCore* core);
     ReaiBinaryId       reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
     ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
+    Bool               reai_plugin_auto_analyze_opened_binary_file (
+                      RzCore* core,
+                      Float64 max_distance,
+                      Size    max_results_per_function,
+                      Float64 min_confidence
+                  );
 
     RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
@@ -67,7 +73,6 @@ extern "C" {
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
     Uint64     reai_plugin_get_opened_binary_file_baseaddr (RzCore* core);
     Uint64     reai_plugin_get_rizin_analysis_function_count (RzCore* core);
-
 
 #include "Override.h"
 

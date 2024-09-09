@@ -538,6 +538,9 @@ ReaiBinaryId reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core) {
  * @b Get analysis status for given binary id (analyis id).
  *
  * @param core
+ *
+ * @return @c ReaiAnalysisStatus other than @c REAI_ANALYSIS_STATUS_INVALID on success.
+ * @return @c REAI_ANALYSIS_STATUS_INVALID otherwise.
  * */
 ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id) {
     if (!binary_id) {
@@ -571,6 +574,171 @@ ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId b
 
     LOG_TRACE ("Fetched analysis status \"%s\".", reai_analysis_status_to_cstr (analysis_status));
     return analysis_status;
+}
+
+/**
+ * @b Automatically rename all funcitons with matching names.
+ *
+ * @param core To get currently opened binary file.
+ * @param max_distance RevEng.AI function matching parameter.
+ * @param max_results per function RevEng.AI function matching parameter.
+ * @param max_distance RevEng.AI function matching parameter.
+ * */
+Bool reai_plugin_auto_analyze_opened_binary_file (
+    RzCore* core,
+    Float64 max_distance,
+    Size    max_results_per_function,
+    Float64 min_confidence
+) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot perform auto-analysis.");
+        return false;
+    }
+
+    // get opened binary file and print error if no binary is loaded
+    RzBinFile* binfile = reai_plugin_get_opened_binary_file (core);
+    if (!binfile) {
+        DISPLAY_ERROR ("No binary file opened. Cannot perform auto-analysis.");
+        return false;
+    }
+
+    CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
+    if (!binfile_path) {
+        DISPLAY_ERROR ("Failed to get opened binary file's full path. Cannot perform auto-analysis."
+        );
+        return false;
+    }
+
+    /* try to get latest analysis for loaded binary (if exists) */
+    ReaiBinaryId bin_id = reai_db_get_latest_analysis_for_file (reai_db(), binfile_path);
+    if (!bin_id) {
+        DISPLAY_ERROR (
+            "No RevEng.AI analysis exists for opened file. Please create an analysis first."
+        );
+        return false;
+    }
+
+    /* an analysis must already exist in order to make auto-analysis work */
+    ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), bin_id);
+    if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
+        DISPLAY_WARN ("Analysis not complete yet. Please wait for some time and then try again!");
+        return false;
+    }
+
+    /* names of current functions */
+    ReaiFnInfoVec* fn_infos = get_fn_infos (bin_id);
+    if (!fn_infos) {
+        DISPLAY_ERROR ("Failed to get funciton info for opened binary.");
+        return false;
+    }
+
+    /* function matches */
+    ReaiAnnFnMatchVec* fn_matches =
+        get_fn_matches (bin_id, max_results_per_function, max_distance, NULL);
+    if (!fn_matches) {
+        DISPLAY_ERROR ("Failed to get function matches for opened binary.");
+        return false;
+    }
+
+    /* new vector where new names of functions will be stored */
+    ReaiFnInfoVec* new_name_mapping = reai_fn_info_vec_create();
+    if(!new_name_mapping) {
+        DISPLAY_ERROR("Failed to create a new-name-mapping object.");
+        return false;
+    }
+
+    /* prepare table and print info */
+    /* clang-format off */
+    RzTable* table = rz_table_new();
+    GOTO_HANDLER_IF (!table, TABLE_CREATE_FAILED, "Failed to create table.");
+    rz_table_set_columnsf (table, "sssnsn", "rizin name", "old_name", "new_name", "confidence", "success", "address");
+
+    /* display information about what renames will be performed */    /* add rename information to new name mapping */
+    /* rename the functions in rizin */
+    REAI_VEC_FOREACH(fn_infos, fn, {
+        Float64 confidence = min_confidence;
+        CString new_name   = NULL;
+        CString old_name   = fn->name;
+        Uint64 fn_addr = fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr(core);
+
+        /* if we get a match with required confidence level then we add to rename */
+        if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
+            /* If functions already are same then no need to rename */
+            if (!strcmp (new_name, old_name)) {
+                rz_table_add_rowf (table, "sssfsx", "not required", old_name, new_name, (Float64)1.0, "true", fn_addr);
+                continue;
+            }
+
+            /* if append fails then destroy everything and return error */
+            Bool append = !!reai_fn_info_vec_append (new_name_mapping, &((ReaiFnInfo) {.name = new_name, .id = fn->id}));
+            GOTO_HANDLER_IF(!append, NEW_NAME_APPEND_FAILED, "Failed to apend item to FnInfoVec.");
+
+            /* get function */
+            RzAnalysisFunction* rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr(core));
+            if (rz_fn) {
+                /* check if fucntion size matches */
+                CString rz_old_name = strdup(rz_fn->name);
+                if(rz_analysis_function_linear_size(rz_fn) != fn->size) {
+                    rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "function size mismatch", fn_addr);
+                    FREE(rz_old_name);
+                    continue;
+                }
+
+                /* rename function */
+                if (!rz_analysis_function_rename (rz_fn, new_name)) {
+                    rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "rename error", fn_addr);
+                } else {
+                    rz_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "true", fn_addr);
+                }
+
+                FREE(rz_old_name);
+            } else {
+                rz_table_add_rowf (table, "sssfsx", "(null)", old_name, new_name, (Float64)0.0, "function not found", fn_addr);
+            }
+        } else {
+            rz_table_add_rowf (table, "sssfsx", "not required", old_name, "n/a", (Float64)0.0, "match not found", fn_addr );
+        }
+    });
+    /* clang-format on */
+
+    /* print table */
+    CString table_str = rz_table_tofancystring (table);
+    GOTO_HANDLER_IF (!table_str, TABLE_TO_STR_FAILED, "Failed to convert table to string.");
+    rz_cons_printf ("%s\n", table_str);
+
+    /* perform a batch rename */
+    if (new_name_mapping->count) {
+        Bool res = reai_batch_renames_functions (reai(), reai_response(), new_name_mapping);
+        GOTO_HANDLER_IF (!res, BATCH_RENAME_FAILED, "Failed to rename all functions in binary.");
+    } else {
+        eprintf ("No function will be renamed.\n");
+    }
+
+    rz_table_free (table);
+    reai_fn_info_vec_destroy (new_name_mapping);
+    reai_ann_fn_match_vec_destroy (fn_matches);
+    reai_fn_info_vec_destroy (fn_infos);
+    FREE (binfile_path);
+
+    return RZ_CMD_STATUS_OK;
+
+/* handlers */
+BATCH_RENAME_FAILED:
+TABLE_TO_STR_FAILED:
+NEW_NAME_APPEND_FAILED: { rz_table_free (table); }
+
+TABLE_CREATE_FAILED: { reai_fn_info_vec_destroy (new_name_mapping); }
+
+CREATE_NEW_NAME_VEC_FAILED: { reai_ann_fn_match_vec_destroy (fn_matches); }
+
+GET_FN_MATCHES_FAILED: { reai_fn_info_vec_destroy (fn_infos); }
+
+GET_FN_INFOS_FAILED:
+INCOMPLETE_ANALYSIS:
+NONEXISTENT_ANALYSIS: { FREE (binfile_path); }
+
+NO_BINFILE_OPENED:
+    return RZ_CMD_STATUS_ERROR;
 }
 
 /**
