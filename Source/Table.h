@@ -4,18 +4,50 @@
  * @author    : Siddharth Mishra (admin@brightprogrammer.in)
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  *
- * @b Global plugin state management. This defines a singleton class
- * that needs to be accessed using the get method only.
+ * This header defines a uniform interface to create and display tables in
+ * Rizin and cutter. This applies a hack to detect whether the header is being
+ * included in Rizin or in Cutter.
+ *
+ * Rizin plugin source code is written completely in C and Cutter in C++ and C.
+ * This means if the header is compiled by a C compiler, it's being used in Rizin,
+ * and if it's being compiled by a C++ compiler, it's being used in Cutter.
+ *
+ * Using this, we can switch between the API selection.
+ *
+ * This hack needs to be applied because at the time of writing this, Rizin plugin does
+ * not have a method to add a new row by taking a format string and a va_list. Due to this,
+ * we cannot forward variadic arguments to RzTable API.
  * */
 
 #ifndef REAI_PLUGIN_TABLE_H
 #define REAI_PLUGIN_TABLE_H
 
-typedef struct ReaiPluginTable ReaiPluginTable;
+#ifdef __cplusplus
 
-ReaiPluginTable* reai_plugin_table_create();
-void             reai_plugin_table_destroy (ReaiPluginTable* table);
-ReaiPluginTable* reai_plugin_set_columnsf (ReaiPluginTable* table, const char* fmtstr, ...);
-ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char* fmtstr, ...);
+extern "C" {
+    typedef struct ReaiPluginTable ReaiPluginTable;
+
+    ReaiPluginTable* reai_plugin_table_create();
+    void             reai_plugin_table_destroy (ReaiPluginTable* table);
+    ReaiPluginTable*
+        reai_plugin_table_set_columnsf (ReaiPluginTable* table, const char* fmtstr, ...);
+    ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char* fmtstr, ...);
+    void             reai_plugin_table_show (ReaiPluginTable* table);
+}
+
+#else // __cplusplus
+
+#    include <rz_util/rz_table.h>
+typedef RzTable ReaiPluginTable;
+
+#    define reai_plugin_table_create       rz_table_new
+#    define reai_plugin_table_destroy      rz_table_free
+#    define reai_plugin_table_set_columnsf rz_table_set_columnsf
+#    define reai_plugin_table_add_rowf     rz_table_add_rowf
+
+void reai_plugin_table_show (ReaiPluginTable* table);
+
+#endif // __cplusplus
+
 
 #endif // REAI_PLUGIN_TABLE_H

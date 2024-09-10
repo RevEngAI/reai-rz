@@ -9,7 +9,7 @@ set(CMAKE_AUTOUIC ON) # Auto User Interface Compiler
 set(CMAKE_AUTORCC ON) # Auto Resource Compile
 
 # main plugin library and sources
-set(ReaiCutterPluginSource "Cutter.cpp" "../Plugin.c" "Ui/ConfigSetupDialog.cpp")
+set(ReaiCutterPluginSource "Cutter.cpp" "../Plugin.c" "Ui/ConfigSetupDialog.cpp" "Table.cpp")
 add_library(reai_cutter STATIC MODULE ${ReaiCutterPluginSource})
 target_link_libraries(reai_cutter PUBLIC Cutter::Cutter Rizin::Core ${CREAIT_LIBRARIES})
 

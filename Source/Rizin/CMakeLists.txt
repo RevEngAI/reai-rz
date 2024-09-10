@@ -7,7 +7,7 @@
 add_subdirectory(CmdGen)
 
 # main plugin library and sources
-set(ReaiRzPluginSources "Rizin.c" "../Plugin.c" "CmdHandlers.c")
+set(ReaiRzPluginSources "Rizin.c" "../Plugin.c" "CmdHandlers.c" "Table.c")
 
 # Rizin only accepts shared libraries for plugins
 add_library(reai_rizin MODULE SHARED ${ReaiRzPluginSources})
