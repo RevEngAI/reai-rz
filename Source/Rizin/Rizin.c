@@ -46,6 +46,8 @@
 void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     RETURN_IF (!msg, ERR_INVALID_ARGUMENTS);
 
+    reai_log_printf(reai_logger(), level, "", "%s", msg);
+
     if (level < REAI_LOG_LEVEL_ERROR) {
         reai_log_printf (reai_logger(), level, "", msg);
     } else {

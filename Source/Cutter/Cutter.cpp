@@ -7,6 +7,7 @@
 
 
 /* rizin */
+#include <Cutter.h>
 #include <rz_core.h>
 
 /* qt includes */
@@ -21,6 +22,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QtPlugin>
+#include <QtConcurrent/QtConcurrent>
 
 /* creait lib */
 #include <Reai/Api/Api.h>
@@ -50,8 +52,11 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
         [REAI_LOG_LEVEL_TRACE] = "Trace",
         [REAI_LOG_LEVEL_DEBUG] = "Debug",
         [REAI_LOG_LEVEL_WARN]  = "Warning",
+        [REAI_LOG_LEVEL_ERROR] = "Error",
         [REAI_LOG_LEVEL_FATAL] = "Critical"
     };
+
+    reai_log_printf(reai_logger(), level, "", "%s", msg);
 
     switch (level) {
         case REAI_LOG_LEVEL_INFO :
@@ -284,7 +289,9 @@ void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
         on_Setup();
     }
 
-    DISPLAY_INFO ("Method unimplemented. Coming soon...");
+    if(!reai_plugin_auto_analyze_opened_binary_file(RzCoreLocked(Core()), 0.1, 5, 0.85)) {
+        DISPLAY_ERROR("Failed to complete auto-analysis.");
+    }
 }
 
 void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {

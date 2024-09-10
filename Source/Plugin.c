@@ -55,9 +55,9 @@
  * @return @c NULL otherwise.
  * */
 PRIVATE CString get_function_name_with_max_confidence (
-    ReaiAnnFnMatchVec* fn_matches,
+    ReaiAnnFnMatchVec *fn_matches,
     ReaiFunctionId     origin_fn_id,
-    Float64*           required_confidence
+    Float64           *required_confidence
 ) {
     RETURN_VALUE_IF (!fn_matches || !origin_fn_id, NULL, ERR_INVALID_ARGUMENTS);
 
@@ -95,11 +95,11 @@ PRIVATE CString get_function_name_with_max_confidence (
  * @return @c ReaiFnInfoVec on success.
  * @return @c NULL otherwise.
  * */
-PRIVATE ReaiFnInfoVec* get_fn_infos (ReaiBinaryId bin_id) {
+PRIVATE ReaiFnInfoVec *get_fn_infos (ReaiBinaryId bin_id) {
     RETURN_VALUE_IF (!bin_id, NULL, ERR_INVALID_ARGUMENTS);
 
     /* get function names for all functions in the binary (this is why we need analysis) */
-    ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
+    ReaiFnInfoVec *fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
     RETURN_VALUE_IF (!fn_infos, NULL, "Failed to get binary function names.");
     RETURN_VALUE_IF (!fn_infos->count, NULL, "Current binary does not have any function.");
 
@@ -123,13 +123,13 @@ PRIVATE ReaiFnInfoVec* get_fn_infos (ReaiBinaryId bin_id) {
  * @return @c ReaiAnnFnMatchVec on success.
  * @return @c NULL otherwise.
  * */
-PRIVATE ReaiAnnFnMatchVec* get_fn_matches (
+PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
     ReaiBinaryId bin_id,
     Float64      max_results,
     Float64      max_dist,
-    CStrVec*     collections
+    CStrVec     *collections
 ) {
-    ReaiAnnFnMatchVec* fn_matches = reai_batch_binary_symbol_ann (
+    ReaiAnnFnMatchVec *fn_matches = reai_batch_binary_symbol_ann (
         reai(),
         reai_response(),
         bin_id,
@@ -790,82 +790,176 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
     }
 
     /* prepare table and print info */
-    /* clang-format off */
-    ReaiPluginTable* table = reai_plugin_table_create();
-    if(!table) {
-        DISPLAY_ERROR("Failed to create table to display new name mapping.");
-                reai_fn_info_vec_destroy (new_name_mapping);
-                reai_ann_fn_match_vec_destroy (fn_matches);
-                reai_fn_info_vec_destroy (fn_infos);
-                FREE (binfile_path);
+    ReaiPluginTable *table = reai_plugin_table_create();
+    if (!table) {
+        DISPLAY_ERROR ("Failed to create table to display new name mapping.");
+        reai_fn_info_vec_destroy (new_name_mapping);
+        reai_ann_fn_match_vec_destroy (fn_matches);
+        reai_fn_info_vec_destroy (fn_infos);
+        FREE (binfile_path);
         return false;
     }
-    reai_plugin_table_set_columnsf (table, "sssnsn", "rizin name", "old_name", "new_name", "confidence", "success", "address");
+    reai_plugin_table_set_columnsf (
+        table,
+        "sssnsn",
+        "rizin name",
+        "old_name",
+        "new_name",
+        "confidence",
+        "success",
+        "address"
+    );
 
-    /* display information about what renames will be performed */    /* add rename information to new name mapping */
+    /* display information about what renames will be performed */ /* add rename information to new name mapping */
     /* rename the functions in rizin */
-    REAI_VEC_FOREACH(fn_infos, fn, {
+    REAI_VEC_FOREACH (fn_infos, fn, {
         Float64 confidence = min_confidence;
         CString new_name   = NULL;
         CString old_name   = fn->name;
-        Uint64 fn_addr = fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr(core);
+        Uint64  fn_addr    = fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr (core);
 
         /* if we get a match with required confidence level then we add to rename */
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (new_name, old_name)) {
-                reai_plugin_table_add_rowf (table, "sssfsx", "not required", old_name, new_name, (Float64)1.0, "true", fn_addr);
+                reai_plugin_table_add_rowf (
+                    table,
+                    "sssfsx",
+                    "not required",
+                    old_name,
+                    new_name,
+                    (Float64)1.0,
+                    "true",
+                    fn_addr
+                );
                 continue;
             }
 
             /* if append fails then destroy everything and return error */
-            Bool append = !!reai_fn_info_vec_append (new_name_mapping, &((ReaiFnInfo) {.name = new_name, .id = fn->id}));
-            if(!append) {
-                DISPLAY_ERROR("Failed to append new name map.");
-
-                reai_plugin_table_destroy (table);
-                reai_fn_info_vec_destroy (new_name_mapping);
-                reai_ann_fn_match_vec_destroy (fn_matches);
-                reai_fn_info_vec_destroy (fn_infos);
-                FREE (binfile_path);
-                return false;
+            Bool append = !!reai_fn_info_vec_append (
+                new_name_mapping,
+                &((ReaiFnInfo) {.name = new_name, .id = fn->id})
+            );
+            if (!append) {
+                DISPLAY_ERROR ("Failed to append new name map.");
+                goto ROW_INSERT_FAILED;
             }
 
             /* get function */
-            RzAnalysisFunction* rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr(core));
+            RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (
+                core->analysis,
+                fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr (core)
+            );
             if (rz_fn) {
                 /* check if fucntion size matches */
-                CString rz_old_name = strdup(rz_fn->name);
-                if(rz_analysis_function_linear_size(rz_fn) != fn->size) {
-                    reai_plugin_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "function size mismatch", fn_addr);
-                    FREE(rz_old_name);
+                CString rz_old_name = strdup (rz_fn->name ? rz_fn->name : "invalid name");
+                if (rz_analysis_function_linear_size (rz_fn) != fn->size) {
+                    if (!reai_plugin_table_add_rowf (
+                            table,
+                            "sssfsx",
+                            rz_old_name,
+                            old_name,
+                            new_name,
+                            confidence,
+                            "function size mismatch",
+                            fn_addr
+                        )) {
+                        DISPLAY_ERROR (
+                            "Failed to insert row into table. Failed to complete auto analysis due "
+                            "to "
+                            "internal error."
+                        );
+                        FREE (rz_old_name);
+                        goto ROW_INSERT_FAILED;
+                    }
+                    FREE (rz_old_name);
                     continue;
                 }
 
                 /* rename function */
                 if (!rz_analysis_function_rename (rz_fn, new_name)) {
-                    reai_plugin_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "rename error", fn_addr);
+                    if (!reai_plugin_table_add_rowf (
+                            table,
+                            "sssfsx",
+                            rz_old_name,
+                            old_name,
+                            new_name,
+                            confidence,
+                            "rename error",
+                            fn_addr
+                        )) {
+                        DISPLAY_ERROR (
+                            "Failed to insert row into table. Failed to complete auto analysis due "
+                            "to "
+                            "internal error."
+                        );
+                        goto ROW_INSERT_FAILED;
+                    }
                 } else {
-                    reai_plugin_table_add_rowf (table, "sssfsx", rz_old_name, old_name, new_name, confidence, "true", fn_addr);
+                    if (!reai_plugin_table_add_rowf (
+                            table,
+                            "sssfsx",
+                            rz_old_name,
+                            old_name,
+                            new_name,
+                            confidence,
+                            "true",
+                            fn_addr
+                        )) {
+                        DISPLAY_ERROR (
+                            "Failed to insert row into table. Failed to complete auto analysis due "
+                            "to internal error."
+                        );
+                        goto ROW_INSERT_FAILED;
+                    }
                 }
 
-                FREE(rz_old_name);
+                FREE (rz_old_name);
             } else {
-                reai_plugin_table_add_rowf (table, "sssfsx", "(null)", old_name, new_name, (Float64)0.0, "function not found", fn_addr);
+                if (!reai_plugin_table_add_rowf (
+                        table,
+                        "sssfsx",
+                        "(null)",
+                        old_name,
+                        new_name,
+                        (Float64)0.0,
+                        "function not found",
+                        fn_addr
+                    )) {
+                    DISPLAY_ERROR (
+                        "Failed to insert row into table. Failed to complete auto analysis due to "
+                        "internal error."
+                    );
+                    goto ROW_INSERT_FAILED;
+                }
             }
         } else {
-            reai_plugin_table_add_rowf (table, "sssfsx", "not required", old_name, "n/a", (Float64)0.0, "match not found", fn_addr );
+            if (!reai_plugin_table_add_rowf (
+                    table,
+                    "sssfsx",
+                    "not required",
+                    old_name,
+                    "n/a",
+                    (Float64)0.0,
+                    "match not found",
+                    fn_addr
+                )) {
+                DISPLAY_ERROR (
+                    "Failed to insert row into table. Failed to complete auto analysis due to "
+                    "internal error."
+                );
+                goto ROW_INSERT_FAILED;
+            }
         }
     });
-    /* clang-format on */
 
     reai_plugin_table_show (table);
 
     /* perform a batch rename */
     if (new_name_mapping->count) {
         Bool res = reai_batch_renames_functions (reai(), reai_response(), new_name_mapping);
-        if(!res) {
-            DISPLAY_ERROR("Failed to rename all functions in binary");
+        if (!res) {
+            DISPLAY_ERROR ("Failed to rename all functions in binary");
         }
     } else {
         eprintf ("No function will be renamed.\n");
@@ -878,6 +972,15 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
     FREE (binfile_path);
 
     return true;
+
+ROW_INSERT_FAILED:
+    reai_plugin_table_destroy (table);
+    reai_fn_info_vec_destroy (new_name_mapping);
+    reai_ann_fn_match_vec_destroy (fn_matches);
+    reai_fn_info_vec_destroy (fn_infos);
+    FREE (binfile_path);
+
+    return false;
 }
 
 /**

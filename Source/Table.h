@@ -23,8 +23,9 @@
 #define REAI_PLUGIN_TABLE_H
 
 #ifdef __cplusplus
-
 extern "C" {
+#endif
+
     typedef struct ReaiPluginTable ReaiPluginTable;
 
     ReaiPluginTable* reai_plugin_table_create();
@@ -33,20 +34,9 @@ extern "C" {
         reai_plugin_table_set_columnsf (ReaiPluginTable* table, const char* fmtstr, ...);
     ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char* fmtstr, ...);
     void             reai_plugin_table_show (ReaiPluginTable* table);
+
+#ifdef __cplusplus
 }
-
-#else // __cplusplus
-
-#    include <rz_util/rz_table.h>
-typedef RzTable ReaiPluginTable;
-
-#    define reai_plugin_table_create       rz_table_new
-#    define reai_plugin_table_destroy      rz_table_free
-#    define reai_plugin_table_set_columnsf rz_table_set_columnsf
-#    define reai_plugin_table_add_rowf     rz_table_add_rowf
-
-void reai_plugin_table_show (ReaiPluginTable* table);
-
 #endif // __cplusplus
 
 
