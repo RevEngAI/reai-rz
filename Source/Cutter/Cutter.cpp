@@ -8,6 +8,7 @@
 
 /* rizin */
 #include "Cutter/Ui/FunctionRenameDialog.hpp"
+#include "Reai/Types.h"
 #include <Cutter.h>
 #include <rz_core.h>
 
@@ -57,7 +58,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
         [REAI_LOG_LEVEL_FATAL] = "Critical"
     };
 
-    reai_log_printf(reai_logger(), level, "", "%s", msg);
+    reai_log_printf (reai_logger(), level, "", "%s", msg);
 
     switch (level) {
         case REAI_LOG_LEVEL_INFO :
@@ -185,13 +186,13 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         return;
     }
 
-    actUploadBin                   = reaiMenu->addAction ("Upload Binary");
-    actCreateAnalysis              = reaiMenu->addAction ("Create New Analysis");
-    actCheckAnalysisStatus         = reaiMenu->addAction ("Check Analysis Status");
-    actRenameFns = reaiMenu->addAction ("Rename Functions");
-    actAutoAnalyzeBinSym           = reaiMenu->addAction ("Auto Analyze Binary");
-    actBinAnalysisHistory          = reaiMenu->addAction ("Binary Analysis History");
-    actSetup                       = reaiMenu->addAction ("Plugin Config Setup");
+    actUploadBin           = reaiMenu->addAction ("Upload Binary");
+    actCreateAnalysis      = reaiMenu->addAction ("Create New Analysis");
+    actCheckAnalysisStatus = reaiMenu->addAction ("Check Analysis Status");
+    actRenameFns           = reaiMenu->addAction ("Rename Functions");
+    actAutoAnalyzeBinSym   = reaiMenu->addAction ("Auto Analyze Binary");
+    actBinAnalysisHistory  = reaiMenu->addAction ("Binary Analysis History");
+    actSetup               = reaiMenu->addAction ("Plugin Config Setup");
 
     connect (actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
     connect (actCreateAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_CreateAnalysis);
@@ -213,12 +214,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         this,
         &ReaiCutterPlugin::on_CheckAnalysisStatus
     );
-    connect (
-        actRenameFns,
-        &QAction::triggered,
-        this,
-        &ReaiCutterPlugin::on_RenameFns
-    );
+    connect (actRenameFns, &QAction::triggered, this, &ReaiCutterPlugin::on_RenameFns);
     connect (actSetup, &QAction::triggered, this, &ReaiCutterPlugin::on_Setup);
 }
 
@@ -290,8 +286,8 @@ void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
         on_Setup();
     }
 
-    if(!reai_plugin_auto_analyze_opened_binary_file(RzCoreLocked(Core()), 0.1, 5, 0.85)) {
-        DISPLAY_ERROR("Failed to complete auto-analysis.");
+    if (!reai_plugin_auto_analyze_opened_binary_file (RzCoreLocked (Core()), 0.1, 5, 0.85)) {
+        DISPLAY_ERROR ("Failed to complete auto-analysis.");
     }
 }
 
@@ -300,8 +296,97 @@ void ReaiCutterPlugin::on_RenameFns() {
         on_Setup();
     }
 
-    FunctionRenameDialog *renameDialog = new FunctionRenameDialog((QWidget*)parent(), RzCoreLocked(Core()));
+    FunctionRenameDialog *renameDialog =
+        new FunctionRenameDialog ((QWidget *)parent(), RzCoreLocked (Core()));
     renameDialog->exec();
+
+    if (!renameDialog->isFinished()) {
+        return;
+    }
+    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+
+    std::vector<std::pair<QString, QString>> nameMap;
+    renameDialog->getNameMapping (nameMap);
+    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+
+    RzCoreLocked core (Core());
+
+    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+    ReaiFnInfoVec *new_name_map = reai_fn_info_vec_create();
+    if (!new_name_map) {
+        DISPLAY_ERROR ("Failed to create a new name map. Cannot continue further. Try again.");
+        return;
+    }
+    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+
+    /* prepare new name map */
+    Size error_count = 0;
+    Size error_limit = 4;
+    for (const auto &[oldName, newName] : nameMap) {
+        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+        QByteArray oldNameByteArr = oldName.toLatin1();
+        CString    oldNameCstr    = oldNameByteArr.constData();
+
+        QByteArray newNameByteArr = newName.toLatin1();
+        CString    newNameCstr    = newNameByteArr.constData();
+
+        PRINT_ERR ("OLDNAME = %s \t NEWNAME= %s", oldNameCstr, newNameCstr);
+
+        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+        /* get function id for old name */
+        ReaiFunctionId fn_id = reai_plugin_get_function_id_from_function_name (core, oldNameCstr);
+        if (!fn_id) {
+            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+            DISPLAY_ERROR (
+                "Failed to get a function id for function \"%s\". Cannot perform rename for this "
+                "function.",
+                oldNameCstr
+            );
+            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+
+            /* set a hard limit on how many names can go wrong */
+            if (error_count > error_limit) {
+                PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+                DISPLAY_ERROR ("Too many errors. Cannot continue further.");
+                reai_fn_info_vec_destroy (new_name_map);
+                PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+                return;
+            } else {
+                error_count++;
+                PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+                continue;
+            }
+        }
+
+        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+        /* add new name to new name map */
+        if (!reai_fn_info_vec_append (
+                new_name_map,
+                ((ReaiFnInfo[]) {
+                    {.id = fn_id, .name = newNameCstr}
+        })
+            )) {
+            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+            DISPLAY_ERROR (
+                "Failed to insert rename information into new name map. Cannot continue further."
+            );
+            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+            reai_fn_info_vec_destroy (new_name_map);
+        }
+    }
+
+    /* perform batch rename operation */
+    if (!reai_batch_renames_functions (reai(), reai_response(), new_name_map)) {
+        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+        DISPLAY_ERROR ("Failed to perform batch rename operation.");
+    } else {
+        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+        DISPLAY_INFO ("Batch rename operation completed successfully.");
+    }
+
+    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
+    reai_fn_info_vec_destroy (new_name_map);
+    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
 }
 
 void ReaiCutterPlugin::on_BinAnalysisHistory() {

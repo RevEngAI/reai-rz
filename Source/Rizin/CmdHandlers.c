@@ -376,5 +376,7 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
         "Failed to rename function"
     );
 
+    // TODO: rename function in rizin as well
+
     return RZ_CMD_STATUS_OK;
 }

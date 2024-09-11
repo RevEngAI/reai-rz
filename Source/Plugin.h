@@ -58,7 +58,6 @@ extern "C" {
 
     Bool               reai_plugin_upload_opened_binary_file (RzCore* core);
     Bool               reai_plugin_create_analysis_for_opened_binary_file (RzCore* core);
-    ReaiBinaryId       reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
     ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
     Bool               reai_plugin_auto_analyze_opened_binary_file (
                       RzCore* core,
@@ -66,6 +65,8 @@ extern "C" {
                       Size    max_results_per_function,
                       Float64 min_confidence
                   );
+    ReaiBinaryId   reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
+    ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore* core, CString fn_name);
 
     RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);

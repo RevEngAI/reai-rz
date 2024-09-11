@@ -29,16 +29,25 @@ class FunctionRenameDialog : public QDialog {
    public:
     FunctionRenameDialog (QWidget* parent, RzCore* core);
 
+    void getNameMapping (std::vector<std::pair<QString, QString>>& map);
+    Bool isFinished() const {
+        return is_finished;
+    }
+
    private:
     QStringList oldFnNamesList;
-    QStringList newFnNamesList;
 
     QLineEdit *   searchBar, *newFnName;
     QCompleter*   fnNameCompleter;
     QTableWidget* newNameMapTable;
 
-    QAction* actAddEntry;
-    QAction* actFinishRenaming;
+    Bool is_finished = false;
+
+    Bool checkNewNameIsUnique (const QString& newName);
+    Bool checkOldNameIsUnique (const QString& oldName);
+
+    void on_AddToRename();
+    void on_Finish();
 };
 
 #endif // REAI_PLUGIN_CUTTER_UI_FUNCTION_RENAME_DIALOG_HPP

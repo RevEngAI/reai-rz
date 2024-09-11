@@ -6,6 +6,7 @@
  * */
 
 /* rizin */
+#include "Reai/Api/Response.h"
 #include <Reai/Api/Reai.h>
 #include <rz_analysis.h>
 #include <rz_asm.h>
@@ -174,7 +175,7 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
     RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
 
     /* prepare symbols info  */
-    RzList        *fns           = rz_analysis_function_list(core->analysis);
+    RzList        *fns           = rz_analysis_function_list (core->analysis);
     ReaiFnInfoVec *fn_boundaries = reai_fn_info_vec_create();
 
     /* add all symbols corresponding to functions */
@@ -981,6 +982,87 @@ ROW_INSERT_FAILED:
     FREE (binfile_path);
 
     return false;
+}
+
+/**
+ * @b Search for function with given name and get the corresponding function id.
+ *
+ * @param core
+ * @param fn_name
+ *
+ * @return Non-zero function ID corresponding to given function name on success, and if found.
+ * @return zero otherwise.
+ * */
+ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CString fn_name) {
+    if (!core) {
+        DISPLAY_ERROR (
+            "Invalid rizin core provided. Cannot fetch function ID for given function name."
+        );
+        return 0;
+    }
+
+    if (!fn_name || !strlen (fn_name)) {
+        DISPLAY_ERROR ("Provided function name is invalid. Cannot get a function ID.");
+        return 0;
+    }
+
+    /* get list of all functions to get information about this function */
+    RzList *rz_fns = rz_analysis_function_list (core->analysis);
+    if (!rz_fns) {
+        DISPLAY_ERROR ("Rizin analysis not performed yet. Please perform rizin analysis.");
+        return 0;
+    }
+
+    /* go over all functions and find a function with matching name and get it's infp */
+    RzListIter         *fn_node   = NULL;
+    void               *node_data = NULL;
+    RzAnalysisFunction *rz_fn     = NULL;
+    rz_list_foreach (rz_fns, fn_node, node_data) {
+        RzAnalysisFunction *fn = (RzAnalysisFunction *)node_data;
+        if (!strcmp (fn->name, fn_name)) {
+            rz_fn = fn;
+            break;
+        }
+    }
+
+    if (!rz_fn) {
+        DISPLAY_ERROR ("Cannot find a function with given name in rizin.");
+        return 0;
+    }
+
+    ReaiBinaryId bin_id = reai_plugin_get_binary_id_for_opened_binary_file (core);
+    if (!bin_id) {
+        DISPLAY_ERROR ("Failed to get binary ID for opened binary file");
+        return 0;
+    }
+
+    ReaiFnInfoVec *fn_infos = NULL;
+    /* avoid making multiple calls subsequent calls to same endpoint if possible */
+    if (reai_response()->type == REAI_RESPONSE_TYPE_BASIC_FUNCTION_INFO) {
+        LOG_TRACE ("Using previously fetched response of basic function info.");
+
+        fn_infos = reai_response()->basic_function_info.fn_infos;
+    } else {
+        LOG_TRACE ("Fetching basic function info again");
+
+        ReaiFnInfoVec *fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
+        if (!fn_infos) {
+            DISPLAY_ERROR (
+                "Failed to get function info list for opened binary file from RevEng.AI servers."
+            );
+            return 0;
+        }
+    }
+
+    REAI_VEC_FOREACH (fn_infos, fn_info, {
+        if ((fn_info->size == rz_analysis_function_linear_size (rz_fn)) &&
+            (fn_info->vaddr == rz_fn->addr)) {
+            return fn_info->id;
+        }
+    });
+    // TODO: find a way to get one-one correspondence between rizin functions and RevEng.AI functions
+
+    return 0;
 }
 
 /**
