@@ -42,7 +42,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actCreateAnalysis              = nullptr;
     QAction *actCheckAnalysisStatus         = nullptr;
     QAction *actAutoAnalyzeBinSym           = nullptr;
-    QAction *actPerformRenameFromSimilarFns = nullptr;
+    QAction *actRenameFns = nullptr;
     QAction *actBinAnalysisHistory          = nullptr;
     QAction *actSetup                       = nullptr;
 
@@ -74,7 +74,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     void on_CreateAnalysis();
     void on_CheckAnalysisStatus();
     void on_AutoAnalyzeBinSym();
-    void on_PerformRenameFromSimilarFns();
+    void on_RenameFns();
     void on_BinAnalysisHistory();
     void on_Setup();
 };

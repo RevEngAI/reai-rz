@@ -174,7 +174,7 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
     RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
 
     /* prepare symbols info  */
-    RzList        *fns           = core->analysis->fcns;
+    RzList        *fns           = rz_analysis_function_list(core->analysis);
     ReaiFnInfoVec *fn_boundaries = reai_fn_info_vec_create();
 
     /* add all symbols corresponding to functions */

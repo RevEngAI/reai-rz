@@ -7,6 +7,7 @@
 
 
 /* rizin */
+#include "Cutter/Ui/FunctionRenameDialog.hpp"
 #include <Cutter.h>
 #include <rz_core.h>
 
@@ -22,7 +23,6 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QtPlugin>
-#include <QtConcurrent/QtConcurrent>
 
 /* creait lib */
 #include <Reai/Api/Api.h>
@@ -32,6 +32,7 @@
 
 /* plugin */
 #include <Cutter/Ui/ConfigSetupDialog.hpp>
+#include <Cutter/Ui/FunctionRenameDialog.hpp>
 #include <Plugin.h>
 #include <Cutter/Cutter.hpp>
 
@@ -186,10 +187,10 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
 
     actUploadBin                   = reaiMenu->addAction ("Upload Binary");
     actCreateAnalysis              = reaiMenu->addAction ("Create New Analysis");
+    actCheckAnalysisStatus         = reaiMenu->addAction ("Check Analysis Status");
+    actRenameFns = reaiMenu->addAction ("Rename Functions");
     actAutoAnalyzeBinSym           = reaiMenu->addAction ("Auto Analyze Binary");
     actBinAnalysisHistory          = reaiMenu->addAction ("Binary Analysis History");
-    actCheckAnalysisStatus         = reaiMenu->addAction ("Check Analysis Status");
-    actPerformRenameFromSimilarFns = reaiMenu->addAction ("Rename From Similar Functions");
     actSetup                       = reaiMenu->addAction ("Plugin Config Setup");
 
     connect (actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
@@ -213,10 +214,10 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         &ReaiCutterPlugin::on_CheckAnalysisStatus
     );
     connect (
-        actPerformRenameFromSimilarFns,
+        actRenameFns,
         &QAction::triggered,
         this,
-        &ReaiCutterPlugin::on_PerformRenameFromSimilarFns
+        &ReaiCutterPlugin::on_RenameFns
     );
     connect (actSetup, &QAction::triggered, this, &ReaiCutterPlugin::on_Setup);
 }
@@ -294,12 +295,13 @@ void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
     }
 }
 
-void ReaiCutterPlugin::on_PerformRenameFromSimilarFns() {
+void ReaiCutterPlugin::on_RenameFns() {
     if (!reai_plugin_check_config_exists()) {
         on_Setup();
     }
 
-    DISPLAY_INFO ("Method unimplemented. Coming soon...");
+    FunctionRenameDialog *renameDialog = new FunctionRenameDialog((QWidget*)parent(), RzCoreLocked(Core()));
+    renameDialog->exec();
 }
 
 void ReaiCutterPlugin::on_BinAnalysisHistory() {
