@@ -98,3 +98,7 @@ commands:
         entries:
           - text: "fopen"
             comment: "New function name"
+  - name: REart
+    cname: show_revengai_art
+    summary: Show RevEng.AI ASCII art.
+    args: []

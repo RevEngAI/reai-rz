@@ -375,6 +375,14 @@ void ReaiCutterPlugin::on_RenameFns() {
         }
     }
 
+    if (error_count == nameMap.size()) {
+        DISPLAY_ERROR (
+            "None of the functions had any matches. Failed to get function IDs. Cannot rename."
+        );
+        reai_fn_info_vec_destroy (new_name_map);
+        return;
+    }
+
     /* perform batch rename operation */
     if (!reai_batch_renames_functions (reai(), reai_response(), new_name_map)) {
         PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
@@ -383,6 +391,8 @@ void ReaiCutterPlugin::on_RenameFns() {
         PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_INFO ("Batch rename operation completed successfully.");
     }
+
+    // TODO : rename function in rizin as well
 
     PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
     reai_fn_info_vec_destroy (new_name_map);

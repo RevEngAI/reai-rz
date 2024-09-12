@@ -101,15 +101,21 @@ FunctionRenameDialog::FunctionRenameDialog (QWidget* parent, RzCore* core) : QDi
 
 void FunctionRenameDialog::getNameMapping (std::vector<std::pair<QString, QString>>& map) {
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
-        map.push_back (
-            {newNameMapTable->itemAt (s, 0)->text(), newNameMapTable->itemAt (s, 1)->text()}
+        const QString& oldName = newNameMapTable->item (s, 0)->text();
+        const QString& newName = newNameMapTable->item (s, 1)->text();
+        map.push_back ({oldName, newName});
+
+        LOG_TRACE (
+            "oldName = \"%s\" \t newName \"%s\"",
+            oldName.toLatin1().constData(),
+            oldName.toLatin1().constData()
         );
     }
 }
 
 Bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
-        if (newNameMapTable->itemAt (s, 0)->text() == newName) {
+        if (newNameMapTable->item (s, 0)->text() == newName) {
             return false;
         }
     }
@@ -119,7 +125,7 @@ Bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
 
 Bool FunctionRenameDialog::checkOldNameIsUnique (const QString& oldName) {
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
-        if (newNameMapTable->itemAt (s, 1)->text() == oldName) {
+        if (newNameMapTable->item (s, 1)->text() == oldName) {
             return false;
         }
     }

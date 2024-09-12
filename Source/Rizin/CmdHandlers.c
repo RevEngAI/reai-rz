@@ -193,11 +193,18 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     Size    max_results_per_function = rz_num_math (core->num, argv[2]);
     Float64 min_confidence           = rz_num_get_float (core->num, argv[3]);
 
-    if(reai_plugin_auto_analyze_opened_binary_file(core, max_distance, max_results_per_function, min_confidence)) {
-        DISPLAY_INFO("Auto-analysis completed successfully.");
+    if (reai_plugin_auto_analyze_opened_binary_file (
+            core,
+            max_distance,
+            max_results_per_function,
+            min_confidence
+        )) {
+        DISPLAY_INFO ("Auto-analysis completed successfully.");
         return RZ_CMD_STATUS_OK;
     } else {
-        DISPLAY_ERROR("Failed to perform RevEng.AI auto-analysis (apply analysis results in rizin/cutter)");
+        DISPLAY_ERROR (
+            "Failed to perform RevEng.AI auto-analysis (apply analysis results in rizin/cutter)"
+        );
         return RZ_CMD_STATUS_ERROR;
     }
 }
@@ -378,5 +385,58 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
 
     // TODO: rename function in rizin as well
 
+    return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
+    rz_cons_println (
+        "\n"
+        "                             \n"
+        "                             \n"
+        "                             \n"
+        "                             \n"
+        "                             \n"
+        "                             \n"
+        "                             \n"
+        "                             \n"
+        ":::::::::::        :::::::::::                                                            "
+        "      \n"
+        "::    ::::::      ::::    ::::             %%%%%%%%%%%%%                                  "
+        "      %%%%%%%%%%%%%%%                            \n"
+        "::    :::::::    :::::    ::::            %%%%%%%%%%%%%%%                                 "
+        "      %%%%%%%%%%%%%%%                                %%%%%@   \n"
+        "::::::::::::::::::::::::::::::           %%%%%%%    %%%%%                                 "
+        "      %%%%%                                          %%%%%%  \n"
+        ":::::::::   ::::   :::::::::::           %%%%%%     %%%%%     @%%%%%%%%%%    %%%%%@    "
+        "%%%%%    %%%%%             %%%%% %%%%%%%%      @%%%%%%%%%%%    \n"
+        " :::::::    ::::    :::::::::            %%%%%%     %%%%%    %%%%%%%%%%%%%%  %%%%%%    "
+        "%%%%%%   %%%%%%%%%%%%%%    %%%%%%%%%%%%%%%    %%%%%%%%%%%%%%  \n"
+        "     ::::::::::::::::::::                %%%%%%%%%%%%%%%   %%%%%     @%%%%%  %%%%%%    "
+        "%%%%%    %%%%%%%%%%%%%%    %%%%%%    %%%%%%  %%%%%@    %%%%%@\n"
+        "       ::::::::::::::::                    %%%%%%%%%%%%%  @%%%%%%%%%%%%%%%%   %%%%%@  "
+        "%%%%%     %%%%%%%%%%%%%%    %%%%%     %%%%%%  %%%%%%    %%%%%%               @@@@    "
+        "@@@@@@@@\n"
+        "     ::::   ::::    :::::                  @%%%%%@ %%%%%  %%%%%%%%%%%%%%%%%   %%%%%% "
+        "%%%%%%     %%%%%             %%%%%     %%%%%%   %%%%%%%%%%%%%@               @@@@@@     "
+        "@@@  \n"
+        " ::::::::   ::::    :::::::::              %%%%%%@ %%%%%   %%%%%               "
+        "%%%%%%%%%%%      %%%%%             %%%%%     %%%%%%     %%%%%%%%%%                @@@@ "
+        "@@@    @@@ \n"
+        "::::::::::::::::::::::::::::::          %%%%%%%%   %%%%%   %%%%%%@   %%%%%      %%%%%%%%% "
+        "      %%%%%%%%%%%%%%%   %%%%%     %%%%%%   %%%%                        @@@@@@@@    @@@\n"
+        "::    ::::::::::::::::    ::::          %%%%%%%    %%%%%    @%%%%%%%%%%%%%       %%%%%%%% "
+        "      %%%%%%%%%%%%%%%   %%%%%     %%%%%%   %%%%%%%%%%%%%%%    @@@@    @@@@  @@@@ "
+        "@@@@@@@@\n"
+        "::    :::::::    :::::    ::::          %%%%%      %%%%%       %%%%%%%%%         %%%%%%%  "
+        "      %%%%%%%%%%%%%%    %%%%%     %%%%%@   %%%%%%%%%%%%%%%%    @@@    @@@   @@@@ "
+        "@@@@@@@@\n"
+        "::::::::::::      ::::::::::::                                                            "
+        "                                          %%%%        %%%%%                             \n"
+        ":::::::::::        :::::::::::                                                            "
+        "                                          %%%%%%%%%%%%%%%%%                             \n"
+        "                                                                                          "
+        "                                           %%%%%%%%%%%%%%                               \n"
+        "\n"
+    );
     return RZ_CMD_STATUS_OK;
 }

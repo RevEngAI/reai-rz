@@ -1021,6 +1021,12 @@ ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CSt
         RzAnalysisFunction *fn = (RzAnalysisFunction *)node_data;
         if (!strcmp (fn->name, fn_name)) {
             rz_fn = fn;
+            LOG_TRACE (
+                "Found function in Rizin with name \"%s\". Has address = \"%d\", size = \"%d\"",
+                rz_fn->name ? rz_fn->name : "no-name",
+                rz_fn->addr,
+                rz_analysis_function_linear_size (rz_fn)
+            );
             break;
         }
     }
@@ -1045,7 +1051,7 @@ ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CSt
     } else {
         LOG_TRACE ("Fetching basic function info again");
 
-        ReaiFnInfoVec *fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
+        fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
         if (!fn_infos) {
             DISPLAY_ERROR (
                 "Failed to get function info list for opened binary file from RevEng.AI servers."
@@ -1055,12 +1061,19 @@ ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CSt
     }
 
     REAI_VEC_FOREACH (fn_infos, fn_info, {
-        if ((fn_info->size == rz_analysis_function_linear_size (rz_fn)) &&
-            (fn_info->vaddr == rz_fn->addr)) {
+        if (rz_analysis_function_min_addr (rz_fn) <= fn_info->vaddr &&
+            fn_info->vaddr <= rz_analysis_function_max_addr (rz_fn)) {
+            LOG_TRACE (
+                "Found function ID for rizin function \"%s\" (\"%s\"): [%llu]",
+                rz_fn->name,
+                fn_info->name,
+                fn_info->id
+            );
             return fn_info->id;
         }
     });
-    // TODO: find a way to get one-one correspondence between rizin functions and RevEng.AI functions
+
+    LOG_TRACE ("Function ID not found for function \"%s\"", fn_name);
 
     return 0;
 }
