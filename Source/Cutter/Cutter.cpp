@@ -303,27 +303,22 @@ void ReaiCutterPlugin::on_RenameFns() {
     if (!renameDialog->isFinished()) {
         return;
     }
-    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
 
     std::vector<std::pair<QString, QString>> nameMap;
     renameDialog->getNameMapping (nameMap);
-    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
 
     RzCoreLocked core (Core());
 
-    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
     ReaiFnInfoVec *new_name_map = reai_fn_info_vec_create();
     if (!new_name_map) {
         DISPLAY_ERROR ("Failed to create a new name map. Cannot continue further. Try again.");
         return;
     }
-    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
 
     /* prepare new name map */
     Size error_count = 0;
     Size error_limit = 4;
     for (const auto &[oldName, newName] : nameMap) {
-        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
         QByteArray oldNameByteArr = oldName.toLatin1();
         CString    oldNameCstr    = oldNameByteArr.constData();
 
@@ -332,33 +327,26 @@ void ReaiCutterPlugin::on_RenameFns() {
 
         PRINT_ERR ("OLDNAME = %s \t NEWNAME= %s", oldNameCstr, newNameCstr);
 
-        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
         /* get function id for old name */
         ReaiFunctionId fn_id = reai_plugin_get_function_id_from_function_name (core, oldNameCstr);
         if (!fn_id) {
-            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
             DISPLAY_ERROR (
                 "Failed to get a function id for function \"%s\". Cannot perform rename for this "
                 "function.",
                 oldNameCstr
             );
-            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
 
             /* set a hard limit on how many names can go wrong */
             if (error_count > error_limit) {
-                PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
                 DISPLAY_ERROR ("Too many errors. Cannot continue further.");
                 reai_fn_info_vec_destroy (new_name_map);
-                PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
                 return;
             } else {
                 error_count++;
-                PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
                 continue;
             }
         }
 
-        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
         /* add new name to new name map */
         if (!reai_fn_info_vec_append (
                 new_name_map,
@@ -366,11 +354,9 @@ void ReaiCutterPlugin::on_RenameFns() {
                     {.id = fn_id, .name = newNameCstr}
         })
             )) {
-            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
             DISPLAY_ERROR (
                 "Failed to insert rename information into new name map. Cannot continue further."
             );
-            PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
             reai_fn_info_vec_destroy (new_name_map);
         }
     }
@@ -385,18 +371,14 @@ void ReaiCutterPlugin::on_RenameFns() {
 
     /* perform batch rename operation */
     if (!reai_batch_renames_functions (reai(), reai_response(), new_name_map)) {
-        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to perform batch rename operation.");
     } else {
-        PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_INFO ("Batch rename operation completed successfully.");
     }
 
     // TODO : rename function in rizin as well
 
-    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
     reai_fn_info_vec_destroy (new_name_map);
-    PRINT_ERR ("%s %d", __FUNCTION__, __LINE__);
 }
 
 void ReaiCutterPlugin::on_BinAnalysisHistory() {
