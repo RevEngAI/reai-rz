@@ -60,7 +60,15 @@ PRIVATE CString get_function_name_with_max_confidence (
     ReaiFunctionId     origin_fn_id,
     Float64           *required_confidence
 ) {
-    RETURN_VALUE_IF (!fn_matches || !origin_fn_id, NULL, ERR_INVALID_ARGUMENTS);
+    if (!fn_matches) {
+        DISPLAY_ERROR ("Function matches are invalid. Cannot proceed.");
+        return NULL;
+    }
+
+    if (!origin_fn_id) {
+        DISPLAY_ERROR ("Origin function ID is invalid. Cannot proceed.");
+        return NULL;
+    }
 
     Float64 max_confidence = 0;
     CString fn_name        = NULL;
@@ -97,16 +105,31 @@ PRIVATE CString get_function_name_with_max_confidence (
  * @return @c NULL otherwise.
  * */
 PRIVATE ReaiFnInfoVec *get_fn_infos (ReaiBinaryId bin_id) {
-    RETURN_VALUE_IF (!bin_id, NULL, ERR_INVALID_ARGUMENTS);
+    if (!bin_id) {
+        DISPLAY_ERROR (
+            "Invalid binary ID provied. Cannot fetch function info list from RevEng.AI servers."
+        );
+        return NULL;
+    }
 
     /* get function names for all functions in the binary (this is why we need analysis) */
     ReaiFnInfoVec *fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
-    RETURN_VALUE_IF (!fn_infos, NULL, "Failed to get binary function names.");
-    RETURN_VALUE_IF (!fn_infos->count, NULL, "Current binary does not have any function.");
+    if (!fn_infos) {
+        DISPLAY_ERROR ("Failed to get binary function names.");
+        return NULL;
+    }
+
+    if (!fn_infos->count) {
+        DISPLAY_ERROR ("Current binary does not have any function.");
+        return NULL;
+    }
 
     /* try cloning */
     fn_infos = reai_fn_info_vec_clone_create (fn_infos);
-    RETURN_VALUE_IF (!fn_infos, NULL, "FnInfos vector clone failed");
+    if (!fn_infos) {
+        DISPLAY_ERROR ("FnInfos vector clone failed");
+        return NULL;
+    }
 
     return fn_infos;
 }
@@ -126,10 +149,15 @@ PRIVATE ReaiFnInfoVec *get_fn_infos (ReaiBinaryId bin_id) {
  * */
 PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
     ReaiBinaryId bin_id,
-    Float64      max_results,
+    Uint32       max_results,
     Float64      max_dist,
     CStrVec     *collections
 ) {
+    if (!bin_id) {
+        DISPLAY_ERROR ("Invalid binary ID provided. Cannot get function matches.");
+        return NULL;
+    }
+
     ReaiAnnFnMatchVec *fn_matches = reai_batch_binary_symbol_ann (
         reai(),
         reai_response(),
@@ -138,12 +166,23 @@ PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
         max_dist,
         collections
     );
-    RETURN_VALUE_IF (!fn_matches, NULL, "Failed to get ANN binary symbol similarity result");
-    RETURN_VALUE_IF (!fn_matches->count, NULL, "No similar functions found");
+
+    if (!fn_matches) {
+        DISPLAY_ERROR ("Failed to get ANN binary symbol similarity result");
+        return NULL;
+    }
+
+    if (!fn_matches->count) {
+        DISPLAY_ERROR ("No similar functions found.");
+        return NULL;
+    }
 
     /* try clone */
     fn_matches = reai_ann_fn_match_vec_clone_create (fn_matches);
-    RETURN_VALUE_IF (!fn_matches, NULL, "ANN Fn Match vector clone failed.");
+    if (!fn_matches) {
+        DISPLAY_ERROR ("ANN Fn Match vector clone failed.");
+        return NULL;
+    }
 
     return fn_matches;
 }
@@ -153,8 +192,9 @@ PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
 ReaiPlugin *reai_plugin() {
     static ReaiPlugin *plugin = NULL;
 
-    if (!plugin) {
-        RETURN_VALUE_IF (!(plugin = NEW (ReaiPlugin)), NULL, ERR_OUT_OF_MEMORY);
+    if (!(plugin = NEW (ReaiPlugin))) {
+        DISPLAY_ERROR (ERR_OUT_OF_MEMORY);
+        return NULL;
     }
 
     return plugin;
@@ -172,7 +212,11 @@ ReaiPlugin *reai_plugin() {
  * @return @c NULL otherwise.
  *  */
 ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
-    RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot get function boundaries.");
+        return NULL;
+    }
+
 
     /* prepare symbols info  */
     RzList        *fns           = rz_analysis_function_list (core->analysis);
@@ -189,6 +233,7 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
         };
 
         if (!reai_fn_info_vec_append (fn_boundaries, &fn_info)) {
+            DISPLAY_ERROR ("Failed to append function info in function boundaries list.");
             reai_fn_info_vec_destroy (fn_boundaries);
             return NULL;
         }
@@ -202,7 +247,11 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
  * in the background periodically.
  * */
 PRIVATE void reai_db_background_worker (ReaiPlugin *plugin) {
-    RETURN_IF (!plugin, ERR_INVALID_ARGUMENTS);
+    if (!plugin) {
+        DISPLAY_ERROR ("Invalid plugin instance provided. Cannot start background worker.");
+        return;
+    }
+
 
     Size update_interval = 4;
 
@@ -211,7 +260,11 @@ PRIVATE void reai_db_background_worker (ReaiPlugin *plugin) {
         plugin->reai_config->apikey,
         plugin->reai_config->model
     );
-    RETURN_IF (!reai, "Background worker failed to make connection with RevEng.AI servers.");
+
+    if (!reai) {
+        DISPLAY_ERROR ("Background worker failed to make connection with RevEng.AI servers.");
+        return;
+    }
 
     /* we're allowed to use same db as long as the concurrency method is
    * sequential */
@@ -237,13 +290,15 @@ PRIVATE void reai_db_background_worker (ReaiPlugin *plugin) {
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
 Bool reai_plugin_init (RzCore *core) {
-    RETURN_VALUE_IF (!core, false, ERR_INVALID_ARGUMENTS);
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
+        return false;
+    }
 
     /* load default config */
     reai_config() = reai_config_load (NULL);
     if (!reai_config()) {
-        reai_plugin_display_msg (
-            REAI_LOG_LEVEL_FATAL,
+        DISPLAY_ERROR (
             "Failed to load RevEng.AI toolkit config file. If "
             "does not exist then please use "
             "\"REi\" command & restart.\n"
@@ -254,7 +309,11 @@ Bool reai_plugin_init (RzCore *core) {
 
     /* initialize reai object. */
     reai() = reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
-    RETURN_VALUE_IF (!reai(), false, "Failed to create Reai object.");
+    if (!reai()) {
+        DISPLAY_ERROR ("Failed to create Reai object.");
+        return false;
+    }
+
 
     /* create log directory if not present before creating new log files */
     rz_sys_mkdirp (reai_config()->log_dir_path);
@@ -273,15 +332,17 @@ Bool reai_plugin_init (RzCore *core) {
 
     /* create logger */
     reai_logger() = reai_log_create (log_file_path);
-    RETURN_VALUE_IF (
-        !reai_logger() || !reai_set_logger (reai(), reai_logger()),
-        false,
-        "Failed to create and set Reai logger."
-    );
+    if (!reai_logger() || !reai_set_logger (reai(), reai_logger())) {
+        DISPLAY_ERROR ("Failed to create and set Reai logger.");
+        return false;
+    }
 
     /* create response object */
     reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
-    RETURN_VALUE_IF (!reai_response(), false, "Failed to create/init ReaiResponse object.");
+    if (!reai_response()) {
+        DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
+        return false;
+    }
 
     /* create the database directory if not present before creating/opening
    * database */
@@ -292,19 +353,19 @@ Bool reai_plugin_init (RzCore *core) {
 
     /* create database and set it to reai database */
     reai_db() = reai_db_create (db_path);
-    RETURN_VALUE_IF (
-        !reai_db() || !reai_set_db (reai(), reai_db()),
-        false,
-        "Failed to create and set Reai DB object."
-    );
+    if (!reai_db() || !reai_set_db (reai(), reai_db())) {
+        DISPLAY_ERROR ("Failed to create and set Reai DB object.");
+        return false;
+    }
+
 
     reai_plugin()->background_worker =
         rz_th_new ((RzThreadFunction)reai_db_background_worker, reai_plugin());
-    RETURN_VALUE_IF (
-        !reai_plugin()->background_worker,
-        false,
-        "Failed to start RevEng.AI background worker."
-    );
+
+    if (!reai_plugin()->background_worker) {
+        DISPLAY_ERROR ("Failed to start RevEng.AI background worker.");
+        return false;
+    }
 
     return true;
 }
@@ -318,7 +379,10 @@ Bool reai_plugin_init (RzCore *core) {
  * @return false otherwise.
  * */
 Bool reai_plugin_deinit (RzCore *core) {
-    RETURN_VALUE_IF (!core, false, ERR_INVALID_ARGUMENTS);
+    if (!core) {
+        DISPLAY_ERROR ("Invalid core provided. Failed to free plugin resources.");
+        return false;
+    }
 
     /* this must be destroyed first and set to NULL to signal the background
    * worker thread to stop working */
@@ -434,14 +498,36 @@ Bool reai_plugin_save_config (
     CString db_dir_path,
     CString log_dir_path
 ) {
-    RETURN_VALUE_IF (
-        !host || !api_key || !model || !db_dir_path || !log_dir_path,
-        false,
-        ERR_INVALID_ARGUMENTS
-    );
+    if (!host) {
+        DISPLAY_ERROR ("Provided host is invalid. Cannot save config.");
+        return false;
+    }
+
+    if (!api_key) {
+        DISPLAY_ERROR ("Provided API key is invalid. Cannot save config.");
+        return false;
+    }
+
+    if (!model) {
+        DISPLAY_ERROR ("Provided model is invalid. Cannot save config.");
+        return false;
+    }
+
+    if (!db_dir_path) {
+        DISPLAY_ERROR ("Provided database directory path is invalid. Cannot save config.");
+        return false;
+    }
+
+    if (!log_dir_path) {
+        DISPLAY_ERROR ("Provided log directory path is invalid. Cannot save config.");
+        return false;
+    }
 
     CString reai_config_file_path = reai_config_get_default_path();
-    RETURN_VALUE_IF (!reai_config_file_path, false, "Failed to get config file default path.");
+    if (!reai_config_file_path) {
+        DISPLAY_ERROR ("Failed to get config file default path.");
+        return false;
+    }
 
     FILE *reai_config_file = fopen (reai_config_file_path, "w");
     if (!reai_config_file) {
@@ -802,8 +888,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
     }
     reai_plugin_table_set_columnsf (
         table,
-        "sssnsn",
-        "rizin name",
+        "ssfsn",
         "old_name",
         "new_name",
         "confidence",
@@ -823,16 +908,17 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (new_name, old_name)) {
-                reai_plugin_table_add_rowf (
-                    table,
-                    "sssfsx",
-                    "not required",
-                    old_name,
-                    new_name,
-                    (Float64)1.0,
-                    "true",
-                    fn_addr
-                );
+                if (!reai_plugin_table_add_rowf (
+                        table,
+                        "ssfsx",
+                        old_name,
+                        new_name,
+                        (Float64)1.0,
+                        "ok",
+                        fn_addr
+                    )) {
+                    goto ROW_INSERT_FAILED;
+                }
                 continue;
             }
 
@@ -847,108 +933,66 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
             }
 
             /* get function */
-            RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (
-                core->analysis,
-                fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr (core)
-            );
+            RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr);
             if (rz_fn) {
                 /* check if fucntion size matches */
-                CString rz_old_name = strdup (rz_fn->name ? rz_fn->name : "invalid name");
                 if (rz_analysis_function_linear_size (rz_fn) != fn->size) {
-                    if (!reai_plugin_table_add_rowf (
-                            table,
-                            "sssfsx",
-                            rz_old_name,
-                            old_name,
-                            new_name,
-                            confidence,
-                            "function size mismatch",
-                            fn_addr
-                        )) {
-                        DISPLAY_ERROR (
-                            "Failed to insert row into table. Failed to complete auto analysis due "
-                            "to "
-                            "internal error."
-                        );
-                        FREE (rz_old_name);
-                        goto ROW_INSERT_FAILED;
-                    }
-                    FREE (rz_old_name);
-                    continue;
+                    LOG_INFO (
+                        "Function sizes don't match (\"%s\" - \"%s\")",
+                        rz_fn->name,
+                        fn->name
+                    );
                 }
 
                 /* rename function */
-                if (!rz_analysis_function_rename (rz_fn, new_name)) {
+                if (!rz_analysis_function_rename (rz_fn, new_name)) { // Try renaming in Rizin
                     if (!reai_plugin_table_add_rowf (
                             table,
-                            "sssfsx",
-                            rz_old_name,
+                            "ssfsx",
                             old_name,
                             new_name,
                             confidence,
-                            "rename error",
+                            "rizin rename error",
                             fn_addr
                         )) {
-                        DISPLAY_ERROR (
-                            "Failed to insert row into table. Failed to complete auto analysis due "
-                            "to "
-                            "internal error."
-                        );
                         goto ROW_INSERT_FAILED;
                     }
-                } else {
+                } else { // If rename failed
                     if (!reai_plugin_table_add_rowf (
                             table,
-                            "sssfsx",
-                            rz_old_name,
+                            "ssfsx",
                             old_name,
                             new_name,
                             confidence,
                             "true",
                             fn_addr
                         )) {
-                        DISPLAY_ERROR (
-                            "Failed to insert row into table. Failed to complete auto analysis due "
-                            "to internal error."
-                        );
                         goto ROW_INSERT_FAILED;
                     }
                 }
-
-                FREE (rz_old_name);
-            } else {
+            } else { // If no Rizin funciton exists at given address
                 if (!reai_plugin_table_add_rowf (
                         table,
-                        "sssfsx",
-                        "(null)",
+                        "ssfsx",
                         old_name,
                         new_name,
                         (Float64)0.0,
                         "function not found",
                         fn_addr
                     )) {
-                    DISPLAY_ERROR (
-                        "Failed to insert row into table. Failed to complete auto analysis due to "
-                        "internal error."
-                    );
                     goto ROW_INSERT_FAILED;
                 }
             }
-        } else {
+        } else { // If not able to find a function with given confidence
             if (!reai_plugin_table_add_rowf (
                     table,
-                    "sssfsx",
-                    "not required",
+                    "ssfsx",
                     old_name,
                     "n/a",
                     (Float64)0.0,
                     "match not found",
                     fn_addr
                 )) {
-                DISPLAY_ERROR (
-                    "Failed to insert row into table. Failed to complete auto analysis due to "
-                    "internal error."
-                );
                 goto ROW_INSERT_FAILED;
             }
         }
@@ -975,6 +1019,10 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
     return true;
 
 ROW_INSERT_FAILED:
+    DISPLAY_ERROR (
+        "Failed to insert row into table. Failed to complete auto analysis due "
+        "to internal error."
+    );
     reai_plugin_table_destroy (table);
     reai_fn_info_vec_destroy (new_name_mapping);
     reai_ann_fn_match_vec_destroy (fn_matches);
@@ -1087,7 +1135,10 @@ ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CSt
  * @return @c NULL otherwise.
  * */
 RzBinFile *reai_plugin_get_opened_binary_file (RzCore *core) {
-    RETURN_VALUE_IF (!core, NULL, ERR_INVALID_ARGUMENTS);
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot get opened binary file.");
+        return NULL;
+    }
 
     return core->bin ? core->bin->binfiles ?
                        core->bin->binfiles->length ?
@@ -1107,7 +1158,10 @@ RzBinFile *reai_plugin_get_opened_binary_file (RzCore *core) {
  * @return @c REAI_MODEL_UNKNOWN on failure.
  * */
 ReaiModel reai_plugin_get_ai_model_for_opened_binary_file (RzCore *core) {
-    RETURN_VALUE_IF (!core, REAI_MODEL_UNKNOWN, ERR_INVALID_ARGUMENTS);
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot guess AI model.");
+        return REAI_MODEL_UNKNOWN;
+    }
 
     RzBinFile *binfile = reai_plugin_get_opened_binary_file (core);
     if (binfile->o->info->os) {

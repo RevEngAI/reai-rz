@@ -44,9 +44,11 @@
  * @param msg
  * */
 void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
-    RETURN_IF (!msg, ERR_INVALID_ARGUMENTS);
+    if (!msg) {
+        DISPLAY_ERROR ("Invalid message. Cannot display.");
+    }
 
-    reai_log_printf(reai_logger(), level, "", "%s", msg);
+    reai_log_printf (reai_logger(), level, "DISPLAY", "%s", msg);
 
     if (level < REAI_LOG_LEVEL_ERROR) {
         reai_log_printf (reai_logger(), level, "", msg);
@@ -63,7 +65,10 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
 RZ_IPI Bool rz_plugin_init (RzCore* core) {
-    RETURN_VALUE_IF (!core, false, ERR_INVALID_ARGUMENTS);
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
+        return false;
+    }
 
     rzshell_cmddescs_init (core);
     return reai_plugin_init (core);
@@ -73,7 +78,11 @@ RZ_IPI Bool rz_plugin_init (RzCore* core) {
  * @b Will be called by rizin before unloading the reai_plugin()->
  * */
 RZ_IPI Bool rz_plugin_fini (RzCore* core) {
-    RETURN_VALUE_IF (!core, false, ERR_INVALID_ARGUMENTS);
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided. Failed to free plugin resources.");
+        return false;
+    }
+
     reai_plugin_deinit (core);
 
     /* Remove command group from rzshell. The name of this comamnd group must match

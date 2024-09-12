@@ -8,6 +8,7 @@
  * */
 
 /* plugin */
+#include "Reai/Types.h"
 #include <Plugin.h>
 #include <Table.h>
 
@@ -15,6 +16,7 @@
 #include <QDialog>
 #include <QTableWidget>
 #include <QVBoxLayout>
+#include <QHeaderView>
 
 /* lib stdc++ */
 #include <iomanip>
@@ -43,16 +45,21 @@ struct ReaiPluginTable : public QDialog {
 
    public:
     ReaiPluginTable() : QDialog (nullptr) {
-        table = new QTableWidget (this);
-
         QVBoxLayout* mainLayout = new QVBoxLayout (this);
         setLayout (mainLayout);
+
+        table = new QTableWidget (this);
+        // Turn off editing
+        table->setEditTriggers (QAbstractItemView::NoEditTriggers);
+        // Allow columns to stretch as much as posible
+        table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
 
         mainLayout->addWidget (table);
 
         // NOTE: this hardcoded, do we need to create an API for setting table title as welll?
         // In rizin, it would just print the title before printing table, in cutter it would set window title
-        setWindowTitle("Auto Analysis Results");
+        setWindowTitle ("Auto Analysis Results");
+        resize (600, 300);
     }
 
     /**
@@ -61,13 +68,13 @@ struct ReaiPluginTable : public QDialog {
     void addColumn (ColumnType type, const char* name) {
         cols.push_back (std::make_pair (QString (name), type));
 
-        table->insertColumn(table->columnCount());
+        table->insertColumn (table->columnCount());
 
         QStringList headerLabels;
-        for(const auto &[name, type] : cols) {
+        for (const auto& [name, type] : cols) {
             headerLabels << name;
         }
-        table->setHorizontalHeaderLabels(headerLabels);
+        table->setHorizontalHeaderLabels (headerLabels);
     }
 
     /**
@@ -81,10 +88,20 @@ struct ReaiPluginTable : public QDialog {
             return;
         }
 
-        table->insertRow (table->rowCount());
+        Size rowCount = table->rowCount();
+        table->insertRow (rowCount);
 
-        for (std::size_t i = 0; i < cols.size(); i++) {
-            table->setItem (table->rowCount() - 1, i, new QTableWidgetItem (row[i]));
+        LOG_DEBUG ("Adding new row at %zu", rowCount);
+
+        for (Size i = 0; i < cols.size(); i++) {
+            table->setItem (rowCount, i, new QTableWidgetItem (row[i]));
+
+            LOG_DEBUG (
+                "Inserting item \"%s\" at row = %zu and colu = %zu",
+                row[i].toLatin1().constData(),
+                rowCount,
+                i
+            );
         }
     }
 
@@ -126,13 +143,17 @@ ReaiPluginTable* reai_plugin_table_set_columnsf (ReaiPluginTable* table, const c
     va_list args;
     va_start (args, fmtstr);
 
+    LOG_DEBUG ("Setting columns");
+
     size_t len = strlen (fmtstr);
     for (size_t i = 0; i < len; ++i) {
         char format_char = fmtstr[i];
 
         /* all column names are of type const char* */
-        const char* column_name = va_arg (args, const char*);
+        CString column_name = va_arg (args, CString);
         table->addColumn (getColumnTypeFromFormatChar (format_char), column_name);
+
+        LOG_DEBUG ("New column \"%s\"", column_name);
     }
 
     va_end (args);
@@ -159,18 +180,27 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
     va_start (args, fmtstr);
 
     std::vector<QString> row;
-    size_t               len      = strlen (fmtstr);
     size_t               colIndex = 0;
 
-    for (size_t i = 0; i < len; ++i) {
+    LOG_DEBUG ("Adding new row with format string \"%s\"", fmtstr);
+    while (*fmtstr) {
         if (colIndex >= table->cols.size()) {
+            LOG_ERROR ("Give format string size is larger than number of columns in table.");
             break;
         }
 
-        QString cellData =
-            getItemStringFromVaListBasedOnType (getColumnTypeFromFormatChar (fmtstr[i]), args);
-        row.push_back (cellData);
+        QString value =
+            getItemStringFromVaListBasedOnType (getColumnTypeFromFormatChar (*fmtstr), args);
+        row.push_back (value);
+
+        LOG_DEBUG (
+            "Fetched \"%s\" value for format char \"%c\"",
+            value.toLatin1().constData(),
+            *fmtstr
+        );
+
         colIndex++;
+        fmtstr++;
     }
 
     va_end (args);
@@ -183,47 +213,47 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
  * @brief Print table
  * */
 void reai_plugin_table_show (ReaiPluginTable* table) {
-    table->exec();
+    table->show();
 }
 
 PRIVATE QString getItemStringFromVaListBasedOnType (ColumnType type, va_list args) {
     std::ostringstream oss;
     switch (type) {
         case ColumnType::STRING : {
-            const char* str = va_arg (args, const char*);
+            CString str = va_arg (args, CString);
             return QString (str);
         }
         case ColumnType::BOOLEAN : {
-            bool b = va_arg (args, int); // va_arg promotes bool to int
+            Bool b = va_arg (args, Int32); // va_arg promotes bool to int
             return b ? QString ("true") : QString ("false");
         }
         case ColumnType::INTEGER : {
-            int i = va_arg (args, int);
+            Int32 i = va_arg (args, Int32);
             oss << i;
             return QString::fromStdString (oss.str());
         }
         case ColumnType::NUMBER : {
-            unsigned long long n = va_arg (args, unsigned long long);
+            Uint64 n = va_arg (args, Uint64);
             oss << n;
             return QString::fromStdString (oss.str());
         }
         case ColumnType::SIZE : {
-            unsigned long long size = va_arg (args, unsigned long long);
-            oss << size; // TODO: Simple conversion; you might need to format based on units
+            Uint64 size = va_arg (args, Uint64);
+            oss << size;
             return QString::fromStdString (oss.str());
         }
         case ColumnType::DOUBLE : {
-            double d = va_arg (args, double);
+            Float64 d = va_arg (args, Float64);
             oss << d;
             return QString::fromStdString (oss.str());
         }
         case ColumnType::HEX_SMALL : {
-            int x = va_arg (args, int);
+            Int32 x = va_arg (args, Int32);
             oss << std::hex << x;
             return QString::fromStdString (oss.str());
         }
         case ColumnType::HEX_CAPS : {
-            int x = va_arg (args, int);
+            Int32 x = va_arg (args, Int32);
             oss << std::hex << std::uppercase << x;
             return QString::fromStdString (oss.str());
         }

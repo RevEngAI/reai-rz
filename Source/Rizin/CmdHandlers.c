@@ -8,6 +8,7 @@
  * After adding a new command entry, implement corresponding handlers here and then compile.
  * */
 
+#include "Reai/Util/CStrVec.h"
 #include <Reai/AnalysisInfo.h>
 #include <Reai/AnnFnMatch.h>
 #include <Reai/Api/Api.h>
@@ -59,67 +60,87 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     CString api_key = argv[2];
     CString model   = argv[3];
 
-    RETURN_VALUE_IF (
-        (argc < 4) || !host || api_key || model,
-        RZ_CMD_STATUS_WRONG_ARGS,
-        ERR_INVALID_ARGUMENTS
-    );
+    if (argc < 4) {
+        DISPLAY_ERROR ("Insufficient arguments provided. Failed to parse command.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
+
+    if (!host) {
+        DISPLAY_ERROR ("Host is not specified. Failed to parse command.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
+
+    if (api_key) {
+        DISPLAY_ERROR ("API key should not be specified. Failed to parse command.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
+
+    if (model) {
+        DISPLAY_ERROR ("Model should not be specified. Failed to parse command.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
 
     /* check whether API key is correct or not */
-    RETURN_VALUE_IF (
-        !reai_config_check_api_key (api_key),
-        RZ_CMD_STATUS_ERROR,
-        "Invalid API key. API key must be in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-    );
+    if (!reai_config_check_api_key (api_key)) {
+        DISPLAY_ERROR (
+            "Invalid API key. API key must be in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     /* check whether version number is specified or not */
-    RETURN_VALUE_IF (
-        !strstr (host, "v1") || !strstr (host, "v2"),
-        RZ_CMD_STATUS_ERROR,
-        "Cannot detect API version. Host needs a version number to communicate with. Please append "
-        "a /v1, /v2, etc... at the end of host, depending on the API version you're using."
-    );
-
-    CString db_dir_path = NULL, log_dir_path = NULL;
+    if (!strstr (host, "v1") || !strstr (host, "v2")) {
+        DISPLAY_ERROR (
+            "Cannot detect API version. Host needs a version number to communicate with. Please "
+            "append "
+            "/v1, /v2, etc... at the end of host, depending on the API version you're using."
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     if (!reai_config_check_api_key (argv[2])) {
         DISPLAY_ERROR (
             "Provided API key is invalid. It's recommended to directly copy paste the API key from "
             "RevEng.AI dashboard."
         );
+        return RZ_CMD_STATUS_ERROR;
     }
 
+    CString db_dir_path = NULL, log_dir_path = NULL;
+
     db_dir_path = reai_plugin_get_default_database_dir_path();
-    GOTO_HANDLER_IF (!db_dir_path, FAILED, "Failed to get database directory path.");
+    if (!db_dir_path) {
+        DISPLAY_ERROR ("Failed to get database directory path.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     log_dir_path = reai_plugin_get_default_log_dir_path();
-    GOTO_HANDLER_IF (!log_dir_path, FAILED, "Failed to get log storage directory path.");
+    if (!log_dir_path) {
+        FREE (db_dir_path);
+        DISPLAY_ERROR ("Failed to get log storage directory path.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     /* attempt saving config */
     if (reai_plugin_save_config (host, api_key, model, db_dir_path, log_dir_path)) {
         /* try to reinit config after creating config */
-        RETURN_VALUE_IF (
-            !reai_plugin_init (core),
-            RZ_CMD_STATUS_ERROR,
-            "Failed to init plugin after creating a new config."
-        );
+        if (!reai_plugin_init (core)) {
+            DISPLAY_ERROR ("Failed to init plugin after creating a new config.");
+            FREE (log_dir_path);
+            FREE (db_dir_path);
+            return RZ_CMD_STATUS_ERROR;
+        }
     } else {
         DISPLAY_ERROR ("Failed to save config.");
+        FREE (log_dir_path);
+        FREE (db_dir_path);
+        return RZ_CMD_STATUS_ERROR;
     }
 
     FREE (log_dir_path);
     FREE (db_dir_path);
 
     return RZ_CMD_STATUS_OK;
-
-FAILED:
-    if (db_dir_path) {
-        FREE (db_dir_path);
-    }
-    if (log_dir_path) {
-        FREE (log_dir_path);
-    }
-    return RZ_CMD_STATUS_ERROR;
 }
 
 /**
@@ -133,11 +154,11 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
 
     ReaiRequest request = {.type = REAI_REQUEST_TYPE_HEALTH_CHECK};
 
-    RETURN_VALUE_IF (
-        !reai_request (reai(), &request, reai_response()) || !reai_response()->health_check.success,
-        RZ_CMD_STATUS_ERROR,
-        "Health check failed."
-    );
+    if (!reai_request (reai(), &request, reai_response()) ||
+        !reai_response()->health_check.success) {
+        DISPLAY_ERROR ("Health check failed.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     printf ("OK\n");
 
@@ -184,8 +205,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     const char** argv,
     RzOutputMode output_mode
 ) {
-    UNUSED (output_mode);
-    RETURN_VALUE_IF (argc < 4, RZ_CMD_STATUS_WRONG_ARGS, ERR_INVALID_ARGUMENTS);
+    UNUSED (output_mode && argc);
     LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
     /* parse args */
@@ -223,7 +243,13 @@ RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** a
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] upload binary");
 
-    return reai_plugin_upload_opened_binary_file (core) ? RZ_CMD_STATUS_OK : RZ_CMD_STATUS_ERROR;
+    if (reai_plugin_upload_opened_binary_file (core)) {
+        DISPLAY_ERROR ("File upload successful.");
+        return RZ_CMD_STATUS_OK;
+    } else {
+        DISPLAY_ERROR ("File upload failed.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 }
 
 /**
@@ -239,8 +265,8 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
     const char**      argv,
     RzCmdStateOutput* state
 ) {
+    UNUSED (state);
     LOG_TRACE ("[CMD] get analysis status");
-    RETURN_VALUE_IF (!state, RZ_CMD_STATUS_WRONG_ARGS, ERR_INVALID_ARGUMENTS);
 
     ReaiBinaryId binary_id = 0;
 
@@ -299,25 +325,30 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
 
     /* get file path of opened binary file */
     CString opened_file = reai_plugin_get_opened_binary_file_path (core);
-    RETURN_VALUE_IF (!opened_file, RZ_CMD_STATUS_ERROR, "No binary file opened.");
+    if (!opened_file) {
+        DISPLAY_ERROR ("No binary file opened.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     /* get binary id of opened file */
     ReaiBinaryId binary_id = reai_db_get_latest_analysis_for_file (reai_db(), opened_file);
-    RETURN_VALUE_IF (
-        !binary_id,
-        RZ_CMD_STATUS_ERROR,
-        "No analysis created for opened binary file."
-    );
+    if (!binary_id) {
+        DISPLAY_ERROR (
+            "No analysis exists for the opened binary file. Please ensure the binary file is "
+            "analyzed."
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     /* get analysis status from db after an update and check for completion */
     ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
-    RETURN_VALUE_IF (
-        !analysis_status,
-        RZ_CMD_STATUS_ERROR,
-        "Failed to get analysis status of binary from DB."
-    );
+    if (!analysis_status) {
+        DISPLAY_ERROR ("Failed to retrieve the analysis status of the binary from the database.");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
     if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
-        rz_cons_printf (
+        DISPLAY_ERROR (
             "Analysis not yet complete. Current status = \"%s\"\n",
             reai_analysis_status_to_cstr (analysis_status)
         );
@@ -327,14 +358,16 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     /* make request to get function infos */
     ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), binary_id);
     if (!fn_infos) {
-        PRINT_ERR ("Failed to get function info from RevEng.AI servers.");
+        DISPLAY_ERROR ("Failed to get function info from RevEng.AI servers.");
         return RZ_CMD_STATUS_ERROR;
     }
 
-
     // prepare table and print info
     RzTable* table = rz_table_new();
-    RETURN_VALUE_IF (!table, RZ_CMD_STATUS_ERROR, "Failed to create table.");
+    if (!table) {
+        DISPLAY_ERROR ("Failed to create the table.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     rz_table_set_columnsf (table, "nsxx", "function_id", "name", "vaddr", "size");
     REAI_VEC_FOREACH (fn_infos, fn, {
@@ -343,12 +376,12 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
 
     CString table_str = rz_table_tofancystring (table);
     if (!table_str) {
-        PRINT_ERR ("Failed to convert table to string.");
+        DISPLAY_ERROR ("Failed to convert table to string.");
         rz_table_free (table);
         return RZ_CMD_STATUS_ERROR;
     }
 
-    rz_cons_printf ("%s\n", table_str);
+    rz_cons_println (table_str);
 
     FREE (table_str);
     rz_table_free (table);
@@ -362,26 +395,24 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
  * @b Rename function with given function id to given new name.
  * */
 RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
     LOG_TRACE ("[CMD] rename function");
-    RETURN_VALUE_IF (
-        (argc < 3) || !argv || !argv[1] || !argv[2],
-        RZ_CMD_STATUS_WRONG_ARGS,
-        ERR_INVALID_ARGUMENTS
-    );
 
     /* new name to rename to */
     CString new_name = argv[2];
 
     /* parse function id string */
     ReaiFunctionId function_id = rz_num_math (core->num, argv[1]);
-    RETURN_VALUE_IF (!function_id, RZ_CMD_STATUS_ERROR, "Invalid function id.");
+    if (!function_id) {
+        DISPLAY_ERROR ("Invalid function ID provided. Cannot perform rename operation.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     /* perform rename operation */
-    RETURN_VALUE_IF (
-        !reai_rename_function (reai(), reai_response(), function_id, new_name),
-        RZ_CMD_STATUS_ERROR,
-        "Failed to rename function"
-    );
+    if (!reai_rename_function (reai(), reai_response(), function_id, new_name)) {
+        DISPLAY_ERROR ("Failed to rename the function. Please check the function ID and new name.");
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     // TODO: rename function in rizin as well
 
@@ -389,6 +420,8 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
 }
 
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED(core && argc && argv);
+
     rz_cons_println (
         "\n"
         "                             \n"
