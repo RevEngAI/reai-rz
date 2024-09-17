@@ -120,19 +120,19 @@ CString ConfigSetupDialog::getLogDirPath() {
 }
 
 void ConfigSetupDialog::setHost (CString value) {
-    leHost->setText(value);
+    leHost->setText (value);
 }
 
 void ConfigSetupDialog::setApiKey (CString value) {
-    leApiKey->setText(value);
+    leApiKey->setText (value);
 }
 
-void ConfigSetupDialog::setModel (CString value){
-    leModel->setText(value);
+void ConfigSetupDialog::setModel (CString value) {
+    leModel->setText (value);
 }
-void ConfigSetupDialog::setDbDirPath (CString value){
-    leDbDirPath->setText(value);
+void ConfigSetupDialog::setDbDirPath (CString value) {
+    leDbDirPath->setText (value);
 }
-void ConfigSetupDialog::setLogDirPath (CString value){
-    leLogDirPath->setText(value);
+void ConfigSetupDialog::setLogDirPath (CString value) {
+    leLogDirPath->setText (value);
 }

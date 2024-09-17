@@ -27,12 +27,39 @@
 
 /* libc */
 #include <rz_util/rz_sys.h>
-#include <stdarg.h>
+#include <signal.h>
 
 /* plugin includes */
 #include <Plugin.h>
 #include <Table.h>
 
+PRIVATE void handle_signal (Int32 signal_code) {
+    UNUSED (signal_code);
+
+    LOG_TRACE ("Entered signal handler. This is backup code and I'll try to get you a save exit.");
+    LOG_TRACE ("Received signal code : %d", signal_code);
+
+    reai_plugin_deinit (NULL);
+}
+
+PRIVATE void set_signal_handlers() {
+    static Bool signals_set = false;
+    if (signals_set) {
+        return;
+    }
+
+    LOG_TRACE ("Setting signal handlers...");
+
+    signal (SIGSEGV, handle_signal);
+    signal (SIGSTOP, handle_signal);
+    signal (SIGILL, handle_signal);
+    signal (SIGABRT, handle_signal);
+    signal (SIGTERM, handle_signal);
+    signal (SIGINT, handle_signal);
+
+    LOG_TRACE ("Setting signal handlers... DONE");
+    signals_set = true;
+}
 
 /**
  * @b Get name of function with given origin function id having max
@@ -192,6 +219,10 @@ PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
 ReaiPlugin *reai_plugin() {
     static ReaiPlugin *plugin = NULL;
 
+    if (plugin) {
+        return plugin;
+    }
+
     if (!(plugin = NEW (ReaiPlugin))) {
         DISPLAY_ERROR (ERR_OUT_OF_MEMORY);
         return NULL;
@@ -252,7 +283,6 @@ PRIVATE void reai_db_background_worker (ReaiPlugin *plugin) {
         return;
     }
 
-
     Size update_interval = 4;
 
     Reai *reai = reai_create (
@@ -290,6 +320,8 @@ PRIVATE void reai_db_background_worker (ReaiPlugin *plugin) {
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
 Bool reai_plugin_init (RzCore *core) {
+    set_signal_handlers();
+
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
         return false;
@@ -299,11 +331,9 @@ Bool reai_plugin_init (RzCore *core) {
     reai_config() = reai_config_load (NULL);
     if (!reai_config()) {
         DISPLAY_ERROR (
-            "Failed to load RevEng.AI toolkit config file. If "
-            "does not exist then please use "
-            "\"REi\" command & restart.\n"
+            "Failed to load RevEng.AI toolkit config file. Please make sure the config exists or "
+            "create a config using the plugin."
         );
-
         return false;
     }
 
@@ -313,7 +343,6 @@ Bool reai_plugin_init (RzCore *core) {
         DISPLAY_ERROR ("Failed to create Reai object.");
         return false;
     }
-
 
     /* create log directory if not present before creating new log files */
     rz_sys_mkdirp (reai_config()->log_dir_path);
@@ -329,6 +358,16 @@ Bool reai_plugin_init (RzCore *core) {
 
     /* create log file name */
     FMT (log_file_path, "%s/reai_%s.log", reai_config()->log_dir_path, current_time);
+
+    /**
+     * Note : This is not the best approach here, because the log will miss out any error that happened
+     * before or during log creation. It is only after the logger is created, the logger will start capturing
+     * all all traces and debugs.
+     *
+     * Since this works for now, let's just use it this way. Besides, if anything goes wrong before this,
+     * it's possible that user will see a debug message on screen. We're sacrificing a very small segment
+     * of log for this simplicity.
+     * */
 
     /* create logger */
     reai_logger() = reai_log_create (log_file_path);
@@ -380,8 +419,7 @@ Bool reai_plugin_init (RzCore *core) {
  * */
 Bool reai_plugin_deinit (RzCore *core) {
     if (!core) {
-        DISPLAY_ERROR ("Invalid core provided. Failed to free plugin resources.");
-        return false;
+        DISPLAY_WARN ("Invalid core provided. Some of the resources might not get freed.");
     }
 
     /* this must be destroyed first and set to NULL to signal the background
@@ -391,7 +429,7 @@ Bool reai_plugin_deinit (RzCore *core) {
         reai_plugin()->reai = NULL;
     }
 
-    if (reai_plugin()->background_worker) {
+    if (core && reai_plugin()->background_worker) {
         rz_th_wait (reai_plugin()->background_worker);
         rz_th_free (reai_plugin()->background_worker);
         reai_plugin()->background_worker = NULL;
@@ -499,38 +537,45 @@ Bool reai_plugin_save_config (
     CString log_dir_path
 ) {
     if (!host) {
+        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided host is invalid. Cannot save config.");
         return false;
     }
 
     if (!api_key) {
+        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided API key is invalid. Cannot save config.");
         return false;
     }
 
     if (!model) {
+        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided model is invalid. Cannot save config.");
         return false;
     }
 
     if (!db_dir_path) {
+        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided database directory path is invalid. Cannot save config.");
         return false;
     }
 
     if (!log_dir_path) {
+        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided log directory path is invalid. Cannot save config.");
         return false;
     }
 
     CString reai_config_file_path = reai_config_get_default_path();
     if (!reai_config_file_path) {
+        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to get config file default path.");
         return false;
     }
 
     FILE *reai_config_file = fopen (reai_config_file_path, "w");
     if (!reai_config_file) {
+        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         FREE (reai_config_file_path);
         DISPLAY_ERROR ("Failed to open config file. %s", strerror (errno));
         return false;
@@ -543,7 +588,6 @@ Bool reai_plugin_save_config (
     fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
 
     fclose (reai_config_file);
-    FREE (reai_config_file_path);
 
     return true;
 }

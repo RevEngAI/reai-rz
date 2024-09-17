@@ -98,8 +98,7 @@ void ReaiCutterPlugin::setupPlugin() {
 
     /* if plugin launch fails then terminate */
     if (!reai_plugin_init (core)) {
-        qInfo() << "Config not found. Please create a config using installation "
-                   "wizard.";
+        LOG_TRACE ("Plugin initialization incomplete.");
     }
 
     /* display dialog to get config settings */
@@ -421,6 +420,9 @@ void ReaiCutterPlugin::on_Setup() {
                         "Config saved successfully to \"%s\".",
                         reai_config_get_default_path()
                     );
+
+                    RzCoreLocked core (Core());
+                    reai_plugin_init (core);
                 } else {
                     DISPLAY_ERROR ("Failed to save config.");
                 }
