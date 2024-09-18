@@ -11,31 +11,13 @@
 #include "Reai/Types.h"
 #include <Plugin.h>
 #include <Table.h>
+#include <rz_util/rz_table.h>
 
 /* qt */
 #include <QDialog>
 #include <QTableWidget>
 #include <QVBoxLayout>
 #include <QHeaderView>
-
-/* lib stdc++ */
-#include <iomanip>
-#include <sstream>
-
-enum class ColumnType {
-    INVALID,
-    STRING,
-    BOOLEAN,
-    INTEGER,
-    NUMBER,
-    SIZE,
-    DOUBLE,
-    HEX_SMALL,
-    HEX_CAPS
-};
-
-PRIVATE QString    getItemStringFromVaListBasedOnType (ColumnType type, va_list args);
-PRIVATE ColumnType getColumnTypeFromFormatChar (Char format_char);
 
 /**
  * @b Cutter internal implementation of plugin table.
@@ -48,55 +30,61 @@ struct ReaiPluginTable : public QDialog {
         QVBoxLayout* mainLayout = new QVBoxLayout (this);
         setLayout (mainLayout);
 
-        table = new QTableWidget (this);
+        tableWidget = new QTableWidget (this);
         // Turn off editing
-        table->setEditTriggers (QAbstractItemView::NoEditTriggers);
+        tableWidget->setEditTriggers (QAbstractItemView::NoEditTriggers);
         // Allow columns to stretch as much as posible
-        table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
+        tableWidget->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
 
-        mainLayout->addWidget (table);
+        mainLayout->addWidget (tableWidget);
 
         // NOTE: this hardcoded, do we need to create an API for setting table title as welll?
         // In rizin, it would just print the title before printing table, in cutter it would set window title
         setWindowTitle ("Auto Analysis Results");
         resize (600, 300);
+
+        /* we also need the RzTable to be created to pull out contents from it after adding formatted rows */
+        rzTable = rz_table_new();
+        if (!rzTable) {
+            DISPLAY_ERROR ("Failed to create table. Behaviour is undefined if table is used.");
+        }
     }
 
     /**
      * @b Add a new column to this table with given name and type.
      * */
-    void addColumn (ColumnType type, const char* name) {
-        cols.push_back (std::make_pair (QString (name), type));
+    void addColumn (const char* name) {
+        tableWidget->insertColumn (tableWidget->columnCount());
 
-        table->insertColumn (table->columnCount());
-
-        QStringList headerLabels;
-        for (const auto& [name, type] : cols) {
-            headerLabels << name;
-        }
-        table->setHorizontalHeaderLabels (headerLabels);
+        headerLabels << name;
+        tableWidget->setHorizontalHeaderLabels (headerLabels);
     }
 
     /**
      * @b Add a new row into the table.
      * */
-    void addRow (const std::vector<QString>& row) {
-        if (row.size() != cols.size()) {
+    void addRow (const QStringList& row) {
+        if (row.size() != headerLabels.size()) {
             DISPLAY_ERROR (
                 "Row item count mismatch with number of columns. Cannot insert new row to table."
+                "Row item count = %lld and Column count = %lld",
+                row.size(),
+                headerLabels.size()
             );
             return;
         }
 
-        Size rowCount = table->rowCount();
-        table->insertRow (rowCount);
+        /* add a new row to table widget */
+        Size rowCount = tableWidget->rowCount();
+        tableWidget->insertRow (rowCount);
 
-        LOG_DEBUG ("Adding new row at %zu", rowCount);
+        LOG_TRACE ("Adding new row at %zu", rowCount);
 
-        for (Size i = 0; i < cols.size(); i++) {
-            table->setItem (rowCount, i, new QTableWidgetItem (row[i]));
+        /* populate the new row */
+        for (Int32 i = 0; i < headerLabels.size(); i++) {
+            tableWidget->setItem (rowCount, i, new QTableWidgetItem (row[i]));
 
-            LOG_DEBUG (
+            LOG_TRACE (
                 "Inserting item \"%s\" at row = %zu and colu = %zu",
                 row[i].toLatin1().constData(),
                 rowCount,
@@ -105,8 +93,9 @@ struct ReaiPluginTable : public QDialog {
         }
     }
 
-    QTableWidget*                               table;
-    std::vector<std::pair<QString, ColumnType>> cols;
+    QTableWidget* tableWidget;
+    RzTable*      rzTable;
+    QStringList   headerLabels;
 };
 
 /**
@@ -140,26 +129,27 @@ ReaiPluginTable* reai_plugin_table_set_columnsf (ReaiPluginTable* table, const c
         return nullptr; // Handle null pointers
     }
 
-    va_list args;
+    va_list args, rzArgs;
     va_start (args, fmtstr);
 
-    LOG_DEBUG ("Setting columns");
+    /* add column information to RzTable as well */
+    va_copy (rzArgs, args);
+    rz_table_set_vcolumnsf (table->rzTable, fmtstr, rzArgs);
+    va_end (rzArgs);
+
+    LOG_TRACE ("Setting columns");
 
     size_t len = strlen (fmtstr);
     for (size_t i = 0; i < len; ++i) {
-        char format_char = fmtstr[i];
-
-        /* all column names are of type const char* */
+        /* all column names are of type CString */
         CString column_name = va_arg (args, CString);
-        table->addColumn (getColumnTypeFromFormatChar (format_char), column_name);
-
-        LOG_DEBUG ("New column \"%s\"", column_name);
+        table->addColumn (column_name);
+        LOG_TRACE ("New column \"%s\"", column_name);
     }
 
     va_end (args);
     return table;
 }
-
 
 /**
  * @b Add a new row to table with given format and va args.
@@ -176,36 +166,28 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
         return nullptr; // Handle null pointers
     }
 
+    /* first add all data into rizin table */
     va_list args;
     va_start (args, fmtstr);
-
-    std::vector<QString> row;
-    size_t               colIndex = 0;
-
-    LOG_DEBUG ("Adding new row with format string \"%s\"", fmtstr);
-    while (*fmtstr) {
-        if (colIndex >= table->cols.size()) {
-            LOG_ERROR ("Give format string size is larger than number of columns in table.");
-            break;
-        }
-
-        QString value =
-            getItemStringFromVaListBasedOnType (getColumnTypeFromFormatChar (*fmtstr), args);
-        row.push_back (value);
-
-        LOG_DEBUG (
-            "Fetched \"%s\" value for format char \"%c\"",
-            value.toLatin1().constData(),
-            *fmtstr
-        );
-
-        colIndex++;
-        fmtstr++;
-    }
-
+    rz_table_add_vrowf (table->rzTable, fmtstr, args);
     va_end (args);
 
+    /* get last added row from RzTable */
+    RzVector* /* RzPVector */    rzTableRows = table->rzTable->rows;
+    RzPVector* /* const char* */ rzRow       = ((RzTableRow*)rz_vector_tail (rzTableRows))->items;
+
+    /* create a new row of strings for ReaiPluginTable */
+    QStringList row;
+    void**      cellData = NULL;
+    rz_pvector_foreach (rzRow, cellData) {
+        CString cellValue = *(CString*)cellData;
+        LOG_TRACE ("Adding cell value \"%s\" to new row", cellValue);
+        row << cellValue;
+    }
+
+    /* finally add the row to table */
     table->addRow (row);
+
     return table;
 }
 
@@ -213,79 +195,7 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
  * @brief Print table
  * */
 void reai_plugin_table_show (ReaiPluginTable* table) {
-    table->show();
-}
-
-PRIVATE QString getItemStringFromVaListBasedOnType (ColumnType type, va_list args) {
-    std::ostringstream oss;
-    switch (type) {
-        case ColumnType::STRING : {
-            CString str = va_arg (args, CString);
-            return QString (str);
-        }
-        case ColumnType::BOOLEAN : {
-            Bool b = va_arg (args, Int32); // va_arg promotes bool to int
-            return b ? QString ("true") : QString ("false");
-        }
-        case ColumnType::INTEGER : {
-            Int32 i = va_arg (args, Int32);
-            oss << i;
-            return QString::fromStdString (oss.str());
-        }
-        case ColumnType::NUMBER : {
-            Uint64 n = va_arg (args, Uint64);
-            oss << n;
-            return QString::fromStdString (oss.str());
-        }
-        case ColumnType::SIZE : {
-            Uint64 size = va_arg (args, Uint64);
-            oss << size;
-            return QString::fromStdString (oss.str());
-        }
-        case ColumnType::DOUBLE : {
-            Float64 d = va_arg (args, Float64);
-            oss << d;
-            return QString::fromStdString (oss.str());
-        }
-        case ColumnType::HEX_SMALL : {
-            Int32 x = va_arg (args, Int32);
-            oss << std::hex << x;
-            return QString::fromStdString (oss.str());
-        }
-        case ColumnType::HEX_CAPS : {
-            Int32 x = va_arg (args, Int32);
-            oss << std::hex << std::uppercase << x;
-            return QString::fromStdString (oss.str());
-        }
-        default :
-            return QString();
-    }
-}
-
-
-PRIVATE ColumnType getColumnTypeFromFormatChar (Char format_char) {
-    switch (format_char) {
-        case 's' :
-        case 'z' :
-            return ColumnType::STRING;
-        case 'b' :
-            return ColumnType::BOOLEAN;
-        case 'i' :
-        case 'd' :
-            return ColumnType::INTEGER;
-        case 'n' :
-            return ColumnType::NUMBER;
-        case 'u' :
-            return ColumnType::SIZE;
-        case 'f' :
-            return ColumnType::DOUBLE;
-        case 'x' :
-            return ColumnType::HEX_SMALL;
-        case 'X' :
-            return ColumnType::HEX_CAPS;
-        default :
-            return ColumnType::INVALID;
-    }
+    table->exec();
 }
 
 #include "Table.moc"

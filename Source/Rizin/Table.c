@@ -14,21 +14,6 @@
 /* rizin */
 #include <rz_util/rz_table.h>
 
-typedef enum ColumnType {
-    INVALID,
-    STRING,
-    BOOLEAN,
-    INTEGER,
-    NUMBER,
-    SIZE,
-    DOUBLE,
-    HEX_SMALL,
-    HEX_CAPS
-} ColumnType;
-
-PRIVATE const char* getItemStringFromVaListBasedOnType (ColumnType type, va_list args);
-PRIVATE ColumnType  getColumnTypeFromFormatChar (Char format_char);
-
 /**
  * @b Create plugin table for Rizin plugin.
  *
@@ -119,13 +104,7 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
 
     va_list ap;
     va_start (ap, fmtstr);
-
-	RzPVector *row = rz_pvector_new(free);
-	for (const char *f = fmtstr; *f; f++) {
-        rz_pvector_push(row, (void*)getItemStringFromVaListBasedOnType(getColumnTypeFromFormatChar(*f), ap));
-	}
-	rz_table_add_row_vec((RzTable*)table, row);
-
+    rz_table_add_vrowf ((RzTable*)table, fmtstr, ap);
     va_end (ap);
 
     return table;
@@ -141,83 +120,4 @@ void reai_plugin_table_show (ReaiPluginTable* table) {
         return;
     }
     rz_cons_printf ("%s\n", table_str);
-}
-
-PRIVATE const char* getItemStringFromVaListBasedOnType (ColumnType type, va_list args) {
-    switch (type) {
-        case STRING : {
-            const char* str = va_arg (args, const char*);
-            return strdup (str);
-        }
-        case BOOLEAN : {
-            bool b = va_arg (args, int); // va_arg promotes bool to int
-            return b ? strdup ("true") : strdup ("false");
-        }
-        case INTEGER : {
-            int i = va_arg (args, int);
-            FMT (str_i, "%d", i);
-            return strdup (str_i);
-        }
-        case NUMBER : {
-            unsigned long long n = va_arg (args, unsigned long long);
-            FMT (str_llu, "%llu", n);
-            return strdup (str_llu);
-        }
-        case SIZE : {
-            size_t  size    = va_arg (args, size_t);
-            CString units[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
-
-            size_t unit_index = 0;
-            while (size >= 1024 && unit_index < ARRAY_SIZE (units) - 1) {
-                size /= 1024;
-                unit_index++;
-            }
-
-            FMT (str_unit, "%zu %s", size, units[unit_index]);
-            return strdup (str_unit);
-        }
-        case DOUBLE : {
-            double d = va_arg (args, double);
-            FMT (str_double, "%lf", d);
-            return strdup (str_double);
-        }
-        case HEX_SMALL : {
-            int x = va_arg (args, int);
-            FMT (str_hex, "%x", x);
-            return strdup (str_hex);
-        }
-        case HEX_CAPS : {
-            int x = va_arg (args, int);
-            FMT (str_hex, "%X", x);
-            return strdup (str_hex);
-        }
-        default :
-            return strdup ("");
-    }
-}
-
-
-PRIVATE ColumnType getColumnTypeFromFormatChar (Char format_char) {
-    switch (format_char) {
-        case 's' :
-        case 'z' :
-            return STRING;
-        case 'b' :
-            return BOOLEAN;
-        case 'i' :
-        case 'd' :
-            return INTEGER;
-        case 'n' :
-            return NUMBER;
-        case 'u' :
-            return SIZE;
-        case 'f' :
-            return DOUBLE;
-        case 'x' :
-            return HEX_SMALL;
-        case 'X' :
-            return HEX_CAPS;
-        default :
-            return INVALID;
-    }
 }
