@@ -46,16 +46,11 @@
 void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     if (!msg) {
         DISPLAY_ERROR ("Invalid message. Cannot display.");
+        return;
     }
 
-    reai_log_printf (reai_logger(), level, "DISPLAY", "%s", msg);
-
-    if (level < REAI_LOG_LEVEL_ERROR) {
-        reai_log_printf (reai_logger(), level, "", msg);
-    } else {
-        rz_cons_printf ("%s\n", msg);
-        reai_log_printf (reai_logger(), level, "", msg);
-    }
+    rz_cons_printf ("%s\n", msg);
+    reai_log_printf (reai_logger(), level, "", msg);
 }
 
 /**

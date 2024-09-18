@@ -40,6 +40,7 @@ PRIVATE void handle_signal (Int32 signal_code) {
     LOG_TRACE ("Received signal code : %d", signal_code);
 
     reai_plugin_deinit (NULL);
+    exit (1);
 }
 
 PRIVATE void set_signal_handlers() {
@@ -51,11 +52,8 @@ PRIVATE void set_signal_handlers() {
     LOG_TRACE ("Setting signal handlers...");
 
     signal (SIGSEGV, handle_signal);
-    signal (SIGSTOP, handle_signal);
     signal (SIGILL, handle_signal);
     signal (SIGABRT, handle_signal);
-    signal (SIGTERM, handle_signal);
-    signal (SIGINT, handle_signal);
 
     LOG_TRACE ("Setting signal handlers... DONE");
     signals_set = true;
