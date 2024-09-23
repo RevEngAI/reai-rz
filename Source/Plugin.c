@@ -1083,7 +1083,8 @@ ROW_INSERT_FAILED:
  * @return Non-zero function ID corresponding to given function name on success, and if found.
  * @return zero otherwise.
  * */
-ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CString fn_name) {
+ReaiFunctionId
+    reai_plugin_get_function_id_for_rizin_function (RzCore *core, RzAnalysisFunction *rz_fn) {
     if (!core) {
         DISPLAY_ERROR (
             "Invalid rizin core provided. Cannot fetch function ID for given function name."
@@ -1091,38 +1092,8 @@ ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CSt
         return 0;
     }
 
-    if (!fn_name || !strlen (fn_name)) {
-        DISPLAY_ERROR ("Provided function name is invalid. Cannot get a function ID.");
-        return 0;
-    }
-
-    /* get list of all functions to get information about this function */
-    RzList *rz_fns = rz_analysis_function_list (core->analysis);
-    if (!rz_fns) {
-        DISPLAY_ERROR ("Rizin analysis not performed yet. Please perform rizin analysis.");
-        return 0;
-    }
-
-    /* go over all functions and find a function with matching name and get it's infp */
-    RzListIter         *fn_node   = NULL;
-    void               *node_data = NULL;
-    RzAnalysisFunction *rz_fn     = NULL;
-    rz_list_foreach (rz_fns, fn_node, node_data) {
-        RzAnalysisFunction *fn = (RzAnalysisFunction *)node_data;
-        if (!strcmp (fn->name, fn_name)) {
-            rz_fn = fn;
-            LOG_TRACE (
-                "Found function in Rizin with name \"%s\". Has address = \"%d\", size = \"%d\"",
-                rz_fn->name ? rz_fn->name : "no-name",
-                rz_fn->addr,
-                rz_analysis_function_linear_size (rz_fn)
-            );
-            break;
-        }
-    }
-
-    if (!rz_fn) {
-        DISPLAY_ERROR ("Cannot find a function with given name in rizin.");
+    if (!rz_fn || !rz_fn->name) {
+        DISPLAY_ERROR ("Invalid Rizin function provided. Cannot get a function ID.");
         return 0;
     }
 
@@ -1163,7 +1134,7 @@ ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore *core, CSt
         }
     });
 
-    LOG_TRACE ("Function ID not found for function \"%s\"", fn_name);
+    LOG_TRACE ("Function ID not found for function \"%s\"", rz_fn->name);
 
     return 0;
 }
@@ -1182,14 +1153,36 @@ RzBinFile *reai_plugin_get_opened_binary_file (RzCore *core) {
         return NULL;
     }
 
-    return core->bin ? core->bin->binfiles ?
-                       core->bin->binfiles->length ?
-                       rz_list_head (core->bin->binfiles) ?
-                       rz_list_iter_get_data (rz_list_head (core->bin->binfiles)) :
-                       NULL :
-                       NULL :
-                       NULL :
-                       NULL;
+    if (!core->bin) {
+        DISPLAY_ERROR (
+            "Seems like no binary file is opened yet. Binary container object is invalid. Cannot "
+            "get opened binary file."
+        );
+        return NULL;
+    }
+
+    if (!core->bin->binfiles) {
+        DISPLAY_ERROR (
+            "Seems like no binary file is opened yet. Binary file list is invalid. Cannot "
+            "get opened binary file."
+        );
+        return NULL;
+    }
+
+    if (!core->bin->binfiles->length) {
+        DISPLAY_ERROR ("Seems like no binary file is opened yet. Cannot get opened binary file.");
+        return NULL;
+    }
+
+    RzListIter *head = rz_list_head (core->bin->binfiles);
+    if (!head) {
+        DISPLAY_ERROR (
+            "Cannot get object reference to currently opened binary file. Internal Rizin error."
+        );
+        return NULL;
+    }
+
+    return rz_list_iter_get_data (head);
 }
 
 /**
@@ -1206,7 +1199,8 @@ ReaiModel reai_plugin_get_ai_model_for_opened_binary_file (RzCore *core) {
     }
 
     RzBinFile *binfile = reai_plugin_get_opened_binary_file (core);
-    if (binfile->o->info->os) {
+
+    if (binfile && binfile->o && binfile->o->info && binfile->o->info->os) {
         CString os = binfile->o->info->os;
         if (!strcmp (os, "linux")) {
             return REAI_MODEL_X86_LINUX;
@@ -1261,5 +1255,92 @@ Uint64 reai_plugin_get_opened_binary_file_baseaddr (RzCore *core) {
  * @return 0 otherwise.
  * */
 Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore *core) {
-    return core ? core->analysis ? core->analysis->fcns ? core->analysis->fcns->length : 0 : 0 : 0;
+    if (!core) {
+        DISPLAY_ERROR ("Invalid Rizin core provided. Cannot get analysis function count.");
+        return 0;
+    }
+
+    if (!core->analysis) {
+        DISPLAY_ERROR (
+            "Seems like analysis is not performed yet. The analysis object is invalid. Cannot get "
+            "analysis function count."
+        );
+        return 0;
+    }
+
+    RzList *fns = rz_analysis_function_list (core->analysis);
+    if (!fns) {
+        DISPLAY_ERROR (
+            "Seems like analysis is not performed yet. Function list is invalid. Cannot get "
+            "function with given name."
+        );
+        return 0;
+    }
+
+    return fns->length;
+}
+
+/**
+ * @b Get reference to `RzAnalysisFunction` with given name.
+ *
+ * @param core Rizin core.
+ * @param name Name of function to get reference of.
+ *
+ * @return `RzAnalyisFunction` on success.
+ * @return NULL otherwise.
+ * */
+RzAnalysisFunction *reai_plugin_get_rizin_analysis_function_with_name (RzCore *core, CString name) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid Rizin core provided. Cannot get function with given name.");
+        return NULL;
+    }
+
+    if (!name) {
+        DISPLAY_ERROR ("Invalid function name provided. Cannot get function with given name.");
+        return NULL;
+    }
+
+    if (!core->analysis) {
+        DISPLAY_ERROR (
+            "Seems like analysis is not performed yet. Analysis object is invalid. Cannot get "
+            "function with given name."
+        );
+        return NULL;
+    }
+
+    RzList *fns = rz_analysis_function_list (core->analysis);
+    if (!fns) {
+        DISPLAY_ERROR (
+            "Seems like analysis is not performed yet. Function list is invalid. Cannot get "
+            "function with given name."
+        );
+        return NULL;
+    }
+
+    RzListIter         *fn_iter = NULL;
+    RzAnalysisFunction *fn      = NULL;
+    rz_list_foreach (fns, fn_iter, fn) {
+        if (!fn->name) {
+            LOG_ERROR (
+                "Function at address 0x%016llx of size 0x%016llx has name=NULL.",
+                fn->addr,
+                rz_analysis_function_linear_size (fn)
+            );
+            continue;
+        }
+
+        if (!strcmp (fn->name, name)) {
+            LOG_TRACE (
+                "Found function with name \"%s\" at address 0x%016llx and has size 0x%016llx",
+                name,
+                fn->addr,
+                rz_analysis_function_linear_size (fn)
+            );
+            return fn;
+        }
+    }
+
+    LOG_TRACE ("Failed to find function with name \"%s\"", name);
+
+    return NULL;
 }

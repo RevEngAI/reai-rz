@@ -83,17 +83,17 @@ commands:
     cname: rename_function
     summary: Rename function with given function id to given name.
     args:
-      - name: function_id
-        type: RZ_CMD_ARG_TYPE_NUM
+      - name: old_name
+        type: RZ_CMD_ARG_TYPE_STRING
         optional: false
       - name: new_name
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
     details:
-      - name: Function ID
+      - name: Old name
         entries:
-          - text: "3769845"
-            comment: "Function ID assigned by created analysis"
+          - text: "fcn.0000f9da"
+            comment: "Old function name"
       - name: New name
         entries:
           - text: "fopen"

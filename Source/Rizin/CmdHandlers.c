@@ -398,29 +398,34 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
     UNUSED (argc);
     LOG_TRACE ("[CMD] rename function");
 
-    /* new name to rename to */
+    CString old_name = argv[1];
     CString new_name = argv[2];
 
-    /* parse function id string */
-    ReaiFunctionId function_id = rz_num_math (core->num, argv[1]);
-    if (!function_id) {
-        DISPLAY_ERROR ("Invalid function ID provided. Cannot perform rename operation.");
+    RzAnalysisFunction* fn = reai_plugin_get_rizin_analysis_function_with_name (core, old_name);
+    if (!fn) {
+        DISPLAY_ERROR ("Function with given name not found.");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
+    if (!fn_id) {
+        DISPLAY_ERROR ("Failed to get function id of function with given name.");
         return RZ_CMD_STATUS_ERROR;
     }
 
     /* perform rename operation */
-    if (!reai_rename_function (reai(), reai_response(), function_id, new_name)) {
+    if (reai_rename_function (reai(), reai_response(), fn_id, new_name)) {
+        rz_analysis_function_rename (fn, new_name);
+    } else {
         DISPLAY_ERROR ("Failed to rename the function. Please check the function ID and new name.");
         return RZ_CMD_STATUS_ERROR;
     }
-
-    // TODO: rename function in rizin as well
 
     return RZ_CMD_STATUS_OK;
 }
 
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED(core && argc && argv);
+    UNUSED (core && argc && argv);
 
     rz_cons_println (
         "\n"

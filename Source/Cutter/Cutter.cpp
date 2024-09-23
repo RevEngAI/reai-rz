@@ -327,7 +327,10 @@ void ReaiCutterPlugin::on_RenameFns() {
         PRINT_ERR ("OLDNAME = %s \t NEWNAME= %s", oldNameCstr, newNameCstr);
 
         /* get function id for old name */
-        ReaiFunctionId fn_id = reai_plugin_get_function_id_from_function_name (core, oldNameCstr);
+        RzAnalysisFunction *rz_fn =
+            reai_plugin_get_rizin_analysis_function_with_name (core, oldNameCstr);
+        ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, rz_fn);
+
         if (!fn_id) {
             DISPLAY_ERROR (
                 "Failed to get a function id for function \"%s\". Cannot perform rename for this "
@@ -346,13 +349,18 @@ void ReaiCutterPlugin::on_RenameFns() {
             }
         }
 
+        /* NOTE: It is assumed here that once name is appended into new name map, RevEng.AI will surely rename all functions.
+         * This means if anyone breaks this assumption, things can go bad. */
+
         /* add new name to new name map */
-        if (!reai_fn_info_vec_append (
+        if (reai_fn_info_vec_append (
                 new_name_map,
                 ((ReaiFnInfo[]) {
                     {.id = fn_id, .name = newNameCstr}
         })
             )) {
+            Core()->renameFunction (rz_fn->addr, newNameCstr);
+        } else {
             DISPLAY_ERROR (
                 "Failed to insert rename information into new name map. Cannot continue further."
             );
@@ -374,8 +382,6 @@ void ReaiCutterPlugin::on_RenameFns() {
     } else {
         DISPLAY_INFO ("Batch rename operation completed successfully.");
     }
-
-    // TODO : rename function in rizin as well
 
     reai_fn_info_vec_destroy (new_name_map);
 }

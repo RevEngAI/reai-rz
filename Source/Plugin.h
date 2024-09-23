@@ -65,8 +65,9 @@ extern "C" {
                       Size    max_results_per_function,
                       Float64 min_confidence
                   );
-    ReaiBinaryId   reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
-    ReaiFunctionId reai_plugin_get_function_id_from_function_name (RzCore* core, CString fn_name);
+    ReaiBinaryId reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
+    ReaiFunctionId
+        reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);
 
     RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
@@ -74,6 +75,8 @@ extern "C" {
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
     Uint64     reai_plugin_get_opened_binary_file_baseaddr (RzCore* core);
     Uint64     reai_plugin_get_rizin_analysis_function_count (RzCore* core);
+    RzAnalysisFunction*
+        reai_plugin_get_rizin_analysis_function_with_name (RzCore* core, CString name);
 
 #include "Override.h"
 
