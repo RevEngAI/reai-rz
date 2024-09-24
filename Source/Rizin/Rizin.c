@@ -50,7 +50,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     }
 
     rz_cons_printf ("%s\n", msg);
-    reai_log_printf (reai_logger(), level, "", msg);
+    reai_log_printf (reai_logger(), level, "display", msg);
 }
 
 /**

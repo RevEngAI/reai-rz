@@ -8,7 +8,6 @@
  * After adding a new command entry, implement corresponding handlers here and then compile.
  * */
 
-#include "Reai/Util/CStrVec.h"
 #include <Reai/AnalysisInfo.h>
 #include <Reai/AnnFnMatch.h>
 #include <Reai/Api/Api.h>
@@ -398,10 +397,18 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
     UNUSED (argc);
     LOG_TRACE ("[CMD] rename function");
 
-    CString old_name = argv[1];
+    Uint64  fn_addr  = rz_num_get (core->num, argv[1]);
     CString new_name = argv[2];
 
-    RzAnalysisFunction* fn = reai_plugin_get_rizin_analysis_function_with_name (core, old_name);
+    if (!core->analysis) {
+        DISPLAY_ERROR (
+            "Seems like Rizin analysis is not performed yet. Cannot get function at given address. "
+            "Cannot rename function at given address."
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    RzAnalysisFunction* fn = rz_analysis_get_function_at (core->analysis, fn_addr);
     if (!fn) {
         DISPLAY_ERROR ("Function with given name not found.");
         return RZ_CMD_STATUS_ERROR;

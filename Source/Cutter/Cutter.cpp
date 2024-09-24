@@ -58,7 +58,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
         [REAI_LOG_LEVEL_FATAL] = "Critical"
     };
 
-    reai_log_printf (reai_logger(), level, "", "%s", msg);
+    reai_log_printf (reai_logger(), level, "display", "%s", msg);
 
     switch (level) {
         case REAI_LOG_LEVEL_INFO :

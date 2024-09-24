@@ -49,13 +49,10 @@ PRIVATE void set_signal_handlers() {
         return;
     }
 
-    LOG_TRACE ("Setting signal handlers...");
-
     signal (SIGSEGV, handle_signal);
     signal (SIGILL, handle_signal);
     signal (SIGABRT, handle_signal);
 
-    LOG_TRACE ("Setting signal handlers... DONE");
     signals_set = true;
 }
 
@@ -1262,7 +1259,8 @@ Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore *core) {
 
     if (!core->analysis) {
         DISPLAY_ERROR (
-            "Seems like analysis is not performed yet. The analysis object is invalid. Cannot get "
+            "Seems like Rizin analysis is not performed yet. The analysis object is invalid. "
+            "Cannot get "
             "analysis function count."
         );
         return 0;
@@ -1271,7 +1269,7 @@ Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore *core) {
     RzList *fns = rz_analysis_function_list (core->analysis);
     if (!fns) {
         DISPLAY_ERROR (
-            "Seems like analysis is not performed yet. Function list is invalid. Cannot get "
+            "Seems like Rizin analysis is not performed yet. Function list is invalid. Cannot get "
             "function with given name."
         );
         return 0;
@@ -1302,8 +1300,8 @@ RzAnalysisFunction *reai_plugin_get_rizin_analysis_function_with_name (RzCore *c
 
     if (!core->analysis) {
         DISPLAY_ERROR (
-            "Seems like analysis is not performed yet. Analysis object is invalid. Cannot get "
-            "function with given name."
+            "Seems like Rizin analysis is not performed yet. Analysis object is invalid. Cannot "
+            "get function with given name."
         );
         return NULL;
     }
@@ -1311,7 +1309,7 @@ RzAnalysisFunction *reai_plugin_get_rizin_analysis_function_with_name (RzCore *c
     RzList *fns = rz_analysis_function_list (core->analysis);
     if (!fns) {
         DISPLAY_ERROR (
-            "Seems like analysis is not performed yet. Function list is invalid. Cannot get "
+            "Seems like Rizin analysis is not performed yet. Function list is invalid. Cannot get "
             "function with given name."
         );
         return NULL;
