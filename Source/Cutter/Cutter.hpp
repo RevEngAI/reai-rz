@@ -6,18 +6,18 @@
  * */
 
 #ifndef REAI_PLUGIN_CUTTER_CUTTER_HPP
-#    define REAI_PLUGIN_CUTTER_CUTTER_HPP
+#define REAI_PLUGIN_CUTTER_CUTTER_HPP
 
 /* cutter */
-#    include <cutter/CutterApplication.h>
-#    include <cutter/core/MainWindow.h>
-#    include <cutter/plugins/CutterPlugin.h>
+#include <cutter/CutterApplication.h>
+#include <cutter/core/MainWindow.h>
+#include <cutter/plugins/CutterPlugin.h>
 
 /* qt */
-#    include <QObject>
+#include <QObject>
 
 /* plugin */
-#    include <Cutter/Ui/ConfigSetupDialog.hpp>
+#include <Cutter/Ui/ConfigSetupDialog.hpp>
 
 /**
  * @b RevEngAI Cutter Plugin class.
@@ -38,13 +38,14 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actToggleReaiPlugin = nullptr;
 
     /* revengai's menu item actions */
-    QAction *actUploadBin                   = nullptr;
-    QAction *actCreateAnalysis              = nullptr;
-    QAction *actCheckAnalysisStatus         = nullptr;
-    QAction *actAutoAnalyzeBinSym           = nullptr;
-    QAction *actRenameFns = nullptr;
-    QAction *actBinAnalysisHistory          = nullptr;
-    QAction *actSetup                       = nullptr;
+    QAction *actUploadBin                = nullptr;
+    QAction *actCreateAnalysis           = nullptr;
+    QAction *actCheckAnalysisStatus      = nullptr;
+    QAction *actAutoAnalyzeBinSym        = nullptr;
+    QAction *actRenameFns                = nullptr;
+    QAction *actFunctionSimilaritySearch = nullptr;
+    QAction *actBinAnalysisHistory       = nullptr;
+    QAction *actSetup                    = nullptr;
 
     /* display dialog to get config settings */
     ConfigSetupDialog *setupDialog;
@@ -75,6 +76,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     void on_CheckAnalysisStatus();
     void on_AutoAnalyzeBinSym();
     void on_RenameFns();
+    void on_FunctionSimilaritySearch();
     void on_BinAnalysisHistory();
     void on_Setup();
 };

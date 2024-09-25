@@ -7,7 +7,6 @@
 
 
 /* rizin */
-#include "Cutter/Ui/FunctionRenameDialog.hpp"
 #include "Reai/Types.h"
 #include <Cutter.h>
 #include <rz_core.h>
@@ -34,6 +33,7 @@
 /* plugin */
 #include <Cutter/Ui/ConfigSetupDialog.hpp>
 #include <Cutter/Ui/FunctionRenameDialog.hpp>
+#include <Cutter/Ui/FunctionSimilarityDialog.hpp>
 #include <Plugin.h>
 #include <Cutter/Cutter.hpp>
 
@@ -185,13 +185,14 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         return;
     }
 
-    actUploadBin           = reaiMenu->addAction ("Upload Binary");
-    actCreateAnalysis      = reaiMenu->addAction ("Create New Analysis");
-    actCheckAnalysisStatus = reaiMenu->addAction ("Check Analysis Status");
-    actRenameFns           = reaiMenu->addAction ("Rename Functions");
-    actAutoAnalyzeBinSym   = reaiMenu->addAction ("Auto Analyze Binary");
-    actBinAnalysisHistory  = reaiMenu->addAction ("Binary Analysis History");
-    actSetup               = reaiMenu->addAction ("Plugin Config Setup");
+    actUploadBin                = reaiMenu->addAction ("Upload Binary");
+    actCreateAnalysis           = reaiMenu->addAction ("Create New Analysis");
+    actCheckAnalysisStatus      = reaiMenu->addAction ("Check Analysis Status");
+    actRenameFns                = reaiMenu->addAction ("Rename Functions");
+    actAutoAnalyzeBinSym        = reaiMenu->addAction ("Auto Analyze Binary");
+    actFunctionSimilaritySearch = reaiMenu->addAction ("Function Similarity Search");
+    actBinAnalysisHistory       = reaiMenu->addAction ("Binary Analysis History");
+    actSetup                    = reaiMenu->addAction ("Plugin Config Setup");
 
     connect (actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
     connect (actCreateAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_CreateAnalysis);
@@ -200,6 +201,12 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         &QAction::triggered,
         this,
         &ReaiCutterPlugin::on_AutoAnalyzeBinSym
+    );
+    connect (
+        actFunctionSimilaritySearch,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_FunctionSimilaritySearch
     );
     connect (
         actBinAnalysisHistory,
@@ -444,4 +451,11 @@ void ReaiCutterPlugin::on_Setup() {
             on_Setup(); /* continue setup */
         }
     }
+}
+
+void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
+    RzCoreLocked              core (Core());
+    FunctionSimilarityDialog *searchDlg =
+        new FunctionSimilarityDialog ((QWidget *)this->parent(), core);
+    searchDlg->show();
 }

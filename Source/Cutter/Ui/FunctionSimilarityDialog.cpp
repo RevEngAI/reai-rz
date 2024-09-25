@@ -17,9 +17,10 @@
 #include <QPushButton>
 #include <QHeaderView>
 #include <QCompleter>
+#include <QLabel>
 
 /* cutter */
-#include <cutter/Cutter.hpp>
+#include <cutter/core/Cutter.h>
 
 /* reai */
 #include <Reai/Util/Vec.h>
@@ -68,13 +69,17 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
         QHBoxLayout* searchBarLayout = new QHBoxLayout;
         mainLayout->addLayout (searchBarLayout);
 
-        searchBar = new QLineEdit (this);
-        searchBar->setPlaceholderText ("Type to search...");
-        searchBarLayout->addWidget (searchBar);
+        searchBarInput = new QLineEdit (this);
+        searchBarInput->setPlaceholderText ("Type to search...");
+        searchBarLayout->addWidget (searchBarInput);
 
         fnNameCompleter = new QCompleter (fnNamesList);
         fnNameCompleter->setCaseSensitivity (Qt::CaseInsensitive);
-        searchBar->setCompleter (fnNameCompleter);
+        searchBarInput->setCompleter (fnNameCompleter);
+
+        maxResultsInput = new QLineEdit (this);
+        maxResultsInput->setPlaceholderText ("Maximum search result count... eg: 5");
+        searchBarLayout->addWidget (maxResultsInput);
 
         QPushButton* searchButton = new QPushButton ("Search", this);
         searchBarLayout->addWidget (searchButton);
@@ -84,14 +89,42 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
             this,
             &FunctionSimilarityDialog::on_FindSimilarNames
         );
+    }
 
-        // TODO: add widgets to allow tweaking of min confidence, distance, etc...
+    /* Create sliders to select confidence levels and distance */
+    {
+        QVBoxLayout* parameterSelectorLayout = new QVBoxLayout;
+        mainLayout->addLayout (parameterSelectorLayout);
+
+        distanceSlider = new QSlider (Qt::Horizontal);
+        distanceSlider->setMinimum (1);
+        distanceSlider->setMaximum (100);
+        distanceSlider->setValue (25);
+        parameterSelectorLayout->addWidget (distanceSlider);
+
+        QLabel* distanceLabel = new QLabel (".25 max distance");
+        parameterSelectorLayout->addWidget (distanceLabel);
+        connect (distanceSlider, &QSlider::valueChanged, [distanceLabel] (int value) {
+            distanceLabel->setText (QString ("0.%1 max distance").arg (value));
+        });
+
+        confidenceSlider = new QSlider (Qt::Horizontal);
+        confidenceSlider->setMinimum (1);
+        confidenceSlider->setMaximum (100);
+        confidenceSlider->setValue (25);
+        parameterSelectorLayout->addWidget (confidenceSlider);
+
+        QLabel* confidenceLabel = new QLabel ("90% min confidence");
+        parameterSelectorLayout->addWidget (confidenceLabel);
+        connect (confidenceSlider, &QSlider::valueChanged, [confidenceLabel] (int value) {
+            confidenceLabel->setText (QString ("%1 % min confidence").arg (value));
+        });
     }
 
     /* create grid layout with scroll area where new name mappings will
      * be displayed like a table */
     {
-        similarNameSuggestionTable = new QTableWidget (0, 2);
+        similarNameSuggestionTable = new QTableWidget (0, 4);
         mainLayout->addWidget (similarNameSuggestionTable);
 
         similarNameSuggestionTable->setHorizontalHeaderLabels (
@@ -111,7 +144,7 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
     RzCoreLocked core (Core());
 
     /* check if function exists or not */
-    const QString&      fnName        = searchBar->text();
+    const QString&      fnName        = searchBarInput->text();
     QByteArray          fnNameByteArr = fnName.toLatin1();
     RzAnalysisFunction* rzFn =
         reai_plugin_get_rizin_analysis_function_with_name (core, fnNameByteArr.constData());
@@ -130,18 +163,106 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
         return;
     }
 
-    ReaiAnnFnMatchVec* fnMatches =
-        reai_batch_function_symbol_ann (reai(), reai_response(), fnId, nullptr, 5, 0.25, nullptr);
+    QString maxResultCountStr = maxResultsInput->text();
+    bool    success           = false;
+    Int32   maxResultCount    = maxResultCountStr.toInt (&success);
 
+    if (!success) {
+        DISPLAY_ERROR ("Failed to convert max result count input to integer.");
+        return;
+    }
+
+    Float32 confidence  = confidenceSlider->value() / 100.f;
+    Float32 maxDistance = distanceSlider->value() / 100.f;
+
+    if (!success) {
+        DISPLAY_ERROR ("Failed to convert confidence input to float.");
+        return;
+    }
+
+    ReaiAnnFnMatchVec* fnMatches = reai_batch_function_symbol_ann (
+        reai(),
+        reai_response(),
+        fnId,
+        nullptr,
+        maxResultCount,
+        maxDistance,
+        nullptr
+    );
+
+    // Populate table
     REAI_VEC_FOREACH (fnMatches, fnMatch, {
-        Size row = similarNameSuggestionTable->rowCount();
-        similarNameSuggestionTable->insertRow (row);
-        similarNameSuggestionTable
-            ->setItem (row, 0, new QTableWidgetItem (fnMatch->nn_function_name));
-        similarNameSuggestionTable->setItem (row, 1, new QTableWidgetItem (fnMatch->confidence));
-        similarNameSuggestionTable
-            ->setItem (row, 1, new QTableWidgetItem (fnMatch->nn_function_id));
-        similarNameSuggestionTable
-            ->setItem (row, 1, new QTableWidgetItem (fnMatch->nn_binary_name));
+        /* don't display if confidence matches */
+        if (fnMatch->confidence < confidence) {
+            continue;
+        }
+
+        addUniqueRow (
+            fnMatch->nn_function_name,
+            fnMatch->confidence,
+            fnMatch->nn_function_id,
+            fnMatch->nn_binary_name
+        );
     });
+}
+
+void FunctionSimilarityDialog::addUniqueRow (
+    CString        fn_name,
+    Float32        confidence,
+    ReaiFunctionId fn_id,
+    CString        binary_name
+) {
+    if (!fn_name) {
+        DISPLAY_ERROR ("Given function name is NULL. Cannot add to table cell.");
+        return;
+    }
+
+    if (!fn_id) {
+        DISPLAY_ERROR ("Given function id is invalid. Cannot add to table cell.");
+        return;
+    }
+
+    if (!binary_name) {
+        DISPLAY_ERROR ("Given binary name is NULL. Cannot add to table cell.");
+        return;
+    }
+
+    // Check for duplicates
+    bool duplicate = false;
+    for (int row = 0; row < similarNameSuggestionTable->rowCount(); ++row) {
+        QString val1 = similarNameSuggestionTable->item (row, 0) ?
+                           similarNameSuggestionTable->item (row, 0)->text() :
+                           "";
+        QString val3 = similarNameSuggestionTable->item (row, 2) ?
+                           similarNameSuggestionTable->item (row, 2)->text() :
+                           "";
+        QString val4 = similarNameSuggestionTable->item (row, 3) ?
+                           similarNameSuggestionTable->item (row, 3)->text() :
+                           "";
+
+        if (!QString::compare (val1, QString::fromUtf8 (fn_name)) &&
+            !QString::compare (val3, QString::number (fn_id)) &&
+            !QString::compare (val4, QString::fromUtf8 (binary_name))) {
+            duplicate = true;
+            break;
+        }
+    }
+
+    if (!duplicate) {
+        Int32 row = similarNameSuggestionTable->rowCount();
+        similarNameSuggestionTable->insertRow (row);
+        similarNameSuggestionTable->setItem (row, 0, new QTableWidgetItem (fn_name));
+        similarNameSuggestionTable
+            ->setItem (row, 1, new QTableWidgetItem (QString::number (confidence)));
+        similarNameSuggestionTable
+            ->setItem (row, 2, new QTableWidgetItem (QString::number (fn_id)));
+        similarNameSuggestionTable->setItem (row, 3, new QTableWidgetItem (binary_name));
+
+        LOG_TRACE ("Unique row added to similar name suggestion table.");
+    } else {
+        LOG_TRACE (
+            "Duplicate row detected, not adding to similar name suggestion table in "
+            "FuntionSimilarityDialog."
+        );
+    }
 }
