@@ -13,6 +13,7 @@
 #include <QLineEdit>
 #include <QSlider>
 #include <QTableWidget>
+#include <QCheckBox>
 
 /* rizin */
 #include <rz_core.h>
@@ -28,7 +29,8 @@ class FunctionSimilarityDialog : public QDialog {
 
    private:
     QLineEdit *   searchBarInput, *maxResultsInput;
-    QSlider *     confidenceSlider, *distanceSlider;
+    QSlider*      confidenceSlider;
+    QCheckBox*    showUniqueResultsCheckBox;
     QCompleter*   fnNameCompleter;
     QTableWidget* similarNameSuggestionTable;
 
@@ -39,6 +41,7 @@ class FunctionSimilarityDialog : public QDialog {
         ReaiFunctionId fn_id,
         CString        binary_name
     );
+    void addRow (CString fn_name, Float32 confidence, ReaiFunctionId fn_id, CString binary_name);
 
     // TODO: Add a rename button, that when an entry in table is selected
     // we can rename the given function name to selected function name

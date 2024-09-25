@@ -96,22 +96,10 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
         QVBoxLayout* parameterSelectorLayout = new QVBoxLayout;
         mainLayout->addLayout (parameterSelectorLayout);
 
-        distanceSlider = new QSlider (Qt::Horizontal);
-        distanceSlider->setMinimum (1);
-        distanceSlider->setMaximum (100);
-        distanceSlider->setValue (25);
-        parameterSelectorLayout->addWidget (distanceSlider);
-
-        QLabel* distanceLabel = new QLabel (".25 max distance");
-        parameterSelectorLayout->addWidget (distanceLabel);
-        connect (distanceSlider, &QSlider::valueChanged, [distanceLabel] (int value) {
-            distanceLabel->setText (QString ("0.%1 max distance").arg (value));
-        });
-
         confidenceSlider = new QSlider (Qt::Horizontal);
         confidenceSlider->setMinimum (1);
         confidenceSlider->setMaximum (100);
-        confidenceSlider->setValue (25);
+        confidenceSlider->setValue (90);
         parameterSelectorLayout->addWidget (confidenceSlider);
 
         QLabel* confidenceLabel = new QLabel ("90% min confidence");
@@ -119,6 +107,10 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
         connect (confidenceSlider, &QSlider::valueChanged, [confidenceLabel] (int value) {
             confidenceLabel->setText (QString ("%1 % min confidence").arg (value));
         });
+
+        showUniqueResultsCheckBox = new QCheckBox ("Show unique results", this);
+        parameterSelectorLayout->addWidget (showUniqueResultsCheckBox);
+        showUniqueResultsCheckBox->setCheckState (Qt::CheckState::Checked);
     }
 
     /* create grid layout with scroll area where new name mappings will
@@ -173,7 +165,7 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
     }
 
     Float32 confidence  = confidenceSlider->value() / 100.f;
-    Float32 maxDistance = distanceSlider->value() / 100.f;
+    Float32 maxDistance = 1 - confidence;
 
     if (!success) {
         DISPLAY_ERROR ("Failed to convert confidence input to float.");
@@ -192,17 +184,21 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
 
     // Populate table
     REAI_VEC_FOREACH (fnMatches, fnMatch, {
-        /* don't display if confidence matches */
-        if (fnMatch->confidence < confidence) {
-            continue;
+        if (showUniqueResultsCheckBox->checkState() == Qt::CheckState::Checked)
+            addUniqueRow (
+                fnMatch->nn_function_name,
+                fnMatch->confidence,
+                fnMatch->nn_function_id,
+                fnMatch->nn_binary_name
+            );
+        else {
+            addRow (
+                fnMatch->nn_function_name,
+                fnMatch->confidence,
+                fnMatch->nn_function_id,
+                fnMatch->nn_binary_name
+            );
         }
-
-        addUniqueRow (
-            fnMatch->nn_function_name,
-            fnMatch->confidence,
-            fnMatch->nn_function_id,
-            fnMatch->nn_binary_name
-        );
     });
 }
 
@@ -249,14 +245,7 @@ void FunctionSimilarityDialog::addUniqueRow (
     }
 
     if (!duplicate) {
-        Int32 row = similarNameSuggestionTable->rowCount();
-        similarNameSuggestionTable->insertRow (row);
-        similarNameSuggestionTable->setItem (row, 0, new QTableWidgetItem (fn_name));
-        similarNameSuggestionTable
-            ->setItem (row, 1, new QTableWidgetItem (QString::number (confidence)));
-        similarNameSuggestionTable
-            ->setItem (row, 2, new QTableWidgetItem (QString::number (fn_id)));
-        similarNameSuggestionTable->setItem (row, 3, new QTableWidgetItem (binary_name));
+        addRow (fn_name, confidence, fn_id, binary_name);
 
         LOG_TRACE ("Unique row added to similar name suggestion table.");
     } else {
@@ -265,4 +254,37 @@ void FunctionSimilarityDialog::addUniqueRow (
             "FuntionSimilarityDialog."
         );
     }
+}
+
+void FunctionSimilarityDialog::addRow (
+    CString        fn_name,
+    Float32        confidence,
+    ReaiFunctionId fn_id,
+    CString        binary_name
+) {
+    if (!fn_name) {
+        DISPLAY_ERROR ("Given function name is NULL. Cannot add to table cell.");
+        return;
+    }
+
+    if (!fn_id) {
+        DISPLAY_ERROR ("Given function id is invalid. Cannot add to table cell.");
+        return;
+    }
+
+    if (!binary_name) {
+        DISPLAY_ERROR ("Given binary name is NULL. Cannot add to table cell.");
+        return;
+    }
+
+
+    Int32 row = similarNameSuggestionTable->rowCount();
+    similarNameSuggestionTable->insertRow (row);
+    similarNameSuggestionTable->setItem (row, 0, new QTableWidgetItem (fn_name));
+    similarNameSuggestionTable
+        ->setItem (row, 1, new QTableWidgetItem (QString::number (confidence)));
+    similarNameSuggestionTable->setItem (row, 2, new QTableWidgetItem (QString::number (fn_id)));
+    similarNameSuggestionTable->setItem (row, 3, new QTableWidgetItem (binary_name));
+
+    LOG_TRACE ("Unique row added to similar name suggestion table.");
 }
