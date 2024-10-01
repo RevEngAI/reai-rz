@@ -15,6 +15,78 @@
 #include <rz_util/rz_table.h>
 
 /**
+ * Before the next release, this code for `rz_table_add_vrowf` won't be present in rizin's
+ * source code. So, for now, we use this hack to make the feature work. After the next release,
+ * this can be easily removed.
+ * */
+#define RIZIN_TABLE_HACK 1
+
+/* NOTE: The code in this ifdef-endif block is of the same license as rizin.
+ * For more reference, read : https://github.com/rizinorg/rizin/blob/dev/librz/util/table.c
+ * */
+#ifdef RIZIN_TABLE_HACK
+
+#    define add_column_to_rowf(row, fmt, ap)                                                       \
+        do {                                                                                       \
+            const char* arg = NULL;                                                                \
+            switch (fmt) {                                                                         \
+                case 's' :                                                                         \
+                case 'z' :                                                                         \
+                    arg = va_arg (ap, const char*);                                                \
+                    rz_pvector_push (row, rz_str_dup (arg ? arg : ""));                            \
+                    break;                                                                         \
+                case 'b' :                                                                         \
+                    rz_pvector_push (row, rz_str_dup (rz_str_bool (va_arg (ap, int))));            \
+                    break;                                                                         \
+                case 'i' :                                                                         \
+                case 'd' :                                                                         \
+                    rz_pvector_push (row, rz_str_newf ("%d", va_arg (ap, int)));                   \
+                    break;                                                                         \
+                case 'n' :                                                                         \
+                    rz_pvector_push (row, rz_str_newf ("%" PFMT64d, va_arg (ap, ut64)));           \
+                    break;                                                                         \
+                case 'u' :                                                                         \
+                    rz_pvector_push (row, rz_num_units (NULL, 32, va_arg (ap, ut64)));             \
+                    break;                                                                         \
+                case 'f' :                                                                         \
+                    rz_pvector_push (row, rz_str_newf ("%8lf", va_arg (ap, double)));              \
+                    break;                                                                         \
+                case 'x' :                                                                         \
+                case 'X' : {                                                                       \
+                    ut64 n = va_arg (ap, ut64);                                                    \
+                    if (n == UT64_MAX) {                                                           \
+                        if (fmt == 'X') {                                                          \
+                            rz_pvector_push (row, rz_str_dup ("----------"));                      \
+                        } else {                                                                   \
+                            rz_pvector_push (row, rz_str_dup ("-1"));                              \
+                        }                                                                          \
+                    } else {                                                                       \
+                        if (fmt == 'X') {                                                          \
+                            rz_pvector_push (row, rz_str_newf ("0x%08" PFMT64x, n));               \
+                        } else {                                                                   \
+                            rz_pvector_push (row, rz_str_newf ("0x%" PFMT64x, n));                 \
+                        }                                                                          \
+                    }                                                                              \
+                } break;                                                                           \
+                default :                                                                          \
+                    eprintf ("Invalid format string char '%c', use 's' or 'n'\n", fmt);            \
+                    break;                                                                         \
+            }                                                                                      \
+        } while (0)
+
+RZ_API void table_add_vrowf (RZ_NONNULL RzTable* t, const char* fmt, va_list ap) {
+    rz_return_if_fail (t && fmt);
+
+    RzPVector* vec = rz_pvector_new (free);
+    for (const char* f = fmt; *f; f++) {
+        add_column_to_rowf (vec, *f, ap);
+    }
+    rz_table_add_row_vec (t, vec);
+}
+
+#endif
+
+/**
  * @b Create plugin table for Rizin plugin.
  *
  * This will internally create a `RzTable` and externally treat it as a new type.
@@ -104,7 +176,11 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
 
     va_list ap;
     va_start (ap, fmtstr);
+#ifdef RIZIN_TABLE_HACK
+    table_add_vrowf ((RzTable*)table, fmtstr, ap);
+#else
     rz_table_add_vrowf ((RzTable*)table, fmtstr, ap);
+#endif
     va_end (ap);
 
     return table;
