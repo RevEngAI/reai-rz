@@ -14,9 +14,8 @@ find_library(libtoml NAMES toml HINTS ${CMAKE_BINARY_DIR}/lib REQUIRED)
 # TODO: create a FindCreait.cmake file to address all these libraries in one variable ${CREAIT_LINK_LIBRARIES}
 
 find_package(CURL REQUIRED)
-find_package(SQLite3 REQUIRED)
 
-set(CREAIT_LIBRARIES ${CURL_LIBRAIRES} CURL::libcurl ${SQLite3_LIBRARIES} ${libreai} ${libcjson} ${libtoml})
+set(CREAIT_LIBRARIES ${CURL_LIBRAIRES} CURL::libcurl ${libreai} ${libcjson} ${libtoml})
 message(INFO "CREAIT_LIBRARIES = ${CREAIT_LIBRARIES}")
 
 add_subdirectory(Rizin)
