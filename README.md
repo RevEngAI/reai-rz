@@ -22,7 +22,7 @@ ninja -C Build && sudo ninja -C Build install
 
 ### Dependencies
 
-Before running any of the above commands, you must install cmake, make, ninja, meson, gcc/g++ (if required), pkg-config, libcurl (development package), sqlite3 (development package) and [rizin](https://github.com/rizinorg/rizin?tab=readme-ov-file#how-to-build).
+Before running any of the above commands, you must install cmake, make, ninja, meson, gcc/g++ (if required), pkg-config, libcurl (development package), and [rizin](https://github.com/rizinorg/rizin?tab=readme-ov-file#how-to-build).
 
 If while running rizin, you get address sanitizer (ASAN) issues, reconfigure rizin build again with `-bsanitize=address` and pass a `-D CMAKE_BUILD_TYPE=Debug` when building this plugin.
 

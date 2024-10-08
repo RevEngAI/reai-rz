@@ -101,14 +101,16 @@ extern "C" {
      * @param fmt Format string
      * */
 #define FMT(strname, ...)                                                                          \
-    Size strname##_##strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                     \
-    Char strname[strname##_##strsz];                                                               \
-    snprintf (strname, strname##_##strsz, __VA_ARGS__);
+    Size  strname##_##strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                    \
+    Char* strname = ALLOCATE(Char, strname##_##strsz);                                             \
+    if(!strname) {PRINT_ERR(ERR_OUT_OF_MEMORY);}                                                   \
+    else {snprintf (strname, strname##_##strsz, __VA_ARGS__);}
 
 #define DISPLAY_MSG(level, ...)                                                                    \
     do {                                                                                           \
         FMT (msg, __VA_ARGS__);                                                                    \
         reai_plugin_display_msg (level, msg);                                                      \
+        FREE (msg);                                                                                \
     } while (0)
 
 #define DISPLAY_TRACE(...) DISPLAY_MSG (REAI_LOG_LEVEL_TRACE, __VA_ARGS__)

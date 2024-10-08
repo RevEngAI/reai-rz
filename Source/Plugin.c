@@ -367,9 +367,12 @@ Bool reai_plugin_init (RzCore *core) {
     /* create logger */
     reai_logger() = reai_log_create (log_file_path);
     if (!reai_logger() || !reai_set_logger (reai(), reai_logger())) {
+        FREE(log_file_path);
         DISPLAY_ERROR ("Failed to create and set Reai logger.");
         return false;
     }
+
+    FREE(log_file_path);
 
     /* create response object */
     reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
@@ -388,10 +391,12 @@ Bool reai_plugin_init (RzCore *core) {
     /* create database and set it to reai database */
     reai_db() = reai_db_create (db_path);
     if (!reai_db() || !reai_set_db (reai(), reai_db())) {
+        FREE(db_path);
         DISPLAY_ERROR ("Failed to create and set Reai DB object.");
         return false;
     }
 
+    FREE(db_path);
 
     reai_plugin()->background_worker =
         rz_th_new ((RzThreadFunction)reai_db_background_worker, reai_plugin());
@@ -487,7 +492,7 @@ CString reai_plugin_get_default_database_dir_path() {
 
     FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz");
     static Char static_buf[512] = {0};
-    memcpy (static_buf, buf, sizeof (buf));
+    memcpy (static_buf, buf, strlen(buf));
 
     is_created = true;
     return (path = static_buf);
@@ -509,7 +514,7 @@ CString reai_plugin_get_default_log_dir_path() {
 
     FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz/log");
     static Char static_buf[512] = {0};
-    memcpy (static_buf, buf, sizeof (buf));
+    memcpy (static_buf, buf, strlen (buf));
 
     is_created = true;
     return (path = static_buf);
