@@ -18,15 +18,6 @@ include(FetchContent)
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(BUILD_RIZIN_PLUGIN_ONLY "Whether to build rizin plugin only" ON)
 
-# If enabled build will automatically download, build, link and install all the
-# required libraries by the plugin. If disabled the plugin will make use of externally
-# managed installation of required libraries.
-#
-# This option should generally be OFF when in use by developers, and be ON when used by end-user
-# This is because generally in development mode, there exists some code in other libraries
-# that is not in sync with remove repository and we need to test it without pushing it.
-option(AUTOINSTALL_REQUIRED "Whether to automatically get all required libraries" ON)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ----------------------------------------
@@ -85,22 +76,6 @@ message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 # --------------------------------------
 # ---- LGPL-3.0 LICENSED REGION END ----
 # --------------------------------------
-
-# RevEng.AI plugins depend heavily on the creait library to interact with
-# RevEng.AI servers using a C API. This will download the master branch
-# and will automatically build and link required libraries with plugin.
-#
-# This way you don't need to build the two libraries separately and just
-# build the plugin.
-if(AUTOINSTALL_REQUIRED)
-    FetchContent_Declare(CREAIT
-      URL "https://github.com/RevEngAI/creait/archive/refs/tags/v0.1.1.tar.gz"
-      DOWNLOAD_EXTRACT_TIMESTAMP true
-    )
-    FetchContent_MakeAvailable(CREAIT)
-    FetchContent_GetProperties(CREAIT SOURCE_DIR CREAIT_SOURCE_DIR)
-    set(CREAIT_INCLUDE_DIRS ${CREAIT_SOURCE_DIR} CACHE PATH "Include directory for creait library.")
-endif()
 
 # This will give us path where plugins are installed on this sytem, also libraries to be linked.
 find_package(Rizin REQUIRED)
