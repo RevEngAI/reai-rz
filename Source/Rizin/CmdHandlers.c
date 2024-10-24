@@ -59,23 +59,18 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     CString api_key = argv[2];
     CString model   = argv[3];
 
-    if (argc < 4) {
-        DISPLAY_ERROR ("Insufficient arguments provided. Failed to parse command.");
-        return RZ_CMD_STATUS_WRONG_ARGS;
-    }
-
     if (!host) {
         DISPLAY_ERROR ("Host is not specified. Failed to parse command.");
         return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    if (api_key) {
-        DISPLAY_ERROR ("API key should not be specified. Failed to parse command.");
+    if (!api_key) {
+        DISPLAY_ERROR ("API key is not specified. Failed to parse command.");
         return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    if (model) {
-        DISPLAY_ERROR ("Model should not be specified. Failed to parse command.");
+    if (!model) {
+        DISPLAY_ERROR ("Model is not specified. Failed to parse command.");
         return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
@@ -83,16 +78,6 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     if (!reai_config_check_api_key (api_key)) {
         DISPLAY_ERROR (
             "Invalid API key. API key must be in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    /* check whether version number is specified or not */
-    if (!strstr (host, "v1") || !strstr (host, "v2")) {
-        DISPLAY_ERROR (
-            "Cannot detect API version. Host needs a version number to communicate with. Please "
-            "append "
-            "/v1, /v2, etc... at the end of host, depending on the API version you're using."
         );
         return RZ_CMD_STATUS_ERROR;
     }
@@ -115,7 +100,6 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
 
     log_dir_path = reai_plugin_get_default_log_dir_path();
     if (!log_dir_path) {
-        FREE (db_dir_path);
         DISPLAY_ERROR ("Failed to get log storage directory path.");
         return RZ_CMD_STATUS_ERROR;
     }
@@ -125,19 +109,12 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
         /* try to reinit config after creating config */
         if (!reai_plugin_init (core)) {
             DISPLAY_ERROR ("Failed to init plugin after creating a new config.");
-            FREE (log_dir_path);
-            FREE (db_dir_path);
             return RZ_CMD_STATUS_ERROR;
         }
     } else {
         DISPLAY_ERROR ("Failed to save config.");
-        FREE (log_dir_path);
-        FREE (db_dir_path);
         return RZ_CMD_STATUS_ERROR;
     }
-
-    FREE (log_dir_path);
-    FREE (db_dir_path);
 
     return RZ_CMD_STATUS_OK;
 }

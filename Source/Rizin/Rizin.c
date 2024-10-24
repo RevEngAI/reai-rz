@@ -66,7 +66,11 @@ RZ_IPI Bool rz_plugin_init (RzCore* core) {
     }
 
     rzshell_cmddescs_init (core);
-    return reai_plugin_init (core);
+    if(!reai_plugin_init (core)) {
+        DISPLAY_ERROR("Failed to initialize plugin.");
+    }
+
+    return true;
 }
 
 /**
