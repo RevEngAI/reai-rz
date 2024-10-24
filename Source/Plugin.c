@@ -576,7 +576,6 @@ Bool reai_plugin_save_config (
     FILE *reai_config_file = fopen (reai_config_file_path, "w");
     if (!reai_config_file) {
         LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        FREE (reai_config_file_path);
         DISPLAY_ERROR ("Failed to open config file. %s", strerror (errno));
         return false;
     }
