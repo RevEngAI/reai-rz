@@ -27,7 +27,6 @@ If while running rizin, you get address sanitizer (ASAN) issues, reconfigure riz
 
 ## CMake Configure Options
 
-- `AUTOINSTALL_REQUIRED = ON/OFF` : When enabled, will automatically fetch required dependencies to build plugin. `ON` by default. Turn this `OFF` when you've downloaded and built dependencies yourself.
 - `BUILD_RIZIN_PLUGIN_ONLY = ON/OFF` : When enabled will build rizin plugin only. This is useful when you only have rizin installed. `ON` by default. Turn this `OFF` when you don't have cutter installed.
 
 ## Basic Usage
