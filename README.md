@@ -13,8 +13,7 @@ python packages instead of `pip`, then `pipx` will help get an easy installation
 git clone git@github.com:RevEngAI/reai-rz.git && cd reai-rz
 
 # Configure the build. Remove -G Ninja if you prefer GNU Makefiles (requires make)
-# Turn AUTOINSTALL_REQUIRED to OFF when dependencies are built externally
-cmake -B Build -G Ninja -D AUTOINSTALL_REQUIRED=ON
+cmake -B Build -G Ninja
 
 # Build & Install plugin
 ninja -C Build && sudo ninja -C Build install
