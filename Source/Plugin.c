@@ -816,8 +816,10 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
             FREE (old_name);
         }
 
+        Uint64 fn_addr = fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr (core);
+
         /* get function */
-        RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr);
+        RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn_addr);
         if (rz_fn) {
             old_name         = strdup (rz_fn->name);
             CString new_name = fn->name;
@@ -827,44 +829,38 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
                 LOG_INFO (
                     "Name \"%s\" already matches for function at address %llx",
                     old_name,
-                    fn->vaddr
+                    fn_addr
                 );
                 continue;
             }
 
             /* check if fucntion size matches */
-            if (rz_analysis_function_linear_size (rz_fn) != fn->size) {
+            /* if (rz_analysis_function_linear_size (rz_fn) != fn->size) { */
+            /*     reai_plugin_table_add_rowf ( */
+            /*         failed_renames, */
+            /*         "sssx", */
+            /*         old_name, */
+            /*         new_name, */
+            /*         "size mismatch", */
+            /*         fn_addr */
+            /*     ); */
+            /*     failed_cases_exist = true; */
+            /* } else { */
+            if (rz_analysis_function_rename (rz_fn, new_name)) { // Try renaming in Rizin
+                reai_plugin_table_add_rowf (successful_renames, "ssx", old_name, new_name, fn_addr);
+                success_cases_exist = true;
+            } else {
                 reai_plugin_table_add_rowf (
                     failed_renames,
                     "sssx",
                     old_name,
                     new_name,
-                    "size mismatch",
-                    fn->vaddr
+                    "rizin rename error",
+                    fn_addr
                 );
                 failed_cases_exist = true;
-            } else {
-                if (rz_analysis_function_rename (rz_fn, new_name)) { // Try renaming in Rizin
-                    reai_plugin_table_add_rowf (
-                        successful_renames,
-                        "ssx",
-                        old_name,
-                        new_name,
-                        fn->vaddr
-                    );
-                    success_cases_exist = true;
-                } else {
-                    reai_plugin_table_add_rowf (
-                        failed_renames,
-                        "sssx",
-                        old_name,
-                        new_name,
-                        "rizin rename error",
-                        fn->vaddr
-                    );
-                    failed_cases_exist = true;
-                }
             }
+            /* } */
         } else { // If no Rizin funciton exists at given address
             reai_plugin_table_add_rowf (
                 failed_renames,
@@ -872,7 +868,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
                 "N/A",
                 "N/A",
                 "rizin function not found",
-                fn->vaddr
+                fn_addr
             );
             failed_cases_exist = true;
         }
@@ -1123,6 +1119,8 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         CString new_name   = NULL;
         old_name           = strdup (fn->name);
 
+        Uint64 fn_addr = fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr (core);
+
         /* if we get a match with required confidence level then we add to rename */
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             /* If functions already are same then no need to rename */
@@ -1130,56 +1128,55 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
                 LOG_INFO (
                     "Name \"%s\" already matches for function at address %llx",
                     old_name,
-                    fn->vaddr
+                    fn_addr
                 );
                 continue;
             }
 
             /* get function */
-            RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn->vaddr);
+            RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn_addr);
             if (rz_fn) {
                 /* check if fucntion size matches */
-                if (rz_analysis_function_linear_size (rz_fn) != fn->size) {
+                /* if (rz_analysis_function_linear_size (rz_fn) != fn->size) { */
+                /*     reai_plugin_table_add_rowf ( */
+                /*         failed_renames, */
+                /*         "sssx", */
+                /*         old_name, */
+                /*         new_name, */
+                /*         "size mismatch", */
+                /*         fn_addr */
+                /*     ); */
+                /*     failed_cases_exist = true; */
+                /* } else { */
+                /* rename function */
+                if (rz_analysis_function_rename (rz_fn, new_name)) { // Try renaming in Rizin
+                    reai_plugin_table_add_rowf (
+                        successful_renames,
+                        "ssfx",
+                        old_name,
+                        new_name,
+                        confidence,
+                        fn_addr
+                    );
+
+                    reai_fn_info_vec_append (
+                        new_name_mapping,
+                        &((ReaiFnInfo) {.name = new_name, .id = fn->id})
+                    );
+
+                    success_cases_exist = true;
+                } else {
                     reai_plugin_table_add_rowf (
                         failed_renames,
                         "sssx",
                         old_name,
                         new_name,
-                        "size mismatch",
-                        fn->vaddr
+                        "rizin rename error",
+                        fn_addr
                     );
                     failed_cases_exist = true;
-                } else {
-                    /* rename function */
-                    if (rz_analysis_function_rename (rz_fn, new_name)) { // Try renaming in Rizin
-                        reai_plugin_table_add_rowf (
-                            successful_renames,
-                            "ssfx",
-                            old_name,
-                            new_name,
-                            confidence,
-                            fn->vaddr
-                        );
-
-                        reai_fn_info_vec_append (
-                            new_name_mapping,
-                            &((ReaiFnInfo) {.name = new_name, .id = fn->id})
-                        );
-
-                        success_cases_exist = true;
-                    } else {
-                        reai_plugin_table_add_rowf (
-                            failed_renames,
-                            "sssx",
-                            old_name,
-                            new_name,
-                            "rizin rename error",
-                            fn->vaddr
-                        );
-                        failed_cases_exist = true;
-                    }
                 }
-
+                /* } */
             } else { // If no Rizin funciton exists at given address
                 reai_plugin_table_add_rowf (
                     failed_renames,
@@ -1187,7 +1184,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
                     old_name,
                     new_name,
                     "function not found",
-                    fn->vaddr
+                    fn_addr
                 );
                 failed_cases_exist = true;
             }
