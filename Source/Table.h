@@ -30,6 +30,7 @@ extern "C" {
 
     ReaiPluginTable* reai_plugin_table_create();
     void             reai_plugin_table_destroy (ReaiPluginTable* table);
+    ReaiPluginTable* reai_plugin_table_set_title (ReaiPluginTable* table, const char* title);
     ReaiPluginTable*
         reai_plugin_table_set_columnsf (ReaiPluginTable* table, const char* fmtstr, ...);
     ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char* fmtstr, ...);

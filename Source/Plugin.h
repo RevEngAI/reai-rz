@@ -59,6 +59,7 @@ extern "C" {
     Bool               reai_plugin_upload_opened_binary_file (RzCore* core);
     Bool               reai_plugin_create_analysis_for_opened_binary_file (RzCore* core);
     ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
+    Bool               reai_plugin_apply_existing_analysis (RzCore* core, ReaiBinaryId binary_id);
     Bool               reai_plugin_auto_analyze_opened_binary_file (
                       RzCore* core,
                       Float64 max_distance,
@@ -102,9 +103,12 @@ extern "C" {
      * */
 #define FMT(strname, ...)                                                                          \
     Size  strname##_##strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                    \
-    Char* strname = ALLOCATE(Char, strname##_##strsz);                                             \
-    if(!strname) {PRINT_ERR(ERR_OUT_OF_MEMORY);}                                                   \
-    else {snprintf (strname, strname##_##strsz, __VA_ARGS__);}
+    Char* strname           = ALLOCATE (Char, strname##_##strsz);                                  \
+    if (!strname) {                                                                                \
+        PRINT_ERR (ERR_OUT_OF_MEMORY);                                                             \
+    } else {                                                                                       \
+        snprintf (strname, strname##_##strsz, __VA_ARGS__);                                        \
+    }
 
 #define DISPLAY_MSG(level, ...)                                                                    \
     do {                                                                                           \

@@ -8,7 +8,6 @@
  * */
 
 /* plugin */
-#include "Reai/Types.h"
 #include <Plugin.h>
 #include <Table.h>
 #include <rz_util/rz_table.h>
@@ -37,7 +36,7 @@
             switch (fmt) {                                                                         \
                 case 's' :                                                                         \
                 case 'z' :                                                                         \
-                    arg = va_arg (ap, const char*);                                                \
+                    arg = va_arg (ap, CString);                                                    \
                     rz_pvector_push (row, rz_str_dup (arg ? arg : ""));                            \
                     break;                                                                         \
                 case 'b' :                                                                         \
@@ -94,26 +93,13 @@ RZ_API void table_add_vrowf (RZ_NONNULL RzTable* t, const char* fmt, va_list ap)
 /**
  * @b Cutter internal implementation of plugin table.
  * */
-struct ReaiPluginTable : public QDialog {
+struct ReaiPluginTable : public QTableWidget {
     Q_OBJECT;
 
    public:
-    ReaiPluginTable() : QDialog (nullptr) {
-        QVBoxLayout* mainLayout = new QVBoxLayout (this);
-        setLayout (mainLayout);
-
-        tableWidget = new QTableWidget (this);
-        // Turn off editing
-        tableWidget->setEditTriggers (QAbstractItemView::NoEditTriggers);
-        // Allow columns to stretch as much as posible
-        tableWidget->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
-
-        mainLayout->addWidget (tableWidget);
-
-        // NOTE: this hardcoded, do we need to create an API for setting table title as welll?
-        // In rizin, it would just print the title before printing table, in cutter it would set window title
-        setWindowTitle ("Auto Analysis Results");
-        resize (600, 300);
+    ReaiPluginTable() : QTableWidget (nullptr) {
+        setEditTriggers (QAbstractItemView::NoEditTriggers);
+        horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
 
         /* we also need the RzTable to be created to pull out contents from it after adding formatted rows */
         rzTable = rz_table_new();
@@ -122,14 +108,25 @@ struct ReaiPluginTable : public QDialog {
         }
     }
 
+    ~ReaiPluginTable() {
+        if (title) {
+            FREE (title);
+        }
+
+        if (rzTable) {
+            rz_table_free (rzTable);
+            rzTable = nullptr;
+        }
+    }
+
     /**
      * @b Add a new column to this table with given name and type.
      * */
     void addColumn (const char* name) {
-        tableWidget->insertColumn (tableWidget->columnCount());
+        insertColumn (columnCount());
 
         headerLabels << name;
-        tableWidget->setHorizontalHeaderLabels (headerLabels);
+        setHorizontalHeaderLabels (headerLabels);
     }
 
     /**
@@ -147,27 +144,27 @@ struct ReaiPluginTable : public QDialog {
         }
 
         /* add a new row to table widget */
-        Size rowCount = tableWidget->rowCount();
-        tableWidget->insertRow (rowCount);
+        Size tableRowCount = rowCount();
+        insertRow (tableRowCount);
 
-        LOG_TRACE ("Adding new row at %zu", rowCount);
+        LOG_TRACE ("Adding new row at %zu", tableRowCount);
 
         /* populate the new row */
         for (Int32 i = 0; i < headerLabels.size(); i++) {
-            tableWidget->setItem (rowCount, i, new QTableWidgetItem (row[i]));
+            setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
 
             LOG_TRACE (
                 "Inserting item \"%s\" at row = %zu and colu = %zu",
                 row[i].toLatin1().constData(),
-                rowCount,
+                tableRowCount,
                 i
             );
         }
     }
 
-    QTableWidget* tableWidget;
-    RzTable*      rzTable;
-    QStringList   headerLabels;
+    RzTable*    rzTable;
+    QStringList headerLabels;
+    CString     title;
 };
 
 /**
@@ -187,6 +184,11 @@ ReaiPluginTable* reai_plugin_table_create() {
  * @param table Table to be destroyed.
  * */
 void reai_plugin_table_destroy (ReaiPluginTable* table) {
+    if (!table) {
+        DISPLAY_ERROR ("Invalid plugin table provided. Cannot destroy.");
+        return;
+    }
+
     delete table;
 }
 
@@ -197,8 +199,14 @@ void reai_plugin_table_destroy (ReaiPluginTable* table) {
  * @return Null otherwise.
  * */
 ReaiPluginTable* reai_plugin_table_set_columnsf (ReaiPluginTable* table, const char* fmtstr, ...) {
-    if (!table || !fmtstr) {
-        return nullptr; // Handle null pointers
+    if (!table) {
+        DISPLAY_ERROR ("Invalid plugin table provided. Cannot set column names.");
+        return nullptr;
+    }
+
+    if (!fmtstr) {
+        DISPLAY_ERROR ("Invalid format string provided. Cannot set column names.");
+        return nullptr;
     }
 
     va_list args, rzArgs;
@@ -234,8 +242,14 @@ ReaiPluginTable* reai_plugin_table_set_columnsf (ReaiPluginTable* table, const c
  * @return Null otherwise.
  * */
 ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char* fmtstr, ...) {
-    if (!table || !fmtstr) {
-        return nullptr; // Handle null pointers
+    if (!table) {
+        DISPLAY_ERROR ("Invalid plugin table provided. Cannot add row to table.");
+        return nullptr;
+    }
+
+    if (!fmtstr) {
+        DISPLAY_ERROR ("Invalid format string provided. Cannot add row to table.");
+        return nullptr;
     }
 
     /* first add all data into rizin table */
@@ -271,7 +285,37 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
  * @brief Print table
  * */
 void reai_plugin_table_show (ReaiPluginTable* table) {
-    table->exec();
+    if (!table) {
+        DISPLAY_ERROR ("Invalid plugin table provided. Cannot display.");
+        return;
+    }
+
+    QDialog* tableDisplayDlg = new QDialog (NULL);
+    if (table->title) {
+        tableDisplayDlg->setWindowTitle (table->title);
+    }
+
+    QVBoxLayout* mainLayout = new QVBoxLayout();
+    mainLayout->addWidget ((QTableWidget*)table);
+    tableDisplayDlg->setLayout (mainLayout);
+
+    tableDisplayDlg->exec();
+}
+
+
+ReaiPluginTable* reai_plugin_table_set_title (ReaiPluginTable* table, const char* title) {
+    if (!table) {
+        DISPLAY_ERROR ("Invalid plugin table provided. Cannot set title.");
+        return nullptr;
+    }
+
+    table->title = strdup (title);
+    if (!table->title) {
+        DISPLAY_ERROR (ERR_OUT_OF_MEMORY);
+        return nullptr;
+    }
+
+    return table;
 }
 
 #include "Table.moc"

@@ -86,6 +86,11 @@ RZ_API void table_add_vrowf (RZ_NONNULL RzTable* t, const char* fmt, va_list ap)
 
 #endif
 
+struct ReaiPluginTable {
+    RzTable* table;
+    CString  title;
+};
+
 /**
  * @b Create plugin table for Rizin plugin.
  *
@@ -98,14 +103,19 @@ RZ_API void table_add_vrowf (RZ_NONNULL RzTable* t, const char* fmt, va_list ap)
  * @return @c Null otherwise.
  * */
 ReaiPluginTable* reai_plugin_table_create() {
-    RzTable* table = rz_table_new();
-
+    ReaiPluginTable* table = NEW (ReaiPluginTable);
     if (!table) {
+        DISPLAY_ERROR (ERR_OUT_OF_MEMORY);
+        return NULL;
+    }
+
+    table->table = rz_table_new();
+    if (!table->table) {
         DISPLAY_ERROR ("Failed to create table");
         return NULL;
     }
 
-    return (ReaiPluginTable*)table;
+    return table;
 }
 
 /**
@@ -119,7 +129,16 @@ void reai_plugin_table_destroy (ReaiPluginTable* table) {
         return;
     }
 
-    rz_table_free ((RzTable*)table);
+    if (table->table) {
+        rz_table_free (table->table);
+        table->table = NULL;
+    }
+
+    if (table->title) {
+        FREE (table->title);
+    }
+
+    FREE (table);
 }
 
 /**
@@ -143,7 +162,7 @@ ReaiPluginTable* reai_plugin_table_set_columnsf (ReaiPluginTable* table, const c
         return NULL;
     }
 
-    RzTable* rz_table = (RzTable*)table;
+    RzTable* rz_table = table->table;
 
     va_list ap;
     va_start (ap, fmtstr);
@@ -177,9 +196,9 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
     va_list ap;
     va_start (ap, fmtstr);
 #ifdef RIZIN_TABLE_HACK
-    table_add_vrowf ((RzTable*)table, fmtstr, ap);
+    table_add_vrowf (table->table, fmtstr, ap);
 #else
-    rz_table_add_vrowf ((RzTable*)table, fmtstr, ap);
+    rz_table_add_vrowf (table->table, fmtstr, ap);
 #endif
     va_end (ap);
 
@@ -190,10 +209,46 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
  * @brief Print table
  * */
 void reai_plugin_table_show (ReaiPluginTable* table) {
-    CString table_str = rz_table_tofancystring ((RzTable*)table);
+    if (!table) {
+        DISPLAY_ERROR ("Invalid table provided. Cannot add new row.");
+        return;
+    }
+
+    CString table_str = rz_table_tofancystring (table->table);
     if (!table_str) {
         DISPLAY_ERROR ("Failed to convert table to string. Cannot display.");
         return;
     }
-    rz_cons_printf ("%s\n", table_str);
+
+    if (table->title) {
+        rz_cons_printf ("\n%s\n%s\n", table->title, table_str);
+    } else {
+        rz_cons_printf ("\n%s\n", table_str);
+    }
+
+    FREE (table_str);
+}
+
+/**
+ * @b Set table title to be displayed before it
+ *
+ * This can be something like a short five to six word summary.
+ *
+ * @param table
+ * @param title
+ * */
+ReaiPluginTable* reai_plugin_table_set_title (ReaiPluginTable* table, CString title) {
+    if (!table) {
+        DISPLAY_ERROR ("Invalid table provided.");
+        return NULL;
+    }
+
+    if (!title) {
+        DISPLAY_ERROR ("Invalid title provided.");
+        return NULL;
+    }
+
+    table->title = strdup (title);
+
+    return table;
 }

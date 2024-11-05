@@ -56,6 +56,18 @@ commands:
       - name: min_confidence
         type: RZ_CMD_ARG_TYPE_NUM
         default_value: 0.95
+  - name: REap
+    cname: apply_existing_analysis 
+    summary: Apply already existing RevEng.AI analysis to this binary.
+    args:
+      - name: bin_id
+        type: RZ_CMD_ARG_TYPE_NUM
+        optional: false
+    details:
+      - name: Binary ID 
+        entries:
+          - text: "18700"
+            comment: "Binary ID of analysis to be applied"
   - name: REs
     cname: get_analysis_status
     summary: Get analysis status of given binary id

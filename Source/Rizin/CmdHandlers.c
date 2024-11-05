@@ -169,6 +169,15 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
                                                                        RZ_CMD_STATUS_ERROR;
 }
 
+RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc && argv);
+    LOG_TRACE ("[CMD] apply existing analysis");
+
+    return reai_plugin_apply_existing_analysis (core, rz_num_math (core->num, argv[1])) ?
+               RZ_CMD_STATUS_OK :
+               RZ_CMD_STATUS_ERROR;
+}
+
 /**
  * REau
  *

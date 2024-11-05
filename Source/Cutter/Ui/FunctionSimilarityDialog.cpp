@@ -32,9 +32,11 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
         return;
     }
 
+    setMinimumSize (960, 540);
+
     QVBoxLayout* mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
-    setWindowTitle ("Function similarity");
+    setWindowTitle ("Function Similarity Search");
 
     /* get function names from binary */
     QStringList fnNamesList;
@@ -48,7 +50,7 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
             !rz_list_length (rz_analysis_function_list (core->analysis))) {
             DISPLAY_ERROR (
                 "Opened binary seems to have no functions. None detected by Rizin. Cannot perform "
-                "renaming."
+                "similarity search."
             );
             return;
         }
@@ -93,39 +95,59 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
 
     /* Create sliders to select confidence levels and distance */
     {
-        QVBoxLayout* parameterSelectorLayout = new QVBoxLayout;
-        mainLayout->addLayout (parameterSelectorLayout);
-
         confidenceSlider = new QSlider (Qt::Horizontal);
         confidenceSlider->setMinimum (1);
         confidenceSlider->setMaximum (100);
         confidenceSlider->setValue (90);
-        parameterSelectorLayout->addWidget (confidenceSlider);
+        mainLayout->addWidget (confidenceSlider);
 
         QLabel* confidenceLabel = new QLabel ("90% min confidence");
-        parameterSelectorLayout->addWidget (confidenceLabel);
+        mainLayout->addWidget (confidenceLabel);
         connect (confidenceSlider, &QSlider::valueChanged, [confidenceLabel] (int value) {
             confidenceLabel->setText (QString ("%1 % min confidence").arg (value));
         });
 
+
         showUniqueResultsCheckBox = new QCheckBox ("Show unique results", this);
-        parameterSelectorLayout->addWidget (showUniqueResultsCheckBox);
+        mainLayout->addWidget (showUniqueResultsCheckBox);
         showUniqueResultsCheckBox->setCheckState (Qt::CheckState::Checked);
+
+        enableDebugModeCheckBox = new QCheckBox ("Enable debug mode", this);
+        mainLayout->addWidget (enableDebugModeCheckBox);
+        enableDebugModeCheckBox->setCheckState (Qt::CheckState::Checked);
     }
 
     /* create grid layout with scroll area where new name mappings will
      * be displayed like a table */
     {
-        similarNameSuggestionTable = new QTableWidget (0, 4);
-        mainLayout->addWidget (similarNameSuggestionTable);
+        // similarNameSuggestionTable = new QTableWidget (0, 4);
+        // mainLayout->addWidget (similarNameSuggestionTable);
+        //
+        // similarNameSuggestionTable->setHorizontalHeaderLabels (
+        //     {"Function Name", "Confidence", "Function ID", "Binary Name"}
+        // );
+        // // Turn off editing
+        // similarNameSuggestionTable->setEditTriggers (QAbstractItemView::NoEditTriggers);
+        // // Allow columns to stretch as much as posible
+        // similarNameSuggestionTable->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
 
-        similarNameSuggestionTable->setHorizontalHeaderLabels (
-            {"Function Name", "Confidence", "Function ID", "Binary Name"}
-        );
-        // Turn off editing
-        similarNameSuggestionTable->setEditTriggers (QAbstractItemView::NoEditTriggers);
-        // Allow columns to stretch as much as posible
-        similarNameSuggestionTable->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
+        resultsTable = reai_plugin_table_create();
+        if (!reai_plugin_table_set_columnsf (
+                resultsTable,
+                "sfns",
+                "Function Name",
+                "Confidence",
+                "Function ID",
+                "Binary Name"
+            )) {
+            DISPLAY_ERROR (
+                "Failed to set table columns information. Failed to create results table. Cannot "
+                "continue"
+            );
+            return;
+        }
+
+        mainLayout->addWidget ((QTableWidget*)resultsTable);
     }
 }
 
@@ -179,7 +201,8 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
         nullptr,
         maxResultCount,
         maxDistance,
-        nullptr
+        nullptr,
+        enableDebugModeCheckBox->checkState()
     );
 
     // Populate table
@@ -278,13 +301,14 @@ void FunctionSimilarityDialog::addRow (
     }
 
 
-    Int32 row = similarNameSuggestionTable->rowCount();
-    similarNameSuggestionTable->insertRow (row);
-    similarNameSuggestionTable->setItem (row, 0, new QTableWidgetItem (fn_name));
-    similarNameSuggestionTable
-        ->setItem (row, 1, new QTableWidgetItem (QString::number (confidence)));
-    similarNameSuggestionTable->setItem (row, 2, new QTableWidgetItem (QString::number (fn_id)));
-    similarNameSuggestionTable->setItem (row, 3, new QTableWidgetItem (binary_name));
+    // Int32 row = similarNameSuggestionTable->rowCount();
+    // similarNameSuggestionTable->insertRow (row);
+    // similarNameSuggestionTable->setItem (row, 0, new QTableWidgetItem (fn_name));
+    // similarNameSuggestionTable
+    //     ->setItem (row, 1, new QTableWidgetItem (QString::number (confidence)));
+    // similarNameSuggestionTable->setItem (row, 2, new QTableWidgetItem (QString::number (fn_id)));
+    // similarNameSuggestionTable->setItem (row, 3, new QTableWidgetItem (binary_name));
+    reai_plugin_table_add_rowf (resultsTable, fn_name, confidence, fn_id, binary_name);
 
     LOG_TRACE ("Unique row added to similar name suggestion table.");
 }

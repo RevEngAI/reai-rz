@@ -21,6 +21,9 @@
 /* reai */
 #include <Reai/Types.h>
 
+/* plugin */
+#include <Table.h>
+
 class FunctionSimilarityDialog : public QDialog {
     Q_OBJECT;
 
@@ -28,11 +31,13 @@ class FunctionSimilarityDialog : public QDialog {
     FunctionSimilarityDialog (QWidget* parent, RzCore* core);
 
    private:
-    QLineEdit *   searchBarInput, *maxResultsInput;
-    QSlider*      confidenceSlider;
-    QCheckBox*    showUniqueResultsCheckBox;
-    QCompleter*   fnNameCompleter;
-    QTableWidget* similarNameSuggestionTable;
+    QLineEdit *      searchBarInput, *maxResultsInput;
+    QSlider*         confidenceSlider;
+    QCheckBox*       enableDebugModeCheckBox;
+    QCheckBox*       showUniqueResultsCheckBox;
+    QCompleter*      fnNameCompleter;
+    QTableWidget*    similarNameSuggestionTable;
+    ReaiPluginTable* resultsTable;
 
     void on_FindSimilarNames();
     void addUniqueRow (

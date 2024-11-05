@@ -9,6 +9,7 @@
 /* rizin */
 #include "Reai/Types.h"
 #include <Cutter.h>
+#include <Reai/AnalysisInfo.h>
 #include <rz_core.h>
 
 /* qt includes */
@@ -23,6 +24,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QtPlugin>
+#include <QInputDialog>
 
 /* creait lib */
 #include <Reai/Api/Api.h>
@@ -49,14 +51,14 @@
 void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     RETURN_IF (!msg, ERR_INVALID_ARGUMENTS);
 
-    static CString win_title[] = {
-        [REAI_LOG_LEVEL_INFO]  = "Information",
-        [REAI_LOG_LEVEL_TRACE] = "Trace",
-        [REAI_LOG_LEVEL_DEBUG] = "Debug",
-        [REAI_LOG_LEVEL_WARN]  = "Warning",
-        [REAI_LOG_LEVEL_ERROR] = "Error",
-        [REAI_LOG_LEVEL_FATAL] = "Critical"
-    };
+    static CString win_title[REAI_LOG_LEVEL_MAX] = {0};
+
+    win_title[REAI_LOG_LEVEL_INFO]  = "Information";
+    win_title[REAI_LOG_LEVEL_TRACE] = "Trace";
+    win_title[REAI_LOG_LEVEL_DEBUG] = "Debug";
+    win_title[REAI_LOG_LEVEL_WARN]  = "Warning";
+    win_title[REAI_LOG_LEVEL_ERROR] = "Error";
+    win_title[REAI_LOG_LEVEL_FATAL] = "Critical";
 
     reai_log_printf (reai_logger(), level, "display", "%s", msg);
 
@@ -187,6 +189,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
 
     actUploadBin                = reaiMenu->addAction ("Upload Binary");
     actCreateAnalysis           = reaiMenu->addAction ("Create New Analysis");
+    actApplyExistingAnalysis    = reaiMenu->addAction ("Apply Existing Analysis");
     actCheckAnalysisStatus      = reaiMenu->addAction ("Check Analysis Status");
     actRenameFns                = reaiMenu->addAction ("Rename Functions");
     actAutoAnalyzeBinSym        = reaiMenu->addAction ("Auto Analyze Binary");
@@ -196,6 +199,12 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
 
     connect (actUploadBin, &QAction::triggered, this, &ReaiCutterPlugin::on_UploadBin);
     connect (actCreateAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_CreateAnalysis);
+    connect (
+        actApplyExistingAnalysis,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_ApplyExistingAnalysis
+    );
     connect (
         actAutoAnalyzeBinSym,
         &QAction::triggered,
@@ -264,6 +273,47 @@ void ReaiCutterPlugin::on_CreateAnalysis() {
     } else {
         DISPLAY_ERROR ("Analysis creation failed!");
     };
+}
+
+void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+
+    RzCoreLocked core (Core());
+
+    // Get analysis ID
+    bool    ok       = false;
+    QString valueStr = QInputDialog::getText (
+        nullptr,
+        "Apply Existing Analysis",
+        "Enter a Binary ID:",
+        QLineEdit::Normal,
+        "", // Default value (empty)
+        &ok
+    );
+
+    if (!ok || valueStr.isEmpty()) {
+        return;
+    }
+
+    ok                    = false;
+    ReaiBinaryId binaryId = valueStr.toULongLong (&ok);
+
+    if (ok) {
+        if (!binaryId) {
+            DISPLAY_ERROR ("Invalid binary ID provided.");
+            return;
+        }
+
+        if (!reai_plugin_apply_existing_analysis (core, binaryId)) {
+            DISPLAY_ERROR ("Failed to apply existing analysis to this binary file.");
+        }
+    } else {
+        DISPLAY_ERROR (
+            "Failed to get binary id to apply existing analysis. Cannot apply existing analysis."
+        );
+    }
 }
 
 void ReaiCutterPlugin::on_CheckAnalysisStatus() {
@@ -363,7 +413,12 @@ void ReaiCutterPlugin::on_RenameFns() {
         if (reai_fn_info_vec_append (
                 new_name_map,
                 ((ReaiFnInfo[]) {
-                    {.id = fn_id, .name = newNameCstr}
+                    {
+                     .id    = fn_id,
+                     .name  = newNameCstr,
+                     .vaddr = 0 /* vaddr not required for renaming */,
+                     .size  = 0
+                        /* size not required for renaming */, }
         })
             )) {
             Core()->renameFunction (rz_fn->addr, newNameCstr);
