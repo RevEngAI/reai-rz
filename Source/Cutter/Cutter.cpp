@@ -307,8 +307,30 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
             return;
         }
 
-        if (!reai_plugin_apply_existing_analysis (core, binaryId)) {
-            DISPLAY_ERROR ("Failed to apply existing analysis to this binary file.");
+        QMessageBox::StandardButton reply = QMessageBox::question (
+            (QWidget *)this->parent(),
+            "Apply analysis",
+            "Do you want to rename only unknown functions",
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel
+        );
+
+        switch (reply) {
+            case QMessageBox::Yes : {
+                if (!reai_plugin_apply_existing_analysis (core, binaryId, true)) {
+                    DISPLAY_ERROR ("Failed to apply existing analysis to this binary file.");
+                }
+                break;
+            }
+
+            case QMessageBox::No : {
+                if (!reai_plugin_apply_existing_analysis (core, binaryId, false)) {
+                    DISPLAY_ERROR ("Failed to apply existing analysis to this binary file.");
+                }
+                break;
+            }
+
+            default :
+                break;
         }
     } else {
         DISPLAY_ERROR (
@@ -343,7 +365,14 @@ void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
         on_Setup();
     }
 
-    if (!reai_plugin_auto_analyze_opened_binary_file (RzCoreLocked (Core()), 0.1, 5, 0.85)) {
+    // TODO: create a new dialog for auto-analysis
+    if (!reai_plugin_auto_analyze_opened_binary_file (
+            RzCoreLocked (Core()),
+            5,
+            0.85,
+            true,
+            false
+        )) {
         DISPLAY_ERROR ("Failed to complete auto-analysis.");
     }
 }

@@ -37,6 +37,19 @@
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
 
+
+#define ASK_QUESTION(res, default, msg)                                                            \
+    do {                                                                                           \
+        Char input = 0;                                                                            \
+        rz_cons_printf ("%s [%c/%c] : ", msg, (default ? 'Y' : 'y'), (!default ? 'N' : 'n'));      \
+        rz_cons_flush();                                                                           \
+        while (input != 'n' && input != 'N' && input != 'Y' && input != 'y') {                     \
+            input = rz_cons_readchar();                                                            \
+        }                                                                                          \
+        res = (input == 'y' || input == 'Y');                                                      \
+        rz_cons_newline();                                                                         \
+    } while (0)
+
 /**
  * REi
  *
@@ -175,7 +188,14 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] apply existing analysis");
 
-    return reai_plugin_apply_existing_analysis (core, rz_num_math (core->num, argv[1])) ?
+    Bool rename_unknown_only;
+    ASK_QUESTION (rename_unknown_only, true, "Apply analysis only to unknown functions?");
+
+    return reai_plugin_apply_existing_analysis (
+               core,
+               rz_num_get (core->num, argv[1]), // binary id
+               !rename_unknown_only             // apply analysis to all?
+           ) ?
                RZ_CMD_STATUS_OK :
                RZ_CMD_STATUS_ERROR;
 }
@@ -195,16 +215,24 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     UNUSED (output_mode && argc);
     LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
-    /* parse args */
-    Float64 max_distance             = rz_num_get_float (core->num, argv[1]);
-    Size    max_results_per_function = rz_num_math (core->num, argv[2]);
-    Float64 min_confidence           = rz_num_get_float (core->num, argv[3]);
+    // NOTE: this is static here. I don't think it's a good command line option to have
+    // Since user won't know about this when issuing the auto-analysis command.
+    // Just set it to a large enough value to get good suggestions
+    const Size max_results_per_function = 10;
+
+    Uint32 min_confidence = rz_num_get (core->num, argv[1]);
+    min_confidence        = min_confidence > 100 ? 100 : min_confidence;
+
+    Bool debug_mode, rename_unknown_only;
+    ASK_QUESTION (debug_mode, true, "Enable debug symbol suggestions?");
+    ASK_QUESTION (rename_unknown_only, true, "Rename unknown functions only?");
 
     if (reai_plugin_auto_analyze_opened_binary_file (
             core,
-            max_distance,
             max_results_per_function,
-            min_confidence
+            min_confidence / 100.f,
+            debug_mode,
+            !rename_unknown_only // apply_to_all = !rename_unknown
         )) {
         DISPLAY_INFO ("Auto-analysis completed successfully.");
         return RZ_CMD_STATUS_OK;
@@ -428,10 +456,16 @@ RZ_IPI RzCmdStatus
     rz_function_similarity_search_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
 
-    CString function_name     = argv[1];
-    Uint32  max_results_count = rz_num_math (core->num, argv[2]);
-    Float32 min_confidence    = rz_num_math (core->num, argv[3]);
-    Bool    debug_mode        = !strncmp (argv[4], "true", 4) ? true : false;
+    // NOTE: hardcoded because it does not look good in command arguments
+    // just to increase simplicity of command
+    Uint32 max_results_count = 20;
+
+    // Parse command line arguments
+    CString function_name  = argv[1];
+    Float32 min_confidence = rz_num_math (core->num, argv[2]);
+
+    Bool debug_mode;
+    ASK_QUESTION (debug_mode, true, "Enable debug symbol suggestions?");
 
     ReaiPluginTable* results = reai_plugin_search_for_similar_functions (
         core,
@@ -440,6 +474,7 @@ RZ_IPI RzCmdStatus
         min_confidence,
         debug_mode
     );
+
     if (results) {
         reai_plugin_table_show (results);
         reai_plugin_table_destroy (results);

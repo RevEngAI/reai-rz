@@ -14,18 +14,10 @@ commands:
       - name: model
         type: RZ_CMD_ARG_TYPE_STRING
     details:
-      - name: Host
+      - name: Examples 
         entries:
-          - text: https://api.reveng.ai/v1
-            comment: Replace v1 with the current version you want to use.
-      - name: API KEY
-        entries:
-          - text: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
-            comment: API Key provided in RevEng.AI dashboard
-      - name: AI Model
-        entries:
-          - text: binnet-0.3
-            comment: Name and versionof AI model to be used.
+          - text: "REi https://api.reveng.ai/v1 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX binnet-0.4"
+            comment: Initialize config with these settings. Replace v1 with the current version you want to use.
   - name: REh
     cname: health_check
     summary: Check connection status with RevEngAI servers.
@@ -34,9 +26,6 @@ commands:
     cname: upload_bin
     summary: Upload currently loaded binary to RevEngAI servers.
     args: []
-    #    - name: file_path
-    #      type: RZ_CMD_ARG_TYPE_STRING
-    #      optional: false
   - name: REa
     cname: create_analysis
     summary: Upload and analyse currently loaded binary
@@ -47,15 +36,16 @@ commands:
     modes:
       - RZ_OUTPUT_MODE_STANDARD
     args:
-      - name: distance
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 0.1
-      - name: results_per_function
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 5
       - name: min_confidence
         type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 0.95
+        default_value: 90
+    details:
+      - name: Examples
+        entries:
+          - text: "REau"
+            comment: "Apply auto analysis to this binary with 90% min confidence"
+          - text: "REau 85"
+            comment: "Min 85% confidence"
   - name: REap
     cname: apply_existing_analysis 
     summary: Apply already existing RevEng.AI analysis to this binary.
@@ -64,10 +54,10 @@ commands:
         type: RZ_CMD_ARG_TYPE_NUM
         optional: false
     details:
-      - name: Binary ID 
+      - name: Examples 
         entries:
-          - text: "18700"
-            comment: "Binary ID of analysis to be applied"
+          - text: "REap 18700"
+            comment: "Apply analysis corresponding to bianry id 18700"
   - name: REs
     cname: get_analysis_status
     summary: Get analysis status of given binary id
@@ -79,12 +69,12 @@ commands:
         type: RZ_CMD_ARG_TYPE_NUM
         optional: true
     details:
-      - name: Binary ID
+      - name: Examples 
         entries:
-          - text: "18244"
-            comment: "Binary ID to check analysis status for"
-          - text: ""
-            comment: "No binary ID defaults to currently loaded binary"
+          - text: "REs"
+            comment: "Check analysis status for currently opened binary file."
+          - text: "REs 18244"
+            comment: "Check analysis status for binary ID 18244"
   - name: REfl
     cname: get_basic_function_info
     summary: Get & show basic function info for selected binary.
@@ -102,14 +92,10 @@ commands:
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
     details:
-      - name: Function address
+      - name: Examples
         entries:
-          - text: "0xf9da"
-            comment: "Address of function to be renamed"
-      - name: New name
-        entries:
-          - text: "fopen"
-            comment: "New function name"
+          - text: "REfr 0xf9da fopen"
+            comment: "Rename function at 0xf9da to fopen"
   - name: REfs
     cname: function_similarity_search
     summary: RevEng.AI ANN functions similarity search.
@@ -117,33 +103,16 @@ commands:
       - name: function_name
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
-      - name: min_result_count
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 5
       - name: min_confidence
         type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 0.9
-      - name: debug_mode 
-        type: RZ_CMD_ARG_TYPE_CHOICES
-        choices: ["true", "false"]
-        default_value: "true"
+        default_value: 95
     details:
       - name: Function Name
         entries:
-          - text: "fcn.1337"
-            comment: "Function to search similar functions for"
-      - name: Max Result Count 
-        entries:
-          - text: "10" 
-            comment: "Maximum number of search results"
-      - name: Min Confidence 
-        entries:
-          - text: "0.95"
-            comment: "Minimum confidence of search suggestions"
-      - name: Debug Mode Enable
-        entries:
-          - text: "true"
-            comment: "Suggest names taken from debugging symbols."
+          - text: "REfs sym.main"
+            comment: "Search similar function for sym.main function with minimum confidence of 90%"
+          - text: "REfs __memcmp 95"
+            comment: "Search similar function for __memcmp, with minimum 95% confidence"
   - name: REart
     cname: show_revengai_art
     summary: Show RevEng.AI ASCII art.
