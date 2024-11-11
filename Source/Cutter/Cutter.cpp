@@ -273,6 +273,9 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
             return;
         }
 
+        // TODO: ask user here first whether they want to sync function names?
+        // Not really a priority though
+
         Bool applyToAll = QMessageBox::question (
                               (QWidget *)this->parent(),
                               "Apply analysis",
@@ -283,8 +286,6 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
         if (!reai_plugin_apply_existing_analysis (core, binaryId, applyToAll)) {
             DISPLAY_ERROR ("Failed to apply existing analysis to this binary file.");
         }
-
-        reai_binary_id() = binaryId;
     } else {
         DISPLAY_ERROR (
             "Failed to get binary id to apply existing analysis. Cannot apply existing analysis."
