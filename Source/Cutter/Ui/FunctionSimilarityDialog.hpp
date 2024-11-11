@@ -29,7 +29,7 @@ class FunctionSimilarityDialog : public QDialog {
     Q_OBJECT;
 
    public:
-    FunctionSimilarityDialog (QWidget* parent, RzCore* core);
+    FunctionSimilarityDialog (QWidget* parent);
 
    private:
     QVBoxLayout* mainLayout;

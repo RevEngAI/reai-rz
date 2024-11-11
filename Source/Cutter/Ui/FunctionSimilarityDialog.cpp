@@ -26,13 +26,7 @@
 /* reai */
 #include <Reai/Util/Vec.h>
 
-FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* core)
-    : QDialog (parent) {
-    if (!core) {
-        DISPLAY_ERROR ("Invalid rizin core provided. Cannot find similar functions.");
-        return;
-    }
-
+FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (parent) {
     mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
     setWindowTitle ("Function Similarity Search");
@@ -40,8 +34,9 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent, RzCore* cor
     /* get function names from binary */
     QStringList fnNamesList;
     {
-        if (!core->analysis) {
-            DISPLAY_ERROR ("Rizin analysis not performed yet. Please create rizin analysis first.");
+        RzCoreLocked core (Core());
+
+        if (!reai_plugin_get_rizin_analysis_function_count (core)) {
             return;
         }
 

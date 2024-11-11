@@ -30,7 +30,7 @@ class AutoAnalysisDialog : public QDialog {
     Q_OBJECT;
 
    public:
-    AutoAnalysisDialog (QWidget* parent, RzCore* core);
+    AutoAnalysisDialog (QWidget* parent);
 
    private:
     QVBoxLayout* mainLayout;

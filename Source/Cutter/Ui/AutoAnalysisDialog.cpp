@@ -15,8 +15,6 @@
 #include <QHBoxLayout>
 #include <QScrollArea>
 #include <QPushButton>
-#include <QHeaderView>
-#include <QCompleter>
 #include <QLabel>
 
 /* cutter */
@@ -27,12 +25,7 @@
 #include <Reai/Util/Vec.h>
 #include <sys/stdio.h>
 
-AutoAnalysisDialog::AutoAnalysisDialog (QWidget* parent, RzCore* core) : QDialog (parent) {
-    if (!core) {
-        DISPLAY_ERROR ("Invalid rizin core provided. Cannot find similar functions.");
-        return;
-    }
-
+AutoAnalysisDialog::AutoAnalysisDialog (QWidget* parent) : QDialog (parent) {
     mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
     setWindowTitle ("Auto Analysis Settings");

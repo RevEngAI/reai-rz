@@ -38,11 +38,9 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actToggleReaiPlugin = nullptr;
 
     /* revengai's menu item actions */
-    QAction *actUploadBin                = nullptr;
     QAction *actCreateAnalysis           = nullptr;
     QAction *actApplyExistingAnalysis    = nullptr;
-    QAction *actCheckAnalysisStatus      = nullptr;
-    QAction *actAutoAnalyzeBinSym        = nullptr;
+    QAction *actAutoAnalyzeBin           = nullptr;
     QAction *actRenameFns                = nullptr;
     QAction *actFunctionSimilaritySearch = nullptr;
     QAction *actBinAnalysisHistory       = nullptr;
@@ -74,11 +72,9 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     }
 
     void on_ToggleReaiPlugin();
-    void on_UploadBin();
     void on_CreateAnalysis();
     void on_ApplyExistingAnalysis();
-    void on_CheckAnalysisStatus();
-    void on_AutoAnalyzeBinSym();
+    void on_AutoAnalyzeBin();
     void on_RenameFns();
     void on_FunctionSimilaritySearch();
     void on_BinAnalysisHistory();

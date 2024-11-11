@@ -9,10 +9,13 @@ commands:
     args:
       - name: host
         type: RZ_CMD_ARG_TYPE_STRING
+        default_value: "https://api.reveng.ai/v1"
       - name: api_key
         type: RZ_CMD_ARG_TYPE_STRING
+        default_value: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
       - name: model
         type: RZ_CMD_ARG_TYPE_STRING
+        default_value: "0.4"
     details:
       - name: Examples 
         entries:
@@ -29,7 +32,18 @@ commands:
   - name: REa
     cname: create_analysis
     summary: Upload and analyse currently loaded binary
-    args: []
+    args:
+      - name: prog_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: cmd_line_args
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+    details:
+      - name: Examples
+        entries:
+          - text: REa ffmpeg "-i input.mp4 -vf "fps=10,scale=320:-1:flags=lanczos" -c:v gif output.gif"
+            comment: "Create analysis for ffmpeg program with given command line arguments."
   - name: REau
     cname: ann_auto_analyze
     summary: Auto analyze binary functions using ANN and perform batch rename.
@@ -58,23 +72,6 @@ commands:
         entries:
           - text: "REap 18700"
             comment: "Apply analysis corresponding to bianry id 18700"
-  - name: REs
-    cname: get_analysis_status
-    summary: Get analysis status of given binary id
-    type: RZ_CMD_DESC_TYPE_ARGV_STATE
-    modes:
-      - RZ_OUTPUT_MODE_STANDARD
-    args:
-      - name: binary_id
-        type: RZ_CMD_ARG_TYPE_NUM
-        optional: true
-    details:
-      - name: Examples 
-        entries:
-          - text: "REs"
-            comment: "Check analysis status for currently opened binary file."
-          - text: "REs 18244"
-            comment: "Check analysis status for binary ID 18244"
   - name: REfl
     cname: get_basic_function_info
     summary: Get & show basic function info for selected binary.

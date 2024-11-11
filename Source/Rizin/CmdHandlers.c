@@ -16,7 +16,6 @@
 #include <Reai/Api/Response.h>
 #include <Reai/Common.h>
 #include <Reai/Config.h>
-#include <Reai/Db.h>
 #include <Reai/FnInfo.h>
 #include <Reai/Log.h>
 #include <Reai/Types.h>
@@ -59,7 +58,7 @@
  * Requires a restart of rizin plugin after issue.
  * */
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    UNUSED (core && argc);
 
     /* if file already exists then we don't make changes */
     if (reai_plugin_check_config_exists()) {
@@ -74,21 +73,6 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     CString api_key = argv[2];
     CString model   = argv[3];
 
-    if (!host) {
-        DISPLAY_ERROR ("Host is not specified. Failed to parse command.");
-        return RZ_CMD_STATUS_WRONG_ARGS;
-    }
-
-    if (!api_key) {
-        DISPLAY_ERROR ("API key is not specified. Failed to parse command.");
-        return RZ_CMD_STATUS_WRONG_ARGS;
-    }
-
-    if (!model) {
-        DISPLAY_ERROR ("Model is not specified. Failed to parse command.");
-        return RZ_CMD_STATUS_WRONG_ARGS;
-    }
-
     /* check whether API key is correct or not */
     if (!reai_config_check_api_key (api_key)) {
         DISPLAY_ERROR (
@@ -97,21 +81,7 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
         return RZ_CMD_STATUS_ERROR;
     }
 
-    if (!reai_config_check_api_key (argv[2])) {
-        DISPLAY_ERROR (
-            "Provided API key is invalid. It's recommended to directly copy paste the API key from "
-            "RevEng.AI dashboard."
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    CString db_dir_path = NULL, log_dir_path = NULL;
-
-    db_dir_path = reai_plugin_get_default_database_dir_path();
-    if (!db_dir_path) {
-        DISPLAY_ERROR ("Failed to get database directory path.");
-        return RZ_CMD_STATUS_ERROR;
-    }
+    CString log_dir_path = NULL;
 
     log_dir_path = reai_plugin_get_default_log_dir_path();
     if (!log_dir_path) {
@@ -120,9 +90,9 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     }
 
     /* attempt saving config */
-    if (reai_plugin_save_config (host, api_key, model, db_dir_path, log_dir_path)) {
+    if (reai_plugin_save_config (host, api_key, model, log_dir_path)) {
         /* try to reinit config after creating config */
-        if (!reai_plugin_init (core)) {
+        if (!reai_plugin_init()) {
             DISPLAY_ERROR ("Failed to init plugin after creating a new config.");
             return RZ_CMD_STATUS_ERROR;
         }
@@ -158,26 +128,30 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
 
 /**
  * "REa"
- *
- * @b Create a new analysis. If binary is not already uploaded then
- *    this will upload the currently opened binary.
- *
- * The method first checks whether the currently opened binary is already uploaded
- * or not. If the hash for uploaded binary is present in database, then latest hash
- * will be used, otherwise a new upload operation will be performed and the retrieved
- * hash will automatically be added to the database (by the creait lib).
- *
- * After getting the hash and making sure one latest instance of binary is already available,
- * we create analysis of the binary.
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] create analysis");
 
-    return reai_plugin_create_analysis_for_opened_binary_file (core) ? RZ_CMD_STATUS_OK :
-                                                                       RZ_CMD_STATUS_ERROR;
+    Bool is_private;
+    ASK_QUESTION (is_private, true, "Create private analysis?");
+
+    CString prog_name    = argv[1];
+    CString cmdline_args = argv[2];
+
+    return reai_plugin_create_analysis_for_opened_binary_file (
+               core,
+               prog_name,
+               cmdline_args,
+               is_private
+           ) ?
+               RZ_CMD_STATUS_OK :
+               RZ_CMD_STATUS_ERROR;
 }
 
+/**
+ * "REap"
+ * */
 RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
     LOG_TRACE ("[CMD] apply existing analysis");
@@ -259,54 +233,6 @@ RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** a
 }
 
 /**
- * "REs"
- *
- * @b Get analysis status for given binary id. If no binary id is provided
- *    then currently opened binary is used. If no binary is opened then
- *    the command fails.
- * */
-RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
-    RzCore*           core,
-    int               argc,
-    const char**      argv,
-    RzCmdStateOutput* state
-) {
-    UNUSED (state);
-    LOG_TRACE ("[CMD] get analysis status");
-
-    ReaiBinaryId binary_id = 0;
-
-    /* if arguments are provided then we need to use the provided binary id */
-    if (argc > 1) {
-        binary_id = rz_num_math (core->num, argv[1]);
-
-        if (!binary_id) {
-            DISPLAY_ERROR ("Invalid binary id provided. Cannot fetch analysis status.");
-            return RZ_CMD_STATUS_ERROR;
-        }
-
-        LOG_TRACE ("Using provided binary id : %llu.", binary_id);
-    } else {
-        binary_id = reai_plugin_get_binary_id_for_opened_binary_file (core);
-
-        if (!binary_id) {
-            DISPLAY_ERROR ("Failed to get binary id for currently opened binary file.");
-            return RZ_CMD_STATUS_ERROR;
-        }
-    }
-
-    /* get analysis status */
-    ReaiAnalysisStatus analysis_status = reai_plugin_get_analysis_status_for_binary_id (binary_id);
-    if (analysis_status) {
-        DISPLAY_INFO ("Analysis status : \"%s\"", reai_analysis_status_to_cstr (analysis_status));
-        return RZ_CMD_STATUS_OK;
-    } else {
-        DISPLAY_ERROR ("Failed to get analysis status.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-}
-
-/**
  * "REfl"
  *
  * @b Get information about all functions detected by the AI model from
@@ -334,22 +260,17 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     }
 
     /* get binary id of opened file */
-    ReaiBinaryId binary_id = reai_db_get_latest_analysis_for_file (reai_db(), opened_file);
+    ReaiBinaryId binary_id = reai_binary_id();
     if (!binary_id) {
         DISPLAY_ERROR (
-            "No analysis exists for the opened binary file. Please ensure the binary file is "
-            "analyzed."
+            "Please apply existing analysis or create a new one. Cannot get function info from "
+            "RevEng.AI without an existing analysis."
         );
         return RZ_CMD_STATUS_ERROR;
     }
 
     /* get analysis status from db after an update and check for completion */
-    ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
-    if (!analysis_status) {
-        DISPLAY_ERROR ("Failed to retrieve the analysis status of the binary from the database.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
+    ReaiAnalysisStatus analysis_status = reai_plugin_get_analysis_status_for_binary_id (binary_id);
     if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
         DISPLAY_ERROR (
             "Analysis not yet complete. Current status = \"%s\"\n",

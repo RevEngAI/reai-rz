@@ -21,7 +21,6 @@ extern "C" {
 /* revenai */
 #include <Reai/Api/Api.h>
 #include <Reai/Config.h>
-#include <Reai/Db.h>
 #include <Reai/Log.h>
 
 /* rizin */
@@ -34,33 +33,36 @@ extern "C" {
     typedef struct ReaiPlugin {
         ReaiConfig*   reai_config;
         Reai*         reai;
-        ReaiDb*       reai_db;
         ReaiResponse* reai_response;
         ReaiLog*      reai_logger;
+        ReaiBinaryId  binary_id;
 
         // Periodically updates the database in background
         RzThread* background_worker;
     } ReaiPlugin;
 
     ReaiPlugin* reai_plugin();
-    Bool        reai_plugin_init (RzCore* core);
-    Bool        reai_plugin_deinit (RzCore* core);
+    Bool        reai_plugin_init();
+    Bool        reai_plugin_deinit();
 
     ReaiFnInfoVec* reai_plugin_get_function_boundaries (RzCore* core);
     void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
     Bool           reai_plugin_check_config_exists();
-    CString        reai_plugin_get_default_database_dir_path();
     CString        reai_plugin_get_default_log_dir_path();
     Bool           reai_plugin_save_config (
                   CString host,
                   CString api_key,
                   CString model,
-                  CString db_dir_path,
                   CString log_dir_path
               );
 
-    Bool               reai_plugin_upload_opened_binary_file (RzCore* core);
-    Bool               reai_plugin_create_analysis_for_opened_binary_file (RzCore* core);
+    Bool reai_plugin_upload_opened_binary_file (RzCore* core);
+    Bool reai_plugin_create_analysis_for_opened_binary_file (
+        RzCore* core,
+        CString prog_name,
+        CString cmdline_args,
+        Bool    is_private
+    );
     ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
     Bool               reai_plugin_apply_existing_analysis (
                       RzCore*      core,
@@ -74,7 +76,6 @@ extern "C" {
         Bool    debug_mode,
         Bool    apply_to_all
     );
-    ReaiBinaryId reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
     ReaiFunctionId
          reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);
     Bool reai_plugin_search_and_show_similar_functions (
@@ -94,11 +95,13 @@ extern "C" {
 
 #include "Override.h"
 
-#define reai()          reai_plugin()->reai
-#define reai_db()       reai_plugin()->reai_db
-#define reai_response() reai_plugin()->reai_response
-#define reai_logger()   reai_plugin()->reai_logger
-#define reai_config()   reai_plugin()->reai_config
+// wrapper macros to make sure first call to any one of these
+// initializes plugin automatically
+#define reai()           reai_plugin()->reai
+#define reai_response()  reai_plugin()->reai_response
+#define reai_logger()    reai_plugin()->reai_logger
+#define reai_config()    reai_plugin()->reai_config
+#define reai_binary_id() reai_plugin()->binary_id
 
 #define LOG_TRACE(...) REAI_LOG_TRACE (reai_logger(), __VA_ARGS__)
 #define LOG_INFO(...)  REAI_LOG_INFO (reai_logger(), __VA_ARGS__)

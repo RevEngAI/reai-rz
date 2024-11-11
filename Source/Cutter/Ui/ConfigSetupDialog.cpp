@@ -44,12 +44,6 @@ ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
     ADD_LABEL_INPUT_ROW (hostLabel, "RevEng.AI Host", leHost, "https://api.reveng.ai/v1");
     ADD_LABEL_INPUT_ROW (modelLabel, "RevEng.AI AI Model", leModel, "binnet-0.3");
     ADD_LABEL_INPUT_ROW (
-        dbDirPathLabel,
-        "Plugin Local Database Path",
-        leDbDirPath,
-        reai_plugin_get_default_database_dir_path()
-    );
-    ADD_LABEL_INPUT_ROW (
         logDirPathLabel,
         "Plugin Local Log Storage Path",
         leLogDirPath,
@@ -75,7 +69,7 @@ ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
 Bool ConfigSetupDialog::allFieldsFilled() {
     return !(
         leHost->text().isEmpty() || leApiKey->text().isEmpty() || leModel->text().isEmpty() ||
-        leDbDirPath->text().isEmpty() || leLogDirPath->text().isEmpty()
+        leLogDirPath->text().isEmpty()
     );
 }
 
@@ -104,14 +98,6 @@ CString ConfigSetupDialog::getModel() {
 }
 
 /**
- * @b Get value of db dir path line edit.
- * */
-CString ConfigSetupDialog::getDbDirPath() {
-    dbDirPath = leDbDirPath->text().toLatin1();
-    return dbDirPath.constData();
-}
-
-/**
  * @b Get value of log dir path line edit.
  * */
 CString ConfigSetupDialog::getLogDirPath() {
@@ -130,9 +116,7 @@ void ConfigSetupDialog::setApiKey (CString value) {
 void ConfigSetupDialog::setModel (CString value) {
     leModel->setText (value);
 }
-void ConfigSetupDialog::setDbDirPath (CString value) {
-    leDbDirPath->setText (value);
-}
+
 void ConfigSetupDialog::setLogDirPath (CString value) {
     leLogDirPath->setText (value);
 }

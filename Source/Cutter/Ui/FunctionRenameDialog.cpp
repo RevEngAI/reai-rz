@@ -11,6 +11,7 @@
 
 /* rizin */
 #include <rz_analysis.h>
+#include <cutter/core/Cutter.h>
 
 /* qt */
 #include <QVBoxLayout>
@@ -22,19 +23,16 @@
 #include <QStringListModel>
 #include <QHeaderView>
 
-FunctionRenameDialog::FunctionRenameDialog (QWidget* parent, RzCore* core) : QDialog (parent) {
-    if (!core) {
-        DISPLAY_ERROR ("Invalid rizin core provided. Cannot rename functions.");
-        return;
-    }
-
+FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) {
     QVBoxLayout* mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
     setWindowTitle ("Select Functions To Rename");
 
     /* get function names from binary */
     {
-        if (!core->analysis) {
+        RzCoreLocked core (Core());
+
+        if (!reai_plugin_get_rizin_analysis_function_count (core)) {
             DISPLAY_ERROR ("Rizin analysis not performed yet. Please create rizin analysis first.");
             return;
         }
