@@ -37,6 +37,7 @@
 #include <Cutter/Ui/ConfigSetupDialog.hpp>
 #include <Cutter/Ui/FunctionRenameDialog.hpp>
 #include <Cutter/Ui/FunctionSimilarityDialog.hpp>
+#include <Cutter/Ui/AutoAnalysisDialog.hpp>
 #include <Plugin.h>
 #include <Cutter/Cutter.hpp>
 
@@ -365,16 +366,10 @@ void ReaiCutterPlugin::on_AutoAnalyzeBinSym() {
         on_Setup();
     }
 
-    // TODO: create a new dialog for auto-analysis
-    if (!reai_plugin_auto_analyze_opened_binary_file (
-            RzCoreLocked (Core()),
-            5,
-            0.85,
-            true,
-            false
-        )) {
-        DISPLAY_ERROR ("Failed to complete auto-analysis.");
-    }
+    RzCoreLocked core (Core());
+
+    AutoAnalysisDialog *autoDlg = new AutoAnalysisDialog ((QWidget *)this->parent(), core);
+    autoDlg->show();
 }
 
 void ReaiCutterPlugin::on_RenameFns() {

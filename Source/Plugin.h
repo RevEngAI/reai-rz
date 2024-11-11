@@ -76,8 +76,8 @@ extern "C" {
     );
     ReaiBinaryId reai_plugin_get_binary_id_for_opened_binary_file (RzCore* core);
     ReaiFunctionId
-        reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);
-    ReaiPluginTable* reai_plugin_search_for_similar_functions (
+         reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);
+    Bool reai_plugin_search_and_show_similar_functions (
         RzCore* core,
         CString fcn_name,
         Size    max_results,

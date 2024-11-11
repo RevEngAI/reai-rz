@@ -169,12 +169,6 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
  *
  * After getting the hash and making sure one latest instance of binary is already available,
  * we create analysis of the binary.
- *
- * TODO: compute sha256 hash of opened binary and check whether it matches the latest uploaded
- *       binary. If not then ask the user whether to perform a new upload or not.
- * TODO: check if an analysis already exists and whether user wants to reuse that analysis
- * TODO: check if analysis is already created. If not created then ask the user whether
- *       they really want to continue before analysis
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
@@ -250,9 +244,6 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
  * Upload a binary to RevEng.AI Servers. Checks for latest uploaded
  * binary already present in database and performs the upload operation
  * only if binary is not already uploaded.
- *
- * TODO: compare latest hash in database with current hash of binary.
- *       if the don't match then ask the user what to do.
  * */
 RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
@@ -321,10 +312,7 @@ RZ_IPI RzCmdStatus rz_get_analysis_status_handler (
  * @b Get information about all functions detected by the AI model from
  *    RevEng.AI servers.
  *
- * TODO: take a binary id argument to get info of any analysis and not just
- *       currently opened analysis.
- *
- * NOTE: for now this works just for currently opened binary file. If binary
+ * NOTE: This works just for currently opened binary file. If binary
  *       file is not opened, this will return with `RZ_CMD_STATUS_ERROR`.
  *       If analysis for binary file does not exist then this will again return
  *       with an error.
@@ -467,17 +455,15 @@ RZ_IPI RzCmdStatus
     Bool debug_mode;
     ASK_QUESTION (debug_mode, true, "Enable debug symbol suggestions?");
 
-    ReaiPluginTable* results = reai_plugin_search_for_similar_functions (
-        core,
-        function_name,
-        max_results_count,
-        min_confidence,
-        debug_mode
-    );
-
-    if (results) {
-        reai_plugin_table_show (results);
-        reai_plugin_table_destroy (results);
+    if (!reai_plugin_search_and_show_similar_functions (
+            core,
+            function_name,
+            max_results_count,
+            min_confidence,
+            debug_mode
+        )) {
+        DISPLAY_ERROR ("Failed to get similar functions search result.");
+        return RZ_CMD_STATUS_ERROR;
     }
 
     return RZ_CMD_STATUS_OK;

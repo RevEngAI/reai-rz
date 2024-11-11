@@ -1347,7 +1347,7 @@ ReaiFunctionId
  * @return @c ReaiPluginTable containing search suggestions on success.
  * @return @c NULL when no suggestions found.
  * */
-ReaiPluginTable *reai_plugin_search_for_similar_functions (
+Bool reai_plugin_search_and_show_similar_functions (
     RzCore *core,
     CString fcn_name,
     Size    max_results_count,
@@ -1356,18 +1356,18 @@ ReaiPluginTable *reai_plugin_search_for_similar_functions (
 ) {
     if (!core) {
         DISPLAY_ERROR ("Invalid Rizin core porivded. Cannot perform similarity search.");
-        return NULL;
+        return false;
     }
 
     if (!fcn_name) {
         DISPLAY_ERROR ("Invalid function name porivded. Cannot perform similarity search.");
-        return NULL;
+        return false;
     }
 
     RzAnalysisFunction *fn = rz_analysis_get_function_byname (core->analysis, fcn_name);
     if (!fn) {
         DISPLAY_ERROR ("Provided function name does not exist. Cannot get similar function names.");
-        return NULL;
+        return false;
     }
 
     ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
@@ -1375,7 +1375,7 @@ ReaiPluginTable *reai_plugin_search_for_similar_functions (
         DISPLAY_ERROR (
             "Failed to get function id of given function. Cannot get similar function names."
         );
-        return NULL;
+        return false;
     }
 
     Float32            maxDistance = 1 - confidence;
@@ -1383,10 +1383,10 @@ ReaiPluginTable *reai_plugin_search_for_similar_functions (
         reai(),
         reai_response(),
         fn_id,
-        NULL,
+        NULL, // speculative fn ids
         max_results_count,
         maxDistance,
-        NULL,
+        NULL, // collections
         debug_mode
     );
 
@@ -1422,12 +1422,11 @@ ReaiPluginTable *reai_plugin_search_for_similar_functions (
             );
         });
 
-        return table;
+        reai_plugin_table_show (table);
+        reai_plugin_table_destroy (table);
+        return true;
     } else {
-        DISPLAY_INFO (
-            "Oops! I cannot find any function similar to this one. Try some other function?"
-        );
-        return NULL;
+        return false;
     }
 }
 

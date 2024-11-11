@@ -34,7 +34,7 @@ RUN wget https://github.com/rizinorg/rizin/archive/refs/tags/v0.7.3.tar.gz && \
 WORKDIR /home/ubuntu
 
 # Download, build and install the latest creait library
-RUN git clone https://github.com/RevEngAI/creait && \
+RUN git clone -b v1 https://github.com/RevEngAI/creait && \
     cd creait && \
     cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_SHARED_LIBS=ON && \
     ninja -C build && \

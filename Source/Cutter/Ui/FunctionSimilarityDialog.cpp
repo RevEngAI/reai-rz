@@ -133,16 +133,13 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
         return;
     }
 
-    ReaiPluginTable* resultsTable = reai_plugin_search_for_similar_functions (
-        core,
-        fnNameCStr,
-        maxResultCount,
-        confidence,
-        debugMode
-    );
-
-    if (resultsTable) {
-        reai_plugin_table_show (resultsTable);
-        reai_plugin_table_destroy (resultsTable);
+    if (!reai_plugin_search_and_show_similar_functions (
+            core,
+            fnNameCStr,
+            maxResultCount,
+            confidence,
+            debugMode
+        )) {
+        DISPLAY_ERROR ("Failed to get similar functions search result.");
     }
 }
