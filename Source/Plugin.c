@@ -248,6 +248,9 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
     RzList        *fns           = rz_analysis_function_list (core->analysis);
     ReaiFnInfoVec *fn_boundaries = reai_fn_info_vec_create();
 
+    /** NOTE: We're sending addresses here in form of `base + offset`
+     * but what we receive from reveng.ai is in `offset` only form */
+
     /* add all symbols corresponding to functions */
     RzListIter         *fn_iter = NULL;
     RzAnalysisFunction *fn      = NULL;
@@ -1284,9 +1287,14 @@ ReaiFunctionId
         }
     }
 
-    REAI_VEC_FOREACH (fn_infos, fn_info, {
-        if (rz_analysis_function_min_addr (rz_fn) <= fn_info->vaddr &&
-            fn_info->vaddr <= rz_analysis_function_max_addr (rz_fn)) {
+    Uint64 base_addr = reai_plugin_get_opened_binary_file_baseaddr (core);
+
+    for (ReaiFnInfo *fn_info = fn_infos->items; fn_info < fn_infos->items + fn_infos->count;
+         fn_info++) {
+        Uint64 min_addr = rz_analysis_function_min_addr (rz_fn) - base_addr;
+        Uint64 max_addr = rz_analysis_function_max_addr (rz_fn) - base_addr;
+
+        if (min_addr <= fn_info->vaddr && fn_info->vaddr <= max_addr) {
             LOG_TRACE (
                 "Found function ID for rizin function \"%s\" (\"%s\"): [%llu]",
                 rz_fn->name,
@@ -1295,11 +1303,107 @@ ReaiFunctionId
             );
             return fn_info->id;
         }
-    });
+    };
 
     LOG_TRACE ("Function ID not found for function \"%s\"", rz_fn->name);
 
     return 0;
+}
+
+/**
+ * @b Get a table of similar function name data.
+ *
+ * @param core
+ * @param fcn_name Function name to search simlar functions for,
+ * @param max_results_count
+ * @param confidence
+ * @param debug_mode
+ *
+ * @return @c ReaiPluginTable containing search suggestions on success.
+ * @return @c NULL when no suggestions found.
+ * */
+ReaiPluginTable *reai_plugin_search_for_similar_functions (
+    RzCore *core,
+    CString fcn_name,
+    Size    max_results_count,
+    Float32 confidence,
+    Bool    debug_mode
+) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid Rizin core porivded. Cannot perform similarity search.");
+        return NULL;
+    }
+
+    if (!fcn_name) {
+        DISPLAY_ERROR ("Invalid function name porivded. Cannot perform similarity search.");
+        return NULL;
+    }
+
+    RzAnalysisFunction *fn = rz_analysis_get_function_byname (core->analysis, fcn_name);
+    if (!fn) {
+        DISPLAY_ERROR ("Provided function name does not exist. Cannot get similar function names.");
+        return NULL;
+    }
+
+    ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
+    if (!fn_id) {
+        DISPLAY_ERROR (
+            "Failed to get function id of given function. Cannot get similar function names."
+        );
+        return NULL;
+    }
+
+    Float32            maxDistance = 1 - confidence;
+    ReaiAnnFnMatchVec *fnMatches   = reai_batch_function_symbol_ann (
+        reai(),
+        reai_response(),
+        fn_id,
+        NULL,
+        max_results_count,
+        maxDistance,
+        NULL,
+        debug_mode
+    );
+
+    if (fnMatches->count) {
+        // Populate table
+        ReaiPluginTable *table = reai_plugin_table_create();
+        reai_plugin_table_set_columnsf (
+            table,
+            "sfns",
+            "Function Name",
+            "Confidence",
+            "Function ID",
+            "Binary Name"
+        );
+        reai_plugin_table_set_title (table, "Function Similarity Search Results");
+
+        REAI_VEC_FOREACH (fnMatches, fnMatch, {
+            reai_plugin_table_add_rowf (
+                table,
+                "sfns",
+                fnMatch->nn_function_name,
+                fnMatch->confidence,
+                fnMatch->nn_function_id,
+                fnMatch->nn_binary_name
+            );
+            LOG_TRACE (
+                "Similarity Search Suggestion = (.name = \"%s\", .confidence = \"%lf\", "
+                ".function_id = \"%llu\", .binary_name = \"%s\")",
+                fnMatch->nn_function_name,
+                fnMatch->confidence,
+                fnMatch->nn_function_id,
+                fnMatch->nn_binary_name
+            );
+        });
+
+        return table;
+    } else {
+        DISPLAY_INFO (
+            "Oops! I cannot find any function similar to this one. Try some other function?"
+        );
+        return NULL;
+    }
 }
 
 /**
@@ -1442,69 +1546,4 @@ Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore *core) {
     }
 
     return fns->length;
-}
-
-/**
- * @b Get reference to `RzAnalysisFunction` with given name.
- *
- * @param core Rizin core.
- * @param name Name of function to get reference of.
- *
- * @return `RzAnalyisFunction` on success.
- * @return NULL otherwise.
- * */
-RzAnalysisFunction *reai_plugin_get_rizin_analysis_function_with_name (RzCore *core, CString name) {
-    if (!core) {
-        DISPLAY_ERROR ("Invalid Rizin core provided. Cannot get function with given name.");
-        return NULL;
-    }
-
-    if (!name) {
-        DISPLAY_ERROR ("Invalid function name provided. Cannot get function with given name.");
-        return NULL;
-    }
-
-    if (!core->analysis) {
-        DISPLAY_ERROR (
-            "Seems like Rizin analysis is not performed yet. Analysis object is invalid. Cannot "
-            "get function with given name."
-        );
-        return NULL;
-    }
-
-    RzList *fns = rz_analysis_function_list (core->analysis);
-    if (!fns) {
-        DISPLAY_ERROR (
-            "Seems like Rizin analysis is not performed yet. Function list is invalid. Cannot get "
-            "function with given name."
-        );
-        return NULL;
-    }
-
-    RzListIter         *fn_iter = NULL;
-    RzAnalysisFunction *fn      = NULL;
-    rz_list_foreach (fns, fn_iter, fn) {
-        if (!fn->name) {
-            LOG_ERROR (
-                "Function at address 0x%016llx of size 0x%016llx has name=NULL.",
-                fn->addr,
-                rz_analysis_function_linear_size (fn)
-            );
-            continue;
-        }
-
-        if (!strcmp (fn->name, name)) {
-            LOG_TRACE (
-                "Found function with name \"%s\" at address 0x%016llx and has size 0x%016llx",
-                name,
-                fn->addr,
-                rz_analysis_function_linear_size (fn)
-            );
-            return fn;
-        }
-    }
-
-    LOG_TRACE ("Failed to find function with name \"%s\"", name);
-
-    return NULL;
 }

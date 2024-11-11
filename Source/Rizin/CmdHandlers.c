@@ -46,6 +46,8 @@
  * Requires a restart of rizin plugin after issue.
  * */
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
     /* if file already exists then we don't make changes */
     if (reai_plugin_check_config_exists()) {
         DISPLAY_ERROR (
@@ -412,6 +414,35 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
     } else {
         DISPLAY_ERROR ("Failed to rename the function. Please check the function ID and new name.");
         return RZ_CMD_STATUS_ERROR;
+    }
+
+    return RZ_CMD_STATUS_OK;
+}
+
+/**
+ * "REfs"
+ *
+ * @b Similar function name search 
+ * */
+RZ_IPI RzCmdStatus
+    rz_function_similarity_search_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString function_name     = argv[1];
+    Uint32  max_results_count = rz_num_math (core->num, argv[2]);
+    Float32 min_confidence    = rz_num_math (core->num, argv[3]);
+    Bool    debug_mode        = !strncmp (argv[4], "true", 4) ? true : false;
+
+    ReaiPluginTable* results = reai_plugin_search_for_similar_functions (
+        core,
+        function_name,
+        max_results_count,
+        min_confidence,
+        debug_mode
+    );
+    if (results) {
+        reai_plugin_table_show (results);
+        reai_plugin_table_destroy (results);
     }
 
     return RZ_CMD_STATUS_OK;

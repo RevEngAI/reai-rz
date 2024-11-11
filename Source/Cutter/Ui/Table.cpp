@@ -318,4 +318,16 @@ ReaiPluginTable* reai_plugin_table_set_title (ReaiPluginTable* table, const char
     return table;
 }
 
+ReaiPluginTable* reai_plugin_table_clear_contents (ReaiPluginTable* table) {
+    if (!table) {
+        DISPLAY_ERROR ("Invalid plugin table provided. Cannot set title.");
+        return nullptr;
+    }
+
+    table->clearContents();
+    table->setRowCount (0);
+
+    return table;
+}
+
 #include "Table.moc"

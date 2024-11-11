@@ -10,6 +10,7 @@
 #include "Reai/Types.h"
 #include <Cutter.h>
 #include <Reai/AnalysisInfo.h>
+#include <rz_analysis.h>
 #include <rz_core.h>
 
 /* qt includes */
@@ -384,9 +385,8 @@ void ReaiCutterPlugin::on_RenameFns() {
         PRINT_ERR ("OLDNAME = %s \t NEWNAME= %s", oldNameCstr, newNameCstr);
 
         /* get function id for old name */
-        RzAnalysisFunction *rz_fn =
-            reai_plugin_get_rizin_analysis_function_with_name (core, oldNameCstr);
-        ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, rz_fn);
+        RzAnalysisFunction *rz_fn = rz_analysis_get_function_byname (core->analysis, oldNameCstr);
+        ReaiFunctionId      fn_id = reai_plugin_get_function_id_for_rizin_function (core, rz_fn);
 
         if (!fn_id) {
             DISPLAY_ERROR (

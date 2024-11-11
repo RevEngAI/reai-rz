@@ -110,6 +110,40 @@ commands:
         entries:
           - text: "fopen"
             comment: "New function name"
+  - name: REfs
+    cname: function_similarity_search
+    summary: RevEng.AI ANN functions similarity search.
+    args:
+      - name: function_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: min_result_count
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 5
+      - name: min_confidence
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 0.9
+      - name: debug_mode 
+        type: RZ_CMD_ARG_TYPE_CHOICES
+        choices: ["true", "false"]
+        default_value: "true"
+    details:
+      - name: Function Name
+        entries:
+          - text: "fcn.1337"
+            comment: "Function to search similar functions for"
+      - name: Max Result Count 
+        entries:
+          - text: "10" 
+            comment: "Maximum number of search results"
+      - name: Min Confidence 
+        entries:
+          - text: "0.95"
+            comment: "Minimum confidence of search suggestions"
+      - name: Debug Mode Enable
+        entries:
+          - text: "true"
+            comment: "Suggest names taken from debugging symbols."
   - name: REart
     cname: show_revengai_art
     summary: Show RevEng.AI ASCII art.
