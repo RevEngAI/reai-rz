@@ -17,6 +17,8 @@
 ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
     setWindowTitle ("Plugin Configuration Setup");
 
+    setMinimumSize (500, 150);
+
     QVBoxLayout* mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
 
@@ -43,12 +45,6 @@ ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
     );
     ADD_LABEL_INPUT_ROW (hostLabel, "RevEng.AI Host", leHost, "https://api.reveng.ai/v1");
     ADD_LABEL_INPUT_ROW (modelLabel, "RevEng.AI AI Model", leModel, "binnet-0.3");
-    ADD_LABEL_INPUT_ROW (
-        logDirPathLabel,
-        "Plugin Local Log Storage Path",
-        leLogDirPath,
-        reai_plugin_get_default_log_dir_path()
-    );
 
 #undef ADD_LABEL_INPUT_ROW
 
@@ -67,10 +63,7 @@ ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
  * @return false otherwise.
  * */
 Bool ConfigSetupDialog::allFieldsFilled() {
-    return !(
-        leHost->text().isEmpty() || leApiKey->text().isEmpty() || leModel->text().isEmpty() ||
-        leLogDirPath->text().isEmpty()
-    );
+    return !(leHost->text().isEmpty() || leApiKey->text().isEmpty() || leModel->text().isEmpty());
 }
 
 /**
@@ -97,14 +90,6 @@ CString ConfigSetupDialog::getModel() {
     return model.constData();
 }
 
-/**
- * @b Get value of log dir path line edit.
- * */
-CString ConfigSetupDialog::getLogDirPath() {
-    logDirPath = leLogDirPath->text().toLatin1();
-    return logDirPath.constData();
-}
-
 void ConfigSetupDialog::setHost (CString value) {
     leHost->setText (value);
 }
@@ -115,8 +100,4 @@ void ConfigSetupDialog::setApiKey (CString value) {
 
 void ConfigSetupDialog::setModel (CString value) {
     leModel->setText (value);
-}
-
-void ConfigSetupDialog::setLogDirPath (CString value) {
-    leLogDirPath->setText (value);
 }

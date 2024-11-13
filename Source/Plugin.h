@@ -34,7 +34,6 @@ extern "C" {
         ReaiConfig*   reai_config;
         Reai*         reai;
         ReaiResponse* reai_response;
-        ReaiLog*      reai_logger;
         ReaiBinaryId  binary_id;
 
         // Periodically updates the database in background
@@ -49,12 +48,7 @@ extern "C" {
     void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
     Bool           reai_plugin_check_config_exists();
     CString        reai_plugin_get_default_log_dir_path();
-    Bool           reai_plugin_save_config (
-                  CString host,
-                  CString api_key,
-                  CString model,
-                  CString log_dir_path
-              );
+    Bool           reai_plugin_save_config (CString host, CString api_key, CString model);
 
     Bool reai_plugin_upload_opened_binary_file (RzCore* core);
     Bool reai_plugin_create_analysis_for_opened_binary_file (
@@ -99,36 +93,18 @@ extern "C" {
 // initializes plugin automatically
 #define reai()           reai_plugin()->reai
 #define reai_response()  reai_plugin()->reai_response
-#define reai_logger()    reai_plugin()->reai_logger
 #define reai_config()    reai_plugin()->reai_config
 #define reai_binary_id() reai_plugin()->binary_id
 
-#define LOG_TRACE(...) REAI_LOG_TRACE (reai_logger(), __VA_ARGS__)
-#define LOG_INFO(...)  REAI_LOG_INFO (reai_logger(), __VA_ARGS__)
-#define LOG_DEBUG(...) REAI_LOG_DEBUG (reai_logger(), __VA_ARGS__)
-#define LOG_WARN(...)  REAI_LOG_WARN (reai_logger(), __VA_ARGS__)
-#define LOG_ERROR(...) REAI_LOG_ERROR (reai_logger(), __VA_ARGS__)
-#define LOG_FATAL(...) REAI_LOG_FATAL (reai_logger(), __VA_ARGS__)
-
-    /**
-     * Helper macro to create a buffer with contents of format string and given arguemtns
-     * with given name.
-     *
-     * @param strname Name of variable
-     * @param fmt Format string
-     * */
-#define FMT(strname, ...)                                                                          \
-    Size  strname##_##strsz = snprintf (0, 0, __VA_ARGS__) + 1;                                    \
-    Char* strname           = ALLOCATE (Char, strname##_##strsz);                                  \
-    if (!strname) {                                                                                \
-        PRINT_ERR (ERR_OUT_OF_MEMORY);                                                             \
-    } else {                                                                                       \
-        snprintf (strname, strname##_##strsz, __VA_ARGS__);                                        \
-    }
-
 #define DISPLAY_MSG(level, ...)                                                                    \
     do {                                                                                           \
-        FMT (msg, __VA_ARGS__);                                                                    \
+        Size  msgsz = snprintf (0, 0, __VA_ARGS__) + 1;                                            \
+        Char* msg   = ALLOCATE (Char, msgsz);                                                      \
+        if (!msg) {                                                                                \
+            PRINT_ERR (ERR_OUT_OF_MEMORY);                                                         \
+            break;                                                                                 \
+        }                                                                                          \
+        snprintf (msg, msgsz, __VA_ARGS__);                                                        \
         reai_plugin_display_msg (level, msg);                                                      \
         FREE (msg);                                                                                \
     } while (0)

@@ -222,7 +222,7 @@ ReaiPlugin *reai_plugin() {
 /**
  * @b Get function boundaries from given binary file.
  *
- * @NOTE: returned vector is owned by the caller and hence is
+ *@NOTE: returned vector is owned by the caller and hence is
  * responsible for destroying the vector after use.
  *
  * @param core
@@ -281,37 +281,20 @@ Bool reai_plugin_init() {
         return false;
     }
 
+    if (!reai_auth_check (reai(), reai_response(), reai_config()->apikey)) {
+        DISPLAY_WARN (
+            "Invalid API key provided in configuration file. Please correct the API key before "
+            "using plugin."
+        );
+        return false;
+    }
+
     /* initialize reai object. */
     reai() = reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
     if (!reai()) {
         DISPLAY_ERROR ("Failed to create Reai object.");
         return false;
     }
-
-    /* create log directory if not present before creating new log files */
-    rz_sys_mkdirp (reai_config()->log_dir_path);
-
-    /* get current time */
-    Char current_time[64] = {0};
-    strftime (
-        current_time,
-        sizeof (current_time),
-        "y%Y_m%m_d%d_h%H_m%M_s%S",
-        localtime (&((time_t) {time (NULL)}))
-    );
-
-    /* create log file name */
-    FMT (log_file_path, "%s/reai_%s.log", reai_config()->log_dir_path, current_time);
-
-    /* create logger */
-    reai_logger() = reai_log_create (log_file_path);
-    if (!reai_logger() || !reai_set_logger (reai(), reai_logger())) {
-        FREE (log_file_path);
-        DISPLAY_ERROR ("Failed to create and set Reai logger.");
-        return false;
-    }
-
-    FREE (log_file_path);
 
     /* create response object */
     reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
@@ -339,11 +322,6 @@ Bool reai_plugin_deinit() {
         reai_plugin()->reai = NULL;
     }
 
-    if (reai_logger()) {
-        reai_log_destroy (reai_logger());
-        reai_plugin()->reai_logger = NULL;
-    }
-
     if (reai_response()) {
         reai_response_deinit (reai_response());
         FREE (reai_response());
@@ -367,28 +345,6 @@ Bool reai_plugin_check_config_exists() {
 }
 
 /**
- * @b Get default database path.
- *
- * @return Database directory path on success.
- * @return NULL otherwise
- * */
-CString reai_plugin_get_default_log_dir_path() {
-    static Bool    is_created = false;
-    static CString path       = NULL;
-
-    if (is_created) {
-        return path;
-    }
-
-    FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz/log");
-    static Char static_buf[512] = {0};
-    memcpy (static_buf, buf, strlen (buf));
-
-    is_created = true;
-    return (path = static_buf);
-}
-
-/**
  * @b Save given config to a file.
  *
  * @param host
@@ -396,41 +352,37 @@ CString reai_plugin_get_default_log_dir_path() {
  * @param model
  * @param log_dir_path
  * */
-Bool reai_plugin_save_config (CString host, CString api_key, CString model, CString log_dir_path) {
+Bool reai_plugin_save_config (CString host, CString api_key, CString model) {
     if (!host) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
+        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided host is invalid. Cannot save config.");
         return false;
     }
 
     if (!api_key) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
+        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided API key is invalid. Cannot save config.");
         return false;
     }
 
     if (!model) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
+        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided model is invalid. Cannot save config.");
-        return false;
-    }
-
-    if (!log_dir_path) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided log directory path is invalid. Cannot save config.");
         return false;
     }
 
     CString reai_config_file_path = reai_config_get_default_path();
     if (!reai_config_file_path) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
+        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to get config file default path.");
         return false;
+    } else {
+        REAI_LOG_INFO ("Config will be saved at %s\n", reai_config_file_path);
     }
 
     FILE *reai_config_file = fopen (reai_config_file_path, "w");
     if (!reai_config_file) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
+        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to open config file. %s", strerror (errno));
         return false;
     }
@@ -438,7 +390,6 @@ Bool reai_plugin_save_config (CString host, CString api_key, CString model, CStr
     fprintf (reai_config_file, "host         = \"%s\"\n", host);
     fprintf (reai_config_file, "apikey       = \"%s\"\n", api_key);
     fprintf (reai_config_file, "model        = \"%s\"\n", model);
-    fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
 
     fclose (reai_config_file);
 
@@ -528,7 +479,7 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (
         return false;
     }
     sha256 = strdup (sha256);
-    LOG_INFO ("Binary uploaded successfully.");
+    REAI_LOG_INFO ("Binary uploaded successfully.");
 
     /* get function boundaries to create analysis */
     ReaiFnInfoVec *fn_boundaries = reai_plugin_get_function_boundaries (core);
@@ -666,7 +617,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id, Boo
 
             // Skip if name already matches
             if (!strcmp (rz_fn->name, fn->name)) {
-                LOG_INFO (
+                REAI_LOG_INFO (
                     "Name \"%s\" already matches for function at address %llx",
                     old_name,
                     fn_addr
@@ -698,7 +649,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id, Boo
                     failed_cases_exist = true;
                 }
             } else {
-                LOG_INFO (
+                REAI_LOG_INFO (
                     "Not renaming. Human readbale name already present : \"%s\"",
                     rz_fn->name
                 );
@@ -761,7 +712,10 @@ ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId b
         return REAI_ANALYSIS_STATUS_INVALID;
     }
 
-    LOG_TRACE ("Fetched analysis status \"%s\".", reai_analysis_status_to_cstr (analysis_status));
+    REAI_LOG_TRACE (
+        "Fetched analysis status \"%s\".",
+        reai_analysis_status_to_cstr (analysis_status)
+    );
     return analysis_status;
 }
 
@@ -886,7 +840,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (new_name, old_name)) {
-                LOG_INFO (
+                REAI_LOG_INFO (
                     "Name \"%s\" already matches for function at address %llx",
                     old_name,
                     fn_addr
@@ -937,7 +891,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
                     failed_cases_exist = true;
                 }
             } else {
-                LOG_TRACE (
+                REAI_LOG_TRACE (
                     "Skipping rename for \"%s\". Name already looks valid to me",
                     rz_fn->name
                 );
@@ -1025,11 +979,11 @@ ReaiFunctionId
     ReaiFnInfoVec *fn_infos = NULL;
     /* avoid making multiple calls subsequent calls to same endpoint if possible */
     if (reai_response()->type == REAI_RESPONSE_TYPE_BASIC_FUNCTION_INFO) {
-        LOG_TRACE ("Using previously fetched response of basic function info.");
+        REAI_LOG_TRACE ("Using previously fetched response of basic function info.");
 
         fn_infos = reai_response()->basic_function_info.fn_infos;
     } else {
-        LOG_TRACE ("Fetching basic function info again");
+        REAI_LOG_TRACE ("Fetching basic function info again");
 
         fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
         if (!fn_infos) {
@@ -1048,7 +1002,7 @@ ReaiFunctionId
         Uint64 max_addr = rz_analysis_function_max_addr (rz_fn) - base_addr;
 
         if (min_addr <= fn_info->vaddr && fn_info->vaddr <= max_addr) {
-            LOG_TRACE (
+            REAI_LOG_TRACE (
                 "Found function ID for rizin function \"%s\" (\"%s\"): [%llu]",
                 rz_fn->name,
                 fn_info->name,
@@ -1058,7 +1012,7 @@ ReaiFunctionId
         }
     };
 
-    LOG_TRACE ("Function ID not found for function \"%s\"", rz_fn->name);
+    REAI_LOG_TRACE ("Function ID not found for function \"%s\"", rz_fn->name);
 
     return 0;
 }
@@ -1140,7 +1094,7 @@ Bool reai_plugin_search_and_show_similar_functions (
                 fnMatch->nn_function_id,
                 fnMatch->nn_binary_name
             );
-            LOG_TRACE (
+            REAI_LOG_TRACE (
                 "Similarity Search Suggestion = (.name = \"%s\", .confidence = \"%lf\", "
                 ".function_id = \"%llu\", .binary_name = \"%s\")",
                 fnMatch->nn_function_name,

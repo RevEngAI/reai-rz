@@ -147,13 +147,13 @@ struct ReaiPluginTable : public QTableWidget {
         Size tableRowCount = rowCount();
         insertRow (tableRowCount);
 
-        LOG_TRACE ("Adding new row at %zu", tableRowCount);
+        REAI_LOG_TRACE ("Adding new row at %zu", tableRowCount);
 
         /* populate the new row */
         for (Int32 i = 0; i < headerLabels.size(); i++) {
             setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
 
-            LOG_TRACE (
+            REAI_LOG_TRACE (
                 "Inserting item \"%s\" at row = %zu and colu = %zu",
                 row[i].toLatin1().constData(),
                 tableRowCount,
@@ -217,14 +217,14 @@ ReaiPluginTable* reai_plugin_table_set_columnsf (ReaiPluginTable* table, const c
     rz_table_set_vcolumnsf (table->rzTable, fmtstr, rzArgs);
     va_end (rzArgs);
 
-    LOG_TRACE ("Setting columns");
+    REAI_LOG_TRACE ("Setting columns");
 
     size_t len = strlen (fmtstr);
     for (size_t i = 0; i < len; ++i) {
         /* all column names are of type CString */
         CString column_name = va_arg (args, CString);
         table->addColumn (column_name);
-        LOG_TRACE ("New column \"%s\"", column_name);
+        REAI_LOG_TRACE ("New column \"%s\"", column_name);
     }
 
     va_end (args);
@@ -271,7 +271,7 @@ ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char*
     void**      cellData = NULL;
     rz_pvector_foreach (rzRow, cellData) {
         CString cellValue = *(CString*)cellData;
-        LOG_TRACE ("Adding cell value \"%s\" to new row", cellValue);
+        REAI_LOG_TRACE ("Adding cell value \"%s\" to new row", cellValue);
         row << cellValue;
     }
 

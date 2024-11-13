@@ -74,23 +74,16 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     CString model   = argv[3];
 
     /* check whether API key is correct or not */
-    if (!reai_config_check_api_key (api_key)) {
+    if (!reai_auth_check (reai(), reai_response(), api_key)) {
         DISPLAY_ERROR (
-            "Invalid API key. API key must be in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+            "Invalid API key. Make sure you're online and directly copy-paste the API key from "
+            "RevEng.AI dashboard."
         );
         return RZ_CMD_STATUS_ERROR;
     }
 
-    CString log_dir_path = NULL;
-
-    log_dir_path = reai_plugin_get_default_log_dir_path();
-    if (!log_dir_path) {
-        DISPLAY_ERROR ("Failed to get log storage directory path.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
     /* attempt saving config */
-    if (reai_plugin_save_config (host, api_key, model, log_dir_path)) {
+    if (reai_plugin_save_config (host, api_key, model)) {
         /* try to reinit config after creating config */
         if (!reai_plugin_init()) {
             DISPLAY_ERROR ("Failed to init plugin after creating a new config.");
@@ -111,7 +104,7 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
  * */
 RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc && argv);
-    LOG_TRACE ("[CMD] health check");
+    REAI_LOG_TRACE ("[CMD] health check");
 
     ReaiRequest request = {.type = REAI_REQUEST_TYPE_HEALTH_CHECK};
 
@@ -131,7 +124,7 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
-    LOG_TRACE ("[CMD] create analysis");
+    REAI_LOG_TRACE ("[CMD] create analysis");
 
     Bool is_private;
     ASK_QUESTION (is_private, true, "Create private analysis?");
@@ -154,7 +147,7 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
  * */
 RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
-    LOG_TRACE ("[CMD] apply existing analysis");
+    REAI_LOG_TRACE ("[CMD] apply existing analysis");
 
     Bool rename_unknown_only;
     ASK_QUESTION (rename_unknown_only, true, "Apply analysis only to unknown functions?");
@@ -181,7 +174,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     RzOutputMode output_mode
 ) {
     UNUSED (output_mode && argc);
-    LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
+    REAI_LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
     // NOTE: this is static here. I don't think it's a good command line option to have
     // Since user won't know about this when issuing the auto-analysis command.
@@ -221,7 +214,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
  * */
 RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
-    LOG_TRACE ("[CMD] upload binary");
+    REAI_LOG_TRACE ("[CMD] upload binary");
 
     if (reai_plugin_upload_opened_binary_file (core)) {
         DISPLAY_ERROR ("File upload successful.");
@@ -250,7 +243,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     RzOutputMode output_mode
 ) {
     UNUSED (argc && argv && output_mode);
-    LOG_TRACE ("[CMD] get basic function info");
+    REAI_LOG_TRACE ("[CMD] get basic function info");
 
     /* get file path of opened binary file */
     CString opened_file = reai_plugin_get_opened_binary_file_path (core);
@@ -320,7 +313,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
  * */
 RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
-    LOG_TRACE ("[CMD] rename function");
+    REAI_LOG_TRACE ("[CMD] rename function");
 
     Uint64  fn_addr  = rz_num_get (core->num, argv[1]);
     CString new_name = argv[2];

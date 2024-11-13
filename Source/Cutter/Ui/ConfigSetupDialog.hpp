@@ -24,7 +24,6 @@ class ConfigSetupDialog : public QDialog {
     QByteArray host;
     QByteArray apiKey;
     QByteArray model;
-    QByteArray logDirPath;
 
    public:
     ConfigSetupDialog (QWidget* parent);
@@ -34,16 +33,14 @@ class ConfigSetupDialog : public QDialog {
     CString getHost();
     CString getApiKey();
     CString getModel();
-    CString getLogDirPath();
 
     void setHost (CString value);
     void setApiKey (CString value);
     void setModel (CString value);
-    void setLogDirPath (CString value);
 
    private:
     QDialogButtonBox* buttonBox;
-    QLineEdit *       leHost, *leApiKey, *leModel, *leLogDirPath;
+    QLineEdit *       leHost, *leApiKey, *leModel;
 
     void on_Ok();
     void on_Cancel();

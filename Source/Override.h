@@ -63,7 +63,7 @@
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
             eprintf ("\n");                                                                        \
-            LOG_ERROR (__VA_ARGS__);                                                               \
+            REAI_LOG_ERROR (__VA_ARGS__);                                                          \
             return value;                                                                          \
         }                                                                                          \
     } while (0)
@@ -73,7 +73,7 @@
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
             eprintf ("\n");                                                                        \
-            LOG_ERROR (__VA_ARGS__);                                                               \
+            REAI_LOG_ERROR (__VA_ARGS__);                                                          \
             return;                                                                                \
         }                                                                                          \
     } while (0)
@@ -82,7 +82,7 @@
     do {                                                                                           \
         eprintf (__VA_ARGS__);                                                                     \
         eprintf ("\n");                                                                            \
-        LOG_ERROR (__VA_ARGS__);                                                                   \
+        REAI_LOG_ERROR (__VA_ARGS__);                                                              \
         goto handler;                                                                              \
     } while (0)
 #define GOTO_HANDLER_IF(cond, handler, ...)                                                        \
@@ -90,7 +90,7 @@
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
             eprintf ("\n");                                                                        \
-            LOG_ERROR (__VA_ARGS__);                                                               \
+            REAI_LOG_ERROR (__VA_ARGS__);                                                          \
             goto handler;                                                                          \
         }                                                                                          \
     } while (0)
@@ -100,7 +100,7 @@
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
             eprintf ("\n");                                                                        \
-            LOG_ERROR (__VA_ARGS__);                                                               \
+            REAI_LOG_ERROR (__VA_ARGS__);                                                          \
             handler;                                                                               \
         }                                                                                          \
     } while (0)
@@ -110,7 +110,7 @@
         if ((cond)) {                                                                              \
             eprintf (__VA_ARGS__);                                                                 \
             eprintf ("\n");                                                                        \
-            LOG_FATAL (__VA_ARGS__);                                                               \
+            REAI_LOG_FATAL (__VA_ARGS__);                                                          \
             abort();                                                                               \
         }                                                                                          \
     } while (0)
@@ -120,7 +120,7 @@
         eprintf ("unreachable code reached : ");                                                   \
         eprintf (__VA_ARGS__);                                                                     \
         eprintf ("\n");                                                                            \
-        LOG_ERROR (__VA_ARGS__);                                                                   \
+        REAI_LOG_ERROR (__VA_ARGS__);                                                              \
         return val;                                                                                \
     } while (0)
 
@@ -129,7 +129,7 @@
         eprintf ("unreachable code reached : ");                                                   \
         eprintf (__VA_ARGS__);                                                                     \
         eprintf ("\n");                                                                            \
-        LOG_ERROR (__VA_ARGS__);                                                                   \
+        REAI_LOG_ERROR (__VA_ARGS__);                                                              \
         return;                                                                                    \
     } while (0)
 
@@ -138,7 +138,7 @@
         eprintf ("unreachable code reached : ");                                                   \
         eprintf (__VA_ARGS__);                                                                     \
         eprintf ("\n");                                                                            \
-        LOG_FATAL (__VA_ARGS__);                                                                   \
+        REAI_LOG_FATAL (__VA_ARGS__);                                                              \
         abort();                                                                                   \
     } while (0)
 
@@ -146,7 +146,7 @@
     do {                                                                                           \
         eprintf (__VA_ARGS__);                                                                     \
         eprintf ("\n");                                                                            \
-        LOG_ERROR (__VA_ARGS__);                                                                   \
+        REAI_LOG_ERROR (__VA_ARGS__);                                                              \
     } while (0)
 
 

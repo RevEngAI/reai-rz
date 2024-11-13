@@ -63,7 +63,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     win_title[REAI_LOG_LEVEL_ERROR] = "Error";
     win_title[REAI_LOG_LEVEL_FATAL] = "Critical";
 
-    reai_log_printf (reai_logger(), level, "display", "%s", msg);
+    reai_log_printf (level, "display", "%s", msg);
 
     switch (level) {
         case REAI_LOG_LEVEL_INFO :
@@ -101,7 +101,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
 void ReaiCutterPlugin::setupPlugin() {
     /* if plugin launch fails then terminate */
     if (!reai_plugin_init()) {
-        LOG_TRACE ("Plugin initialization incomplete.");
+        REAI_LOG_TRACE ("Plugin initialization incomplete.");
     }
 
     /* display dialog to get config settings */
@@ -415,10 +415,13 @@ void ReaiCutterPlugin::on_Setup() {
         setupDialog->setHost (reai_config()->host);
         setupDialog->setApiKey (reai_config()->apikey);
         setupDialog->setModel (reai_config()->model);
-        setupDialog->setLogDirPath (reai_config()->log_dir_path);
     }
 
     int result = setupDialog->exec();
+
+    REAI_LOG_TRACE ("host = %s", setupDialog->getHost());
+    REAI_LOG_TRACE ("api key = %s", setupDialog->getApiKey());
+    REAI_LOG_TRACE ("mode = %s", setupDialog->getModel());
 
     /* move ahead only if OK was pressed. */
     if (result == QDialog::Rejected) {
@@ -427,13 +430,12 @@ void ReaiCutterPlugin::on_Setup() {
         /* if you accept without filling all fields, then dispaly a warning. */
         if (setupDialog->allFieldsFilled()) {
             /* check whether the API key is in the correct format */
-            if (reai_config_check_api_key (setupDialog->getApiKey())) {
+            if (reai_auth_check (reai(), reai_response(), setupDialog->getApiKey())) {
                 /* if we reach here finally then we save the config and exit loop */
                 if (reai_plugin_save_config (
                         setupDialog->getHost(),
                         setupDialog->getApiKey(),
-                        setupDialog->getModel(),
-                        setupDialog->getLogDirPath()
+                        setupDialog->getModel()
                     )) {
                     DISPLAY_INFO (
                         "Config saved successfully to \"%s\".",
@@ -447,7 +449,7 @@ void ReaiCutterPlugin::on_Setup() {
                 }
             } else {
                 DISPLAY_ERROR (
-                    "Invalid API Key. It's recommended to directly copy-paste "
+                    "Invalid API Key. Make sure you're online and directly copy-paste "
                     "the API key from RevEng.AI dashboard."
                 );
                 on_Setup(); /* continue setup */
