@@ -280,13 +280,6 @@ Bool reai_plugin_init() {
         );
         return false;
     }
-
-    /* if invalid config is provided, then plugin fails to load. */
-    if (!reai_auth_check (reai(), reai_response(), reai_config()->host, reai_config()->apikey)) {
-        DISPLAY_ERROR ("Invalid API key or Host provided in configuration file.");
-        return false;
-    }
-
     /* initialize reai object. */
     reai() = reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
     if (!reai()) {

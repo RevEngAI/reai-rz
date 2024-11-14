@@ -35,9 +35,6 @@ extern "C" {
         Reai*         reai;
         ReaiResponse* reai_response;
         ReaiBinaryId  binary_id;
-
-        // Periodically updates the database in background
-        RzThread* background_worker;
     } ReaiPlugin;
 
     ReaiPlugin* reai_plugin();

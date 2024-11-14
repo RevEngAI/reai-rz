@@ -61,6 +61,16 @@ void CreateAnalysisDialog::on_CreateAnalysis() {
     QByteArray progName    = progNameInput->text().toLatin1();
     QByteArray cmdLineArgs = cmdLineArgsInput->text().toLatin1();
 
+    if (progName.isEmpty()) {
+        QMessageBox::warning (
+            this,
+            "Create Analysis",
+            "Program Name cannot be empty.",
+            QMessageBox::Ok
+        );
+        return;
+    }
+
     if (!reai_plugin_create_analysis_for_opened_binary_file (
             core,
             progName.constData(),
