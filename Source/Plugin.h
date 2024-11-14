@@ -30,16 +30,24 @@ extern "C" {
 /* plugin */
 #include <Table.h>
 
+    REAI_MAKE_VEC (ReaiBgWorkersVec, bg_workers, RzThread*, NULL, NULL);
+
     typedef struct ReaiPlugin {
         ReaiConfig*   reai_config;
         Reai*         reai;
         ReaiResponse* reai_response;
         ReaiBinaryId  binary_id;
+        CStrVec*      ai_models;
+
+        ReaiBgWorkersVec* bg_workers;
+        Bool              locked;
     } ReaiPlugin;
 
     ReaiPlugin* reai_plugin();
     Bool        reai_plugin_init();
     Bool        reai_plugin_deinit();
+
+    Bool reai_plugin_add_bg_work (RzThreadFunction fn, void* user_data);
 
     ReaiFnInfoVec* reai_plugin_get_function_boundaries (RzCore* core);
     void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
@@ -52,6 +60,7 @@ extern "C" {
         RzCore* core,
         CString prog_name,
         CString cmdline_args,
+        CString ai_model,
         Bool    is_private
     );
     ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
@@ -79,7 +88,6 @@ extern "C" {
 
     RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
-    ReaiModel  reai_plugin_get_ai_model_for_opened_binary_file (RzCore* core);
     CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
     Uint64     reai_plugin_get_opened_binary_file_baseaddr (RzCore* core);
     Uint64     reai_plugin_get_rizin_analysis_function_count (RzCore* core);
@@ -88,10 +96,12 @@ extern "C" {
 
 // wrapper macros to make sure first call to any one of these
 // initializes plugin automatically
-#define reai()           reai_plugin()->reai
-#define reai_response()  reai_plugin()->reai_response
-#define reai_config()    reai_plugin()->reai_config
-#define reai_binary_id() reai_plugin()->binary_id
+#define reai()            reai_plugin()->reai
+#define reai_response()   reai_plugin()->reai_response
+#define reai_config()     reai_plugin()->reai_config
+#define reai_binary_id()  reai_plugin()->binary_id
+#define reai_ai_models()  reai_plugin()->ai_models
+#define reai_bg_workers() reai_plugin()->bg_workers
 
 #define DISPLAY_MSG(level, ...)                                                                    \
     do {                                                                                           \

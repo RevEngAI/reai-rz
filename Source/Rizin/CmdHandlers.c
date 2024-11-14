@@ -89,6 +89,22 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
 }
 
 /**
+ * "REm"
+ * */
+RZ_IPI RzCmdStatus rz_list_available_ai_models_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (core && argc && argv);
+    REAI_LOG_TRACE ("[CMD] list available ai models");
+
+    if (reai_ai_models()) {
+        REAI_VEC_FOREACH (reai_ai_models(), model, { rz_cons_println (*model); });
+        return RZ_CMD_STATUS_OK;
+    } else {
+        DISPLAY_ERROR ("Seems like background worker failed to get available AI models.");
+        return RZ_CMD_STATUS_ERROR;
+    }
+}
+
+/**
  * "REh"
  *
  * @b Perform an auth-check api call to check connection.
@@ -108,6 +124,9 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
 
 /**
  * "REa"
+ *
+ * NOTE: The default way to get ai model would be to use "REm" command.
+ *       Get list of all available AI models and then use one to create a new analysis.
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
@@ -118,11 +137,13 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
 
     CString prog_name    = argv[1];
     CString cmdline_args = argv[2];
+    CString ai_model     = argv[3];
 
     return reai_plugin_create_analysis_for_opened_binary_file (
                core,
                prog_name,
                cmdline_args,
+               ai_model,
                is_private
            ) ?
                RZ_CMD_STATUS_OK :

@@ -15,6 +15,7 @@
 #include <QTableWidget>
 #include <QCheckBox>
 #include <QVBoxLayout>
+#include <QComboBox>
 
 /* rizin */
 #include <rz_core.h>
@@ -34,6 +35,7 @@ class CreateAnalysisDialog : public QDialog {
 
    private:
     QVBoxLayout* mainLayout;
+    QComboBox*   aiModelInput;
     QLineEdit*   progNameInput;
     QLineEdit*   cmdLineArgsInput;
     QCheckBox*   isAnalysisPrivateCheckBox;

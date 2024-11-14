@@ -31,6 +31,66 @@
 #include <Plugin.h>
 #include <Table.h>
 
+/**
+ * NOTE: This is a background worker. Must not be used directly.
+ * */
+void *get_ai_models_in_bg (void *user) {
+    ReaiPlugin *plugin = user;
+
+    while (plugin->locked)
+        ;
+
+    plugin->locked = true;
+    REAI_LOG_TRACE ("Plugin lock acquired");
+
+    if (!plugin->ai_models) {
+        plugin->ai_models = reai_cstr_vec_clone_create (
+            reai_get_available_models (plugin->reai, plugin->reai_response)
+        );
+
+        if (plugin->ai_models) {
+            REAI_LOG_TRACE ("Got the AI models");
+        } else {
+            REAI_LOG_ERROR (
+                "Failed to get AI models. This might cause some features to fail working."
+            );
+        }
+    }
+
+    plugin->locked = false;
+    REAI_LOG_TRACE ("Plugin lock released");
+
+    return NULL;
+}
+
+void *perform_auth_check_in_bg (void *user) {
+    ReaiPlugin *plugin = user;
+
+    while (plugin->locked)
+        ;
+
+    plugin->locked = true;
+    REAI_LOG_TRACE ("Plugin lock acquired");
+
+    if (reai_auth_check (
+            plugin->reai,
+            plugin->reai_response,
+            plugin->reai_config->host,
+            plugin->reai_config->apikey
+        )) {
+        REAI_LOG_TRACE ("Auth check success");
+    } else {
+        REAI_LOG_ERROR (
+            "RevEngAI auth check failed. You won't be able to use any of the plugin features!"
+        );
+    }
+
+    plugin->locked = false;
+    REAI_LOG_TRACE ("Plugin lock released");
+
+    return NULL;
+}
+
 // TODO: remove this in next rizin release
 const char *rizin_analysis_function_force_rename (RzAnalysisFunction *fcn, CString name) {
     rz_return_val_if_fail (fcn && name, NULL);
@@ -208,6 +268,8 @@ ReaiPlugin *reai_plugin() {
     static ReaiPlugin *plugin = NULL;
 
     if (plugin) {
+        while (plugin->locked)
+            ;
         return plugin;
     }
 
@@ -272,7 +334,7 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
  * */
 Bool reai_plugin_init() {
     /* load default config */
-    reai_config() = reai_config_load (NULL);
+    reai_plugin()->reai_config = reai_config_load (NULL);
     if (!reai_config()) {
         DISPLAY_ERROR (
             "Failed to load RevEng.AI toolkit config file. Please make sure the config exists or "
@@ -280,19 +342,36 @@ Bool reai_plugin_init() {
         );
         return false;
     }
+
     /* initialize reai object. */
-    reai() = reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
+    reai_plugin()->reai =
+        reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
     if (!reai()) {
         DISPLAY_ERROR ("Failed to create Reai object.");
         return false;
     }
 
     /* create response object */
-    reai_response() = NEW (ReaiResponse);
+    reai_plugin()->reai_response = NEW (ReaiResponse);
     if (!reai_response_init (reai_response())) {
         DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
         FREE (reai_response());
         return false;
+    }
+
+    /* create bg workers */
+    reai_plugin()->bg_workers = reai_bg_workers_vec_create();
+    if (!reai_bg_workers()) {
+        DISPLAY_ERROR ("Failed to initialize background workers vec.");
+        return false;
+    }
+
+    if (!reai_plugin_add_bg_work (perform_auth_check_in_bg, reai_plugin())) {
+        REAI_LOG_ERROR ("Failed to add perform-auth-check bg worker.");
+    }
+
+    if (!reai_plugin_add_bg_work (get_ai_models_in_bg, reai_plugin())) {
+        REAI_LOG_ERROR ("Failed to add get-ai-models bg worker.");
     }
 
     return true;
@@ -321,6 +400,58 @@ Bool reai_plugin_deinit() {
 
     if (reai_config()) {
         reai_config_destroy (reai_config());
+    }
+
+    if (reai_ai_models()) {
+        reai_cstr_vec_destroy (reai_ai_models());
+        reai_plugin()->ai_models = NULL;
+    }
+
+    if (reai_bg_workers()) {
+        // wait for and destroy all threads first
+        REAI_VEC_FOREACH (reai_bg_workers(), th, {
+            rz_th_wait (*th);
+            rz_th_free (*th);
+        });
+
+        reai_bg_workers_vec_destroy (reai_bg_workers());
+        reai_plugin()->bg_workers = NULL;
+    }
+
+    return true;
+}
+
+Bool reai_plugin_add_bg_work (RzThreadFunction fn, void *user_data) {
+    if (!fn) {
+        DISPLAY_ERROR ("Invalid function provided. Cannot start background work");
+        return false;
+    }
+
+    const Size MAX_WORKERS = 16;
+    if (reai_bg_workers()->count >= MAX_WORKERS) {
+        // destroy oldest thread
+        RzThread *th = reai_bg_workers()->items[0];
+        rz_th_wait (th);
+        rz_th_free (th);
+
+        // remove oldest thread
+        reai_bg_workers_vec_remove (reai_bg_workers(), 0);
+    }
+
+    // create new thread
+    RzThread *th = rz_th_new (fn, user_data);
+    if (!th) {
+        DISPLAY_ERROR ("Failed to create a new background worker thread. Task won't be executed.");
+        return false;
+    }
+
+    // insert at end
+    if (!reai_bg_workers_vec_append (reai_bg_workers(), &th)) {
+        DISPLAY_WARN (
+            "Failed to add background worker thread to collection of threads. This might cause "
+            "memory leaks because thread object won't be destroyed."
+        );
+        return false;
     }
 
     return true;
@@ -427,10 +558,21 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (
     RzCore *core,
     CString prog_name,
     CString cmdline_args,
+    CString ai_model,
     Bool    is_private
 ) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot create analysis.");
+        return false;
+    }
+
+    if (!prog_name || !strlen (prog_name)) {
+        DISPLAY_ERROR ("Invalid program name provided. Cannot create analysis.");
+        return false;
+    }
+
+    if (!ai_model || !strlen (ai_model)) {
+        DISPLAY_ERROR ("Invalid AI model provided. Cannot create analysis.");
         return false;
     }
 
@@ -482,7 +624,7 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (
     ReaiBinaryId bin_id = reai_create_analysis (
         reai(),
         reai_response(),
-        reai_plugin_get_ai_model_for_opened_binary_file (core),
+        ai_model,
         reai_plugin_get_opened_binary_file_baseaddr (core),
         fn_boundaries,
         is_private,
@@ -1140,39 +1282,6 @@ RzBinFile *reai_plugin_get_opened_binary_file (RzCore *core) {
     }
 
     return rz_list_iter_get_data (head);
-}
-
-/**
- * @b Get operating AI model to use with currently opened binary file.
- *
- * @param core
- *
- * @return @c REAI_MODEL_UNKNOWN on failure.
- * */
-ReaiModel reai_plugin_get_ai_model_for_opened_binary_file (RzCore *core) {
-    if (!core) {
-        DISPLAY_ERROR ("Invalid rizin core provided. Cannot guess AI model.");
-        return REAI_MODEL_UNKNOWN;
-    }
-
-    RzBinFile *binfile = reai_plugin_get_opened_binary_file (core);
-
-    if (binfile && binfile->o && binfile->o->info && binfile->o->info->os) {
-        CString os = binfile->o->info->os;
-        if (!strcmp (os, "linux")) {
-            return REAI_MODEL_X86_LINUX;
-        } else if (!strncmp (os, "Windows", 7)) {
-            return REAI_MODEL_X86_WINDOWS;
-        } else if (!strcmp (os, "iOS") || !strcmp (os, "darwin")) {
-            return REAI_MODEL_X86_MACOS;
-        } else if (!strcmp (os, "android")) {
-            return REAI_MODEL_X86_ANDROID;
-        } else {
-            return REAI_MODEL_UNKNOWN;
-        }
-    }
-
-    return REAI_MODEL_UNKNOWN;
 }
 
 /**

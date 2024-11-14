@@ -21,6 +21,10 @@ commands:
         entries:
           - text: "REi https://api.reveng.ai/v1 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX binnet-0.4"
             comment: Initialize config with these settings. Replace v1 with the current version you want to use.
+  - name: REm
+    cname: list_available_ai_models
+    summary: Get all available models for analysis.
+    args: []
   - name: REh
     cname: health_check
     summary: Check connection status with RevEngAI servers.
@@ -37,6 +41,9 @@ commands:
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
       - name: cmd_line_args
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: ai_model
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
     details:

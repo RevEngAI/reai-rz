@@ -37,6 +37,11 @@ CreateAnalysisDialog::CreateAnalysisDialog (QWidget* parent) : QDialog (parent) 
     cmdLineArgsInput->setPlaceholderText ("Command line arguments");
     mainLayout->addWidget (cmdLineArgsInput);
 
+    aiModelInput = new QComboBox (this);
+    aiModelInput->setPlaceholderText ("AI Model");
+    REAI_VEC_FOREACH (reai_ai_models(), ai_model, { aiModelInput->addItem (*ai_model); });
+    mainLayout->addWidget (aiModelInput);
+
     isAnalysisPrivateCheckBox = new QCheckBox ("Enable debug mode", this);
     mainLayout->addWidget (isAnalysisPrivateCheckBox);
     isAnalysisPrivateCheckBox->setCheckState (Qt::CheckState::Checked);
@@ -58,6 +63,7 @@ void CreateAnalysisDialog::on_CreateAnalysis() {
 
     Bool isPrivate = isAnalysisPrivateCheckBox->checkState() == Qt::CheckState::Checked;
 
+    QByteArray aiModelName = aiModelInput->currentText().toLatin1();
     QByteArray progName    = progNameInput->text().toLatin1();
     QByteArray cmdLineArgs = cmdLineArgsInput->text().toLatin1();
 
@@ -71,10 +77,21 @@ void CreateAnalysisDialog::on_CreateAnalysis() {
         return;
     }
 
+    if (aiModelName.isEmpty()) {
+        QMessageBox::warning (
+            this,
+            "Create Analysis",
+            "Please select an AI model to be used to create analysis.",
+            QMessageBox::Ok
+        );
+        return;
+    }
+
     if (!reai_plugin_create_analysis_for_opened_binary_file (
             core,
             progName.constData(),
             cmdLineArgs.constData(),
+            aiModelName.constData(),
             isPrivate
         )) {
         DISPLAY_ERROR ("Failed to create new analysis");
