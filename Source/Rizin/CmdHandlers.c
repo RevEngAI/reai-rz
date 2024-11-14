@@ -73,15 +73,6 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     CString api_key = argv[2];
     CString model   = argv[3];
 
-    /* check whether API key is correct or not */
-    if (!reai_auth_check (reai(), reai_response(), api_key)) {
-        DISPLAY_ERROR (
-            "Invalid API key. Make sure you're online and directly copy-paste the API key from "
-            "RevEng.AI dashboard."
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
     /* attempt saving config */
     if (reai_plugin_save_config (host, api_key, model)) {
         /* try to reinit config after creating config */
@@ -100,22 +91,18 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
 /**
  * "REh"
  *
- * @b Perform a health-check api call to check connection.
+ * @b Perform an auth-check api call to check connection.
  * */
 RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc && argv);
     REAI_LOG_TRACE ("[CMD] health check");
 
-    ReaiRequest request = {.type = REAI_REQUEST_TYPE_HEALTH_CHECK};
-
-    if (!reai_request (reai(), &request, reai_response()) ||
-        !reai_response()->health_check.success) {
-        DISPLAY_ERROR ("Health check failed.");
+    if (!reai_auth_check (reai(), reai_response(), reai_config()->host, reai_config()->apikey)) {
+        DISPLAY_ERROR ("Authentication failed.");
         return RZ_CMD_STATUS_ERROR;
     }
 
-    printf ("OK\n");
-
+    rz_cons_println ("OK");
     return RZ_CMD_STATUS_OK;
 }
 

@@ -102,6 +102,8 @@ void ReaiCutterPlugin::setupPlugin() {
     /* if plugin launch fails then terminate */
     if (!reai_plugin_init()) {
         REAI_LOG_TRACE ("Plugin initialization incomplete.");
+        isInitialized = false;
+        return;
     }
 
     /* display dialog to get config settings */
@@ -427,32 +429,20 @@ void ReaiCutterPlugin::on_Setup() {
     if (result == QDialog::Rejected) {
         return;
     } else {
-        /* if you accept without filling all fields, then dispaly a warning. */
         if (setupDialog->allFieldsFilled()) {
-            /* check whether the API key is in the correct format */
-            if (reai_auth_check (reai(), reai_response(), setupDialog->getApiKey())) {
-                /* if we reach here finally then we save the config and exit loop */
-                if (reai_plugin_save_config (
-                        setupDialog->getHost(),
-                        setupDialog->getApiKey(),
-                        setupDialog->getModel()
-                    )) {
-                    DISPLAY_INFO (
-                        "Config saved successfully to \"%s\".",
-                        reai_config_get_default_path()
-                    );
-
-                    RzCoreLocked core (Core());
-                    reai_plugin_init();
-                } else {
-                    DISPLAY_ERROR ("Failed to save config.");
-                }
-            } else {
-                DISPLAY_ERROR (
-                    "Invalid API Key. Make sure you're online and directly copy-paste "
-                    "the API key from RevEng.AI dashboard."
+            if (reai_plugin_save_config (
+                    setupDialog->getHost(),
+                    setupDialog->getApiKey(),
+                    setupDialog->getModel()
+                )) {
+                DISPLAY_INFO (
+                    "Config saved successfully to \"%s\".",
+                    reai_config_get_default_path()
                 );
-                on_Setup(); /* continue setup */
+
+                reai_plugin_init();
+            } else {
+                DISPLAY_ERROR ("Failed to save config.");
             }
         } else {
             DISPLAY_WARN ("Not all fields are filled. Please complete the configuration setup.");

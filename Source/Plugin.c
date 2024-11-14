@@ -281,11 +281,9 @@ Bool reai_plugin_init() {
         return false;
     }
 
-    if (!reai_auth_check (reai(), reai_response(), reai_config()->apikey)) {
-        DISPLAY_WARN (
-            "Invalid API key provided in configuration file. Please correct the API key before "
-            "using plugin."
-        );
+    /* if invalid config is provided, then plugin fails to load. */
+    if (!reai_auth_check (reai(), reai_response(), reai_config()->host, reai_config()->apikey)) {
+        DISPLAY_ERROR ("Invalid API key or Host provided in configuration file.");
         return false;
     }
 
@@ -297,9 +295,10 @@ Bool reai_plugin_init() {
     }
 
     /* create response object */
-    reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
-    if (!reai_response()) {
+    reai_response() = NEW (ReaiResponse);
+    if (!reai_response_init (reai_response())) {
         DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
+        FREE (reai_response());
         return false;
     }
 
@@ -353,27 +352,20 @@ Bool reai_plugin_check_config_exists() {
  * @param log_dir_path
  * */
 Bool reai_plugin_save_config (CString host, CString api_key, CString model) {
-    if (!host) {
-        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided host is invalid. Cannot save config.");
+    if (!reai_auth_check (reai(), reai_response(), host, api_key)) {
+        DISPLAY_ERROR ("Invalid host or api-key provided. Please check once again and retry.");
         return false;
     }
 
-    if (!api_key) {
-        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided API key is invalid. Cannot save config.");
-        return false;
-    }
-
+    // TODO: remove model from here, we'll fetch models here automatically from reveng.ai
+    // and save it by ourselves in the config
     if (!model) {
-        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Provided model is invalid. Cannot save config.");
         return false;
     }
 
     CString reai_config_file_path = reai_config_get_default_path();
     if (!reai_config_file_path) {
-        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to get config file default path.");
         return false;
     } else {
@@ -382,7 +374,6 @@ Bool reai_plugin_save_config (CString host, CString api_key, CString model) {
 
     FILE *reai_config_file = fopen (reai_config_file_path, "w");
     if (!reai_config_file) {
-        REAI_LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to open config file. %s", strerror (errno));
         return false;
     }
