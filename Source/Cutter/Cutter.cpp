@@ -108,9 +108,6 @@ void ReaiCutterPlugin::setupPlugin() {
         return;
     }
 
-    /* display dialog to get config settings */
-    setupDialog = new ConfigSetupDialog ((QWidget *)this->parent());
-
     isInitialized = true;
 };
 
@@ -417,29 +414,25 @@ void ReaiCutterPlugin::on_BinAnalysisHistory() {
 }
 
 void ReaiCutterPlugin::on_Setup() {
+    ConfigSetupDialog *setupDialog = new ConfigSetupDialog ((QWidget *)this->parent());
+
     /* if config already exists then load the config into config setup dialog */
     if (reai_plugin_check_config_exists()) {
         setupDialog->setHost (reai_config()->host);
         setupDialog->setApiKey (reai_config()->apikey);
-        setupDialog->setModel (reai_config()->model);
     }
 
     int result = setupDialog->exec();
 
     REAI_LOG_TRACE ("host = %s", setupDialog->getHost());
     REAI_LOG_TRACE ("api key = %s", setupDialog->getApiKey());
-    REAI_LOG_TRACE ("mode = %s", setupDialog->getModel());
 
     /* move ahead only if OK was pressed. */
     if (result == QDialog::Rejected) {
         return;
     } else {
         if (setupDialog->allFieldsFilled()) {
-            if (reai_plugin_save_config (
-                    setupDialog->getHost(),
-                    setupDialog->getApiKey(),
-                    setupDialog->getModel()
-                )) {
+            if (reai_plugin_save_config (setupDialog->getHost(), setupDialog->getApiKey())) {
                 DISPLAY_INFO (
                     "Config saved successfully to \"%s\".",
                     reai_config_get_default_path()

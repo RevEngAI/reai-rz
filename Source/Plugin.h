@@ -53,7 +53,7 @@ extern "C" {
     void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
     Bool           reai_plugin_check_config_exists();
     CString        reai_plugin_get_default_log_dir_path();
-    Bool           reai_plugin_save_config (CString host, CString api_key, CString model);
+    Bool           reai_plugin_save_config (CString host, CString api_key);
 
     Bool reai_plugin_upload_opened_binary_file (RzCore* core);
     Bool reai_plugin_create_analysis_for_opened_binary_file (

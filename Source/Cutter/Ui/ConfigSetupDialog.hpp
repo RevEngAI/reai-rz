@@ -32,15 +32,13 @@ class ConfigSetupDialog : public QDialog {
 
     CString getHost();
     CString getApiKey();
-    CString getModel();
 
     void setHost (CString value);
     void setApiKey (CString value);
-    void setModel (CString value);
 
    private:
     QDialogButtonBox* buttonBox;
-    QLineEdit *       leHost, *leApiKey, *leModel;
+    QLineEdit *       leHost, *leApiKey;
 
     void on_Ok();
     void on_Cancel();

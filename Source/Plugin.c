@@ -492,16 +492,9 @@ Bool reai_plugin_check_config_exists() {
  * @param model
  * @param log_dir_path
  * */
-Bool reai_plugin_save_config (CString host, CString api_key, CString model) {
+Bool reai_plugin_save_config (CString host, CString api_key) {
     if (!reai_auth_check (reai(), reai_response(), host, api_key)) {
         DISPLAY_ERROR ("Invalid host or api-key provided. Please check once again and retry.");
-        return false;
-    }
-
-    // TODO: remove model from here, we'll fetch models here automatically from reveng.ai
-    // and save it by ourselves in the config
-    if (!model) {
-        DISPLAY_ERROR ("Provided model is invalid. Cannot save config.");
         return false;
     }
 
@@ -521,7 +514,6 @@ Bool reai_plugin_save_config (CString host, CString api_key, CString model) {
 
     fprintf (reai_config_file, "host         = \"%s\"\n", host);
     fprintf (reai_config_file, "apikey       = \"%s\"\n", api_key);
-    fprintf (reai_config_file, "model        = \"%s\"\n", model);
 
     fclose (reai_config_file);
 

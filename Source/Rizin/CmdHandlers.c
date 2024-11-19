@@ -71,10 +71,9 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
      * because rizin shell automatically checks this */
     CString host    = argv[1];
     CString api_key = argv[2];
-    CString model   = argv[3];
 
     /* attempt saving config */
-    if (reai_plugin_save_config (host, api_key, model)) {
+    if (reai_plugin_save_config (host, api_key)) {
         /* try to reinit config after creating config */
         if (!reai_plugin_init (core)) {
             DISPLAY_ERROR ("Failed to init plugin after creating a new config.");

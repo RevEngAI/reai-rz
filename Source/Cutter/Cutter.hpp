@@ -48,9 +48,6 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
 
     ReaiBinaryId customAnalysisId = 0;
 
-    /* display dialog to get config settings */
-    ConfigSetupDialog *setupDialog;
-
     Bool isInitialized = false;
 
    public:

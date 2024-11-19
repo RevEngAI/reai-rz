@@ -13,13 +13,10 @@ commands:
       - name: api_key
         type: RZ_CMD_ARG_TYPE_STRING
         default_value: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-      - name: model
-        type: RZ_CMD_ARG_TYPE_STRING
-        default_value: "0.4"
     details:
       - name: Examples 
         entries:
-          - text: "REi https://api.reveng.ai/v1 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX binnet-0.4"
+          - text: "REi https://api.reveng.ai/v1 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
             comment: Initialize config with these settings. Replace v1 with the current version you want to use.
   - name: REm
     cname: list_available_ai_models
