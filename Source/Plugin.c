@@ -333,6 +333,8 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
 Bool reai_plugin_init (RzCore *core) {
+    reai_plugin_deinit();
+
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided.");
         return false;
@@ -349,19 +351,22 @@ Bool reai_plugin_init (RzCore *core) {
     }
 
     /* initialize reai object. */
-    reai_plugin()->reai =
-        reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
     if (!reai()) {
-        DISPLAY_ERROR ("Failed to create Reai object.");
-        return false;
+        reai_plugin()->reai = reai_create (reai_config()->host, reai_config()->apikey);
+        if (!reai()) {
+            DISPLAY_ERROR ("Failed to create Reai object.");
+            return false;
+        }
     }
 
     /* create response object */
-    reai_plugin()->reai_response = NEW (ReaiResponse);
-    if (!reai_response_init (reai_response())) {
-        DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
-        FREE (reai_response());
-        return false;
+    if (!reai_response()) {
+        reai_plugin()->reai_response = NEW (ReaiResponse);
+        if (!reai_response_init (reai_response())) {
+            DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
+            FREE (reai_response());
+            return false;
+        }
     }
 
     /* create bg workers */
@@ -435,6 +440,8 @@ Bool reai_plugin_deinit() {
         reai_plugin()->bg_workers = NULL;
     }
 
+    memset (reai_plugin(), 0, sizeof (ReaiPlugin));
+
     return true;
 }
 
@@ -493,6 +500,25 @@ Bool reai_plugin_check_config_exists() {
  * @param log_dir_path
  * */
 Bool reai_plugin_save_config (CString host, CString api_key) {
+    // if reai object is not created, create
+    if (!reai()) {
+        reai_plugin()->reai = reai_create (host, api_key);
+        if (!reai()) {
+            DISPLAY_ERROR ("Failed to create Reai object.");
+            return false;
+        }
+    }
+
+    /* create response object */
+    if (!reai_response()) {
+        reai_plugin()->reai_response = NEW (ReaiResponse);
+        if (!reai_response_init (reai_response())) {
+            DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
+            FREE (reai_response());
+            return false;
+        }
+    }
+
     if (!reai_auth_check (reai(), reai_response(), host, api_key)) {
         DISPLAY_ERROR ("Invalid host or api-key provided. Please check once again and retry.");
         return false;

@@ -59,16 +59,8 @@
  * */
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc);
+    REAI_LOG_TRACE ("[CMD] config initialize");
 
-    /* if file already exists then we don't make changes */
-    if (reai_plugin_check_config_exists()) {
-        DISPLAY_ERROR (
-            "Config file already exists. Remove/rename previous config to create new one."
-        );
-    }
-
-    /* no need to check whether these strings are empty or not in rizin
-     * because rizin shell automatically checks this */
     CString host    = argv[1];
     CString api_key = argv[2];
 
@@ -221,25 +213,18 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     }
 }
 
-/**
- * "REu"
- *
- * Upload a binary to RevEng.AI Servers. Checks for latest uploaded
- * binary already present in database and performs the upload operation
- * only if binary is not already uploaded.
- * */
-RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc && argv);
-    REAI_LOG_TRACE ("[CMD] upload binary");
-
-    if (reai_plugin_upload_opened_binary_file (core)) {
-        DISPLAY_ERROR ("File upload successful.");
-        return RZ_CMD_STATUS_OK;
-    } else {
-        DISPLAY_ERROR ("File upload failed.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-}
+/* RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** argv) { */
+/*     UNUSED (argc && argv); */
+/*     REAI_LOG_TRACE ("[CMD] upload binary"); */
+/**/
+/*     if (reai_plugin_upload_opened_binary_file (core)) { */
+/*         DISPLAY_ERROR ("File upload successful."); */
+/*         return RZ_CMD_STATUS_OK; */
+/*     } else { */
+/*         DISPLAY_ERROR ("File upload failed."); */
+/*         return RZ_CMD_STATUS_ERROR; */
+/*     } */
+/* } */
 
 /**
  * "REfl"

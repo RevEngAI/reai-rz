@@ -26,10 +26,6 @@ commands:
     cname: health_check
     summary: Check connection status with RevEngAI servers.
     args: []
-  - name: REu
-    cname: upload_bin
-    summary: Upload currently loaded binary to RevEngAI servers.
-    args: []
   - name: REa
     cname: create_analysis
     summary: Upload and analyse currently loaded binary
@@ -46,7 +42,7 @@ commands:
     details:
       - name: Examples
         entries:
-          - text: REa ffmpeg "-i input.mp4 -vf "fps=10,scale=320:-1:flags=lanczos" -c:v gif output.gif"
+          - text: REa ffmpeg "-i input.mp4 -c:v gif output.gif" binnet-0.4-x86-linux
             comment: "Create analysis for ffmpeg program with given command line arguments."
   - name: REau
     cname: ann_auto_analyze
