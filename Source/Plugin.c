@@ -21,39 +21,90 @@
 #include <Reai/Api/Api.h>
 #include <Reai/Common.h>
 #include <Reai/Config.h>
-#include <Reai/Db.h>
 #include <Reai/Log.h>
 #include <Reai/Types.h>
 
 /* libc */
 #include <rz_util/rz_sys.h>
-#include <signal.h>
 
 /* plugin includes */
 #include <Plugin.h>
 #include <Table.h>
 
-PRIVATE void handle_signal (Int32 signal_code) {
-    UNUSED (signal_code);
+/**
+ * NOTE: This is a background worker. Must not be used directly.
+ * */
+void *get_ai_models_in_bg (void *user) {
+    ReaiPlugin *plugin = user;
 
-    LOG_TRACE ("Entered signal handler. This is backup code and I'll try to get you a save exit.");
-    LOG_TRACE ("Received signal code : %d", signal_code);
+    while (plugin->locked)
+        ;
 
-    reai_plugin_deinit (NULL);
-    exit (1);
-}
+    plugin->locked = true;
+    REAI_LOG_TRACE ("Plugin lock acquired");
 
-PRIVATE void set_signal_handlers() {
-    static Bool signals_set = false;
-    if (signals_set) {
-        return;
+    if (!plugin->ai_models) {
+        plugin->ai_models = reai_cstr_vec_clone_create (
+            reai_get_available_models (plugin->reai, plugin->reai_response)
+        );
+
+        if (plugin->ai_models) {
+            REAI_LOG_TRACE ("Got the AI models");
+        } else {
+            REAI_LOG_ERROR (
+                "Failed to get AI models. This might cause some features to fail working."
+            );
+        }
     }
 
-    signal (SIGSEGV, handle_signal);
-    signal (SIGILL, handle_signal);
-    signal (SIGABRT, handle_signal);
+    plugin->locked = false;
+    REAI_LOG_TRACE ("Plugin lock released");
 
-    signals_set = true;
+    return NULL;
+}
+
+void *perform_auth_check_in_bg (void *user) {
+    ReaiPlugin *plugin = user;
+
+    while (plugin->locked)
+        ;
+
+    plugin->locked = true;
+    REAI_LOG_TRACE ("Plugin lock acquired");
+
+    if (reai_auth_check (
+            plugin->reai,
+            plugin->reai_response,
+            plugin->reai_config->host,
+            plugin->reai_config->apikey
+        )) {
+        REAI_LOG_TRACE ("Auth check success");
+    } else {
+        REAI_LOG_ERROR (
+            "RevEngAI auth check failed. You won't be able to use any of the plugin features!"
+        );
+    }
+
+    plugin->locked = false;
+    REAI_LOG_TRACE ("Plugin lock released");
+
+    return NULL;
+}
+
+// TODO: remove this in next rizin release
+const char *rizin_analysis_function_force_rename (RzAnalysisFunction *fcn, CString name) {
+    rz_return_val_if_fail (fcn && name, NULL);
+
+    // first attempt to rename normally, if that fails we try force rename
+    if (rz_analysis_function_rename (fcn, name)) {
+        return fcn->name;
+    }
+
+    // {name}_{addr} is guaranteed to be unique
+    const char *new_name = rz_str_newf ("%s_%" PFMT64x, name, fcn->addr);
+    bool        ok       = rz_analysis_function_rename (fcn, new_name);
+    RZ_FREE (new_name);
+    return ok ? fcn->name : NULL;
 }
 
 /**
@@ -173,7 +224,8 @@ PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
     ReaiBinaryId bin_id,
     Uint32       max_results,
     Float64      max_dist,
-    CStrVec     *collections
+    CStrVec     *collections,
+    Bool         debug_mode
 ) {
     if (!bin_id) {
         DISPLAY_ERROR ("Invalid binary ID provided. Cannot get function matches.");
@@ -186,7 +238,8 @@ PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
         bin_id,
         max_results,
         max_dist,
-        collections
+        collections,
+        debug_mode
     );
 
     if (!fn_matches) {
@@ -215,6 +268,8 @@ ReaiPlugin *reai_plugin() {
     static ReaiPlugin *plugin = NULL;
 
     if (plugin) {
+        while (plugin->locked)
+            ;
         return plugin;
     }
 
@@ -229,7 +284,7 @@ ReaiPlugin *reai_plugin() {
 /**
  * @b Get function boundaries from given binary file.
  *
- * @NOTE: returned vector is owned by the caller and hence is
+ *@NOTE: returned vector is owned by the caller and hence is
  * responsible for destroying the vector after use.
  *
  * @param core
@@ -247,6 +302,9 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
     /* prepare symbols info  */
     RzList        *fns           = rz_analysis_function_list (core->analysis);
     ReaiFnInfoVec *fn_boundaries = reai_fn_info_vec_create();
+
+    /** NOTE: We're sending addresses here in form of `base + offset`
+     * but what we receive from reveng.ai is in `offset` only form */
 
     /* add all symbols corresponding to functions */
     RzListIter         *fn_iter = NULL;
@@ -269,61 +327,21 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
 }
 
 /**
- * @b Background worker thread that updates the DB and other required things
- * in the background periodically.
- * */
-PRIVATE void reai_db_background_worker (ReaiPlugin *plugin) {
-    if (!plugin) {
-        DISPLAY_ERROR ("Invalid plugin instance provided. Cannot start background worker.");
-        return;
-    }
-
-    Size update_interval = 4;
-
-    Reai *reai = reai_create (
-        plugin->reai_config->host,
-        plugin->reai_config->apikey,
-        plugin->reai_config->model
-    );
-
-    if (!reai) {
-        DISPLAY_ERROR ("Background worker failed to make connection with RevEng.AI servers.");
-        return;
-    }
-
-    /* we're allowed to use same db as long as the concurrency method is
-   * sequential */
-    reai_set_db (reai, plugin->reai_db);
-    reai_set_logger (reai, plugin->reai_logger);
-
-    /* this is a HACK to signal the thread to stop */
-    while (plugin->reai) {
-        if (plugin) {
-            reai_update_all_analyses_status_in_db (reai);
-        }
-
-        rz_sys_sleep (update_interval);
-    }
-
-    reai_destroy (reai);
-}
-
-/**
  * @brief Called by rizin when loading reai_plugin()-> This is the plugin
  * entrypoint where we register all the commands and corresponding handlers.
  *
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
 Bool reai_plugin_init (RzCore *core) {
-    set_signal_handlers();
+    reai_plugin_deinit();
 
     if (!core) {
-        DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
+        DISPLAY_ERROR ("Invalid rizin core provided.");
         return false;
     }
 
     /* load default config */
-    reai_config() = reai_config_load (NULL);
+    reai_plugin()->reai_config = reai_config_load (NULL);
     if (!reai_config()) {
         DISPLAY_ERROR (
             "Failed to load RevEng.AI toolkit config file. Please make sure the config exists or "
@@ -333,77 +351,49 @@ Bool reai_plugin_init (RzCore *core) {
     }
 
     /* initialize reai object. */
-    reai() = reai_create (reai_config()->host, reai_config()->apikey, reai_config()->model);
     if (!reai()) {
-        DISPLAY_ERROR ("Failed to create Reai object.");
-        return false;
+        reai_plugin()->reai = reai_create (reai_config()->host, reai_config()->apikey);
+        if (!reai()) {
+            DISPLAY_ERROR ("Failed to create Reai object.");
+            return false;
+        }
     }
-
-    /* create log directory if not present before creating new log files */
-    rz_sys_mkdirp (reai_config()->log_dir_path);
-
-    /* get current time */
-    Char current_time[64] = {0};
-    strftime (
-        current_time,
-        sizeof (current_time),
-        "y%Y_m%m_d%d_h%H_m%M_s%S",
-        localtime (&((time_t) {time (NULL)}))
-    );
-
-    /* create log file name */
-    FMT (log_file_path, "%s/reai_%s.log", reai_config()->log_dir_path, current_time);
-
-    /**
-     * Note : This is not the best approach here, because the log will miss out any error that happened
-     * before or during log creation. It is only after the logger is created, the logger will start capturing
-     * all all traces and debugs.
-     *
-     * Since this works for now, let's just use it this way. Besides, if anything goes wrong before this,
-     * it's possible that user will see a debug message on screen. We're sacrificing a very small segment
-     * of log for this simplicity.
-     * */
-
-    /* create logger */
-    reai_logger() = reai_log_create (log_file_path);
-    if (!reai_logger() || !reai_set_logger (reai(), reai_logger())) {
-        FREE (log_file_path);
-        DISPLAY_ERROR ("Failed to create and set Reai logger.");
-        return false;
-    }
-
-    FREE (log_file_path);
 
     /* create response object */
-    reai_response() = reai_response_init ((reai_response() = NEW (ReaiResponse)));
     if (!reai_response()) {
-        DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
+        reai_plugin()->reai_response = NEW (ReaiResponse);
+        if (!reai_response_init (reai_response())) {
+            DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
+            FREE (reai_response());
+            return false;
+        }
+    }
+
+    /* create bg workers */
+    reai_plugin()->bg_workers = reai_bg_workers_vec_create();
+    if (!reai_bg_workers()) {
+        DISPLAY_ERROR ("Failed to initialize background workers vec.");
         return false;
     }
 
-    /* create the database directory if not present before creating/opening
-   * database */
-    rz_sys_mkdirp (reai_config()->db_dir_path);
-
-    /* create database file name */
-    FMT (db_path, "%s/reai.db", reai_config()->db_dir_path);
-
-    /* create database and set it to reai database */
-    reai_db() = reai_db_create (db_path);
-    if (!reai_db() || !reai_set_db (reai(), reai_db())) {
-        FREE (db_path);
-        DISPLAY_ERROR ("Failed to create and set Reai DB object.");
-        return false;
+    if (!reai_plugin_add_bg_work (perform_auth_check_in_bg, reai_plugin())) {
+        REAI_LOG_ERROR ("Failed to add perform-auth-check bg worker.");
     }
 
-    FREE (db_path);
+    if (!reai_plugin_add_bg_work (get_ai_models_in_bg, reai_plugin())) {
+        REAI_LOG_ERROR ("Failed to add get-ai-models bg worker.");
+    }
 
-    reai_plugin()->background_worker =
-        rz_th_new ((RzThreadFunction)(void *)reai_db_background_worker, reai_plugin());
+    // get binary id
+    reai_binary_id() = rz_config_get_i (core->config, "reai.id");
 
-    if (!reai_plugin()->background_worker) {
-        DISPLAY_ERROR ("Failed to start RevEng.AI background worker.");
-        return false;
+    // if file is not loaded from a project, or the project does not have a binary id
+    // then binary id will be 0
+    if (!reai_binary_id()) {
+        // unlock and create a variable so that in future we can update it
+        rz_config_lock (core->config, false);
+        rz_config_set_i (core->config, "reai.id", 0);
+        rz_config_lock (core->config, true);
     }
 
     return true;
@@ -417,32 +407,12 @@ Bool reai_plugin_init (RzCore *core) {
  * @return true on successful plugin init.
  * @return false otherwise.
  * */
-Bool reai_plugin_deinit (RzCore *core) {
-    if (!core) {
-        DISPLAY_WARN ("Invalid core provided. Some of the resources might not get freed.");
-    }
-
+Bool reai_plugin_deinit() {
     /* this must be destroyed first and set to NULL to signal the background
-   * worker thread to stop working */
+    * worker thread to stop working */
     if (reai()) {
         reai_destroy (reai());
         reai_plugin()->reai = NULL;
-    }
-
-    if (core && reai_plugin()->background_worker) {
-        rz_th_wait (reai_plugin()->background_worker);
-        rz_th_free (reai_plugin()->background_worker);
-        reai_plugin()->background_worker = NULL;
-    }
-
-    if (reai_db()) {
-        reai_db_destroy (reai_db());
-        reai_plugin()->reai_db = NULL;
-    }
-
-    if (reai_logger()) {
-        reai_log_destroy (reai_logger());
-        reai_plugin()->reai_logger = NULL;
     }
 
     if (reai_response()) {
@@ -452,6 +422,60 @@ Bool reai_plugin_deinit (RzCore *core) {
 
     if (reai_config()) {
         reai_config_destroy (reai_config());
+    }
+
+    if (reai_ai_models()) {
+        reai_cstr_vec_destroy (reai_ai_models());
+        reai_plugin()->ai_models = NULL;
+    }
+
+    if (reai_bg_workers()) {
+        // wait for and destroy all threads first
+        REAI_VEC_FOREACH (reai_bg_workers(), th, {
+            rz_th_wait (*th);
+            rz_th_free (*th);
+        });
+
+        reai_bg_workers_vec_destroy (reai_bg_workers());
+        reai_plugin()->bg_workers = NULL;
+    }
+
+    memset (reai_plugin(), 0, sizeof (ReaiPlugin));
+
+    return true;
+}
+
+Bool reai_plugin_add_bg_work (RzThreadFunction fn, void *user_data) {
+    if (!fn) {
+        DISPLAY_ERROR ("Invalid function provided. Cannot start background work");
+        return false;
+    }
+
+    const Size MAX_WORKERS = 16;
+    if (reai_bg_workers()->count >= MAX_WORKERS) {
+        // destroy oldest thread
+        RzThread *th = reai_bg_workers()->items[0];
+        rz_th_wait (th);
+        rz_th_free (th);
+
+        // remove oldest thread
+        reai_bg_workers_vec_remove (reai_bg_workers(), 0);
+    }
+
+    // create new thread
+    RzThread *th = rz_th_new (fn, user_data);
+    if (!th) {
+        DISPLAY_ERROR ("Failed to create a new background worker thread. Task won't be executed.");
+        return false;
+    }
+
+    // insert at end
+    if (!reai_bg_workers_vec_append (reai_bg_workers(), &th)) {
+        DISPLAY_WARN (
+            "Failed to add background worker thread to collection of threads. This might cause "
+            "memory leaks because thread object won't be destroyed."
+        );
+        return false;
     }
 
     return true;
@@ -464,60 +488,7 @@ Bool reai_plugin_deinit (RzCore *core) {
  * @return @c NULL otherwise.
  * */
 Bool reai_plugin_check_config_exists() {
-    /* CString reai_config_file_path = reai_config_get_default_path(); */
-
-    /* /\* if file already exists then we don't make changes *\/ */
-    /* FILE* reai_config_file = fopen (reai_config_file_path, "r"); */
-    /* if (reai_config_file) { */
-    /*     fclose (reai_config_file); */
-    /*     return true; */
-    /* } */
-
     return !!reai_config();
-}
-
-/**
- * @b Get default database path.
- *
- * @return Database directory path on success.
- * @return NULL otherwise
- * */
-CString reai_plugin_get_default_database_dir_path() {
-    static Bool    is_created = false;
-    static CString path       = NULL;
-
-    if (is_created) {
-        return path;
-    }
-
-    FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz");
-    static Char static_buf[512] = {0};
-    memcpy (static_buf, buf, strlen (buf));
-
-    is_created = true;
-    return (path = static_buf);
-}
-
-/**
- * @b Get default database path.
- *
- * @return Database directory path on success.
- * @return NULL otherwise
- * */
-CString reai_plugin_get_default_log_dir_path() {
-    static Bool    is_created = false;
-    static CString path       = NULL;
-
-    if (is_created) {
-        return path;
-    }
-
-    FMT (buf, "%s/%s", reai_config_get_default_dir_path(), ".reai-rz/log");
-    static Char static_buf[512] = {0};
-    memcpy (static_buf, buf, strlen (buf));
-
-    is_created = true;
-    return (path = static_buf);
 }
 
 /**
@@ -526,65 +497,49 @@ CString reai_plugin_get_default_log_dir_path() {
  * @param host
  * @param api_key
  * @param model
- * @param db_dir_path
  * @param log_dir_path
  * */
-Bool reai_plugin_save_config (
-    CString host,
-    CString api_key,
-    CString model,
-    CString db_dir_path,
-    CString log_dir_path
-) {
-    if (!host) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided host is invalid. Cannot save config.");
-        return false;
+Bool reai_plugin_save_config (CString host, CString api_key) {
+    // if reai object is not created, create
+    if (!reai()) {
+        reai_plugin()->reai = reai_create (host, api_key);
+        if (!reai()) {
+            DISPLAY_ERROR ("Failed to create Reai object.");
+            return false;
+        }
     }
 
-    if (!api_key) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided API key is invalid. Cannot save config.");
-        return false;
+    /* create response object */
+    if (!reai_response()) {
+        reai_plugin()->reai_response = NEW (ReaiResponse);
+        if (!reai_response_init (reai_response())) {
+            DISPLAY_ERROR ("Failed to create/init ReaiResponse object.");
+            FREE (reai_response());
+            return false;
+        }
     }
 
-    if (!model) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided model is invalid. Cannot save config.");
-        return false;
-    }
-
-    if (!db_dir_path) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided database directory path is invalid. Cannot save config.");
-        return false;
-    }
-
-    if (!log_dir_path) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
-        DISPLAY_ERROR ("Provided log directory path is invalid. Cannot save config.");
+    if (!reai_auth_check (reai(), reai_response(), host, api_key)) {
+        DISPLAY_ERROR ("Invalid host or api-key provided. Please check once again and retry.");
         return false;
     }
 
     CString reai_config_file_path = reai_config_get_default_path();
     if (!reai_config_file_path) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to get config file default path.");
         return false;
+    } else {
+        REAI_LOG_INFO ("Config will be saved at %s\n", reai_config_file_path);
     }
 
     FILE *reai_config_file = fopen (reai_config_file_path, "w");
     if (!reai_config_file) {
-        LOG_DEBUG ("%s %d", __FUNCTION__, __LINE__);
         DISPLAY_ERROR ("Failed to open config file. %s", strerror (errno));
         return false;
     }
 
     fprintf (reai_config_file, "host         = \"%s\"\n", host);
     fprintf (reai_config_file, "apikey       = \"%s\"\n", api_key);
-    fprintf (reai_config_file, "model        = \"%s\"\n", model);
-    fprintf (reai_config_file, "db_dir_path  = \"%s\"\n", db_dir_path);
-    fprintf (reai_config_file, "log_dir_path = \"%s\"\n", log_dir_path);
 
     fclose (reai_config_file);
 
@@ -613,19 +568,13 @@ Bool reai_plugin_upload_opened_binary_file (RzCore *core) {
     }
 
     /* check if file is already uploaded or otherwise upload */
-    CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
+    CString sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
     if (!sha256) {
-        sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
-        if (!sha256) {
-            DISPLAY_ERROR ("Failed to upload binary file.");
-            FREE (binfile_path);
-            return false;
-        }
-    } else {
-        LOG_INFO ("File already uploaded (and recorded in db) with hash = \"%s\"", sha256);
+        DISPLAY_ERROR ("Failed to upload binary file.");
+        FREE (binfile_path);
+        return false;
     }
 
-    FREE (binfile_path);
     return true;
 }
 
@@ -634,16 +583,41 @@ Bool reai_plugin_upload_opened_binary_file (RzCore *core) {
  *
  * This method first checks whether upload already exists for a given file path.
  * If upload does exist then the existing upload is used.
- * TODO: this needs to be refactored. Check trello "General Refactoring".
  *
  * @param core To get currently opened binary file in rizin/cutter.
  *
  * @return true on success.
  * @return false otherwise.
  * */
-Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore *core) {
+Bool reai_plugin_create_analysis_for_opened_binary_file (
+    RzCore *core,
+    CString prog_name,
+    CString cmdline_args,
+    CString ai_model,
+    Bool    is_private
+) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot create analysis.");
+        return false;
+    }
+
+    if (!prog_name || !strlen (prog_name)) {
+        DISPLAY_ERROR ("Invalid program name provided. Cannot create analysis.");
+        return false;
+    }
+
+    if (!ai_model || !strlen (ai_model)) {
+        DISPLAY_ERROR ("Invalid AI model provided. Cannot create analysis.");
+        return false;
+    }
+
+    /* warn the use if no analysis exists */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        DISPLAY_ERROR (
+            "It seems that rizin analysis hasn't been performed yet. "
+            "Please create rizin analysis "
+            "first."
+        );
         return false;
     }
 
@@ -659,46 +633,14 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore *core) {
         return false;
     }
 
-    /* check if file is already uploaded or otherwise upload */
-    CString sha256 = reai_db_get_latest_hash_for_file_path (reai_db(), binfile_path);
+    CString sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
     if (!sha256) {
-        LOG_INFO ("Binary not already uploaded. Uploading...");
-
-        /* try uploading file */
-        sha256 = reai_upload_file (reai(), reai_response(), binfile_path);
-
-        /* check whether upload worked */
-        if (!sha256) {
-            DISPLAY_ERROR ("Failed to upload file");
-            FREE (binfile_path);
-            return false;
-        }
-
-        /* make clone because making any new request will free the memory */
-        if (!(sha256 = strdup (sha256))) {
-            DISPLAY_ERROR ("Memory allocation failure.");
-            FREE (binfile_path);
-            return false;
-        }
-
-        LOG_INFO ("Binary uploaded successfully.");
-    } else {
-        LOG_INFO ("Using previously uploaded file with latest hash = \"%s\"", sha256);
-    }
-
-    /* warn the use if no analysis exists */
-    /* NOTE: this might not be the best way to check whether an analysis exists or
-   * not. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        DISPLAY_ERROR (
-            "It seems that rizin analysis hasn't been performed yet. "
-            "Please create rizin analysis "
-            "first."
-        );
-        FREE (sha256);
+        DISPLAY_ERROR ("Failed to upload file");
         FREE (binfile_path);
         return false;
     }
+    sha256 = strdup (sha256);
+    REAI_LOG_INFO ("Binary uploaded successfully.");
 
     /* get function boundaries to create analysis */
     ReaiFnInfoVec *fn_boundaries = reai_plugin_get_function_boundaries (core);
@@ -713,20 +655,17 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore *core) {
         return false;
     }
 
-    /* ZENDBG_CHECK (reai_plugin_get_ai_model_for_opened_binary_file (core)); */
-    /* ZENDBG_CHECK (reai_plugin_get_opened_binary_file_baseaddr (core)); */
-
     /* create analysis */
     ReaiBinaryId bin_id = reai_create_analysis (
         reai(),
         reai_response(),
-        reai_plugin_get_ai_model_for_opened_binary_file (core),
+        ai_model,
         reai_plugin_get_opened_binary_file_baseaddr (core),
         fn_boundaries,
-        true,
+        is_private,
         sha256,
-        rz_file_basename (binfile_path),
-        NULL,
+        prog_name,
+        cmdline_args, // cmdline args
         binfile->size
     );
 
@@ -743,10 +682,24 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (RzCore *core) {
     FREE (binfile_path);
     reai_fn_info_vec_destroy (fn_boundaries);
 
+    reai_binary_id() = bin_id;
+    rz_config_set_i (core->config, "reai.id", reai_binary_id());
+
     return true;
 }
 
-Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
+/**
+ * @b Apply existing analysis to opened binary file.
+ *
+ * @param[in]  core
+ * @param[in]  bin_id        RevEng.AI analysis binary ID.
+ * @param[in]  apply_to_all  Rename all functions, even those with valid names.
+ *                           Otherwise, rename just those starting with "fcn.".
+ *
+ * @return True on successful application of renames
+ * @return False otherwise.
+ * */
+Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id, Bool apply_to_all) {
     if (!core) {
         DISPLAY_ERROR ("Invalid Rizin core provided. Cannot apply analysis.");
         return false;
@@ -826,7 +779,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
 
             // Skip if name already matches
             if (!strcmp (rz_fn->name, fn->name)) {
-                LOG_INFO (
+                REAI_LOG_INFO (
                     "Name \"%s\" already matches for function at address %llx",
                     old_name,
                     fn_addr
@@ -834,40 +787,42 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
                 continue;
             }
 
-            /* check if fucntion size matches */
-            /* if (rz_analysis_function_linear_size (rz_fn) != fn->size) { */
-            /*     reai_plugin_table_add_rowf ( */
-            /*         failed_renames, */
-            /*         "sssx", */
-            /*         old_name, */
-            /*         new_name, */
-            /*         "size mismatch", */
-            /*         fn_addr */
-            /*     ); */
-            /*     failed_cases_exist = true; */
-            /* } else { */
-            if (rz_analysis_function_rename (rz_fn, new_name)) { // Try renaming in Rizin
-                reai_plugin_table_add_rowf (successful_renames, "ssx", old_name, new_name, fn_addr);
-                success_cases_exist = true;
+            // Rename only those functions whose name starts with "fcn."
+            if (apply_to_all || !strncmp (rz_fn->name, "fcn.", 4)) {
+                // NOTE: Not comparing function size here. Can this create problems in future??
+                if (rizin_analysis_function_force_rename (rz_fn, new_name)) {
+                    reai_plugin_table_add_rowf (
+                        successful_renames,
+                        "ssx",
+                        old_name,
+                        rz_fn->name,
+                        fn_addr
+                    );
+                    success_cases_exist = true;
+                } else {
+                    reai_plugin_table_add_rowf (
+                        failed_renames,
+                        "sssx",
+                        old_name,
+                        new_name,
+                        "rizin rename error",
+                        fn_addr
+                    );
+                    failed_cases_exist = true;
+                }
             } else {
-                reai_plugin_table_add_rowf (
-                    failed_renames,
-                    "sssx",
-                    old_name,
-                    new_name,
-                    "rizin rename error",
-                    fn_addr
+                REAI_LOG_INFO (
+                    "Not renaming. Human readbale name already present : \"%s\"",
+                    rz_fn->name
                 );
-                failed_cases_exist = true;
             }
-            /* } */
         } else { // If no Rizin funciton exists at given address
             reai_plugin_table_add_rowf (
                 failed_renames,
                 "sssx",
                 "N/A",
                 "N/A",
-                "rizin function not found",
+                "rizin function not found at address",
                 fn_addr
             );
             failed_cases_exist = true;
@@ -891,48 +846,10 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
     reai_plugin_table_destroy (failed_renames);
     reai_fn_info_vec_destroy (fn_infos);
 
+    reai_binary_id() = bin_id;
+    rz_config_set_i (core->config, "reai.id", reai_binary_id());
+
     return true;
-}
-
-/**
- * @b Get binary id (analysis id) for opened binary file.
- *
- * @param core To get currently opened binary file in rizin/cutter.
- *
- * @return Non zero @c ReaiBinaryId on success.
- * @return 0 otherwise.
- * */
-ReaiBinaryId reai_plugin_get_binary_id_for_opened_binary_file (RzCore *core) {
-    if (!core) {
-        DISPLAY_ERROR (
-            "Invalid rizin core provided. Cannot get a binary id without "
-            "a binary file."
-        );
-        return 0;
-    }
-
-    /* get opened binary file path */
-    CString opened_binfile_path = reai_plugin_get_opened_binary_file_path (core);
-    if (!opened_binfile_path) {
-        DISPLAY_ERROR ("No binary file opeend.");
-        return 0;
-    }
-
-    /* get binary id for opened binary file path by searching in local database */
-    ReaiBinaryId binary_id = reai_db_get_latest_analysis_for_file (reai_db(), opened_binfile_path);
-    FREE (opened_binfile_path);
-    if (!binary_id) {
-        DISPLAY_ERROR ("No analysis exists for currently opened binary in database.");
-        return 0;
-    }
-
-    LOG_TRACE (
-        "Using binary id of latest analysis for loaded binary present in "
-        "database : %llu.",
-        binary_id
-    );
-
-    return binary_id;
 }
 
 /**
@@ -950,35 +867,18 @@ ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId b
         return REAI_ANALYSIS_STATUS_INVALID;
     }
 
-    ReaiAnalysisStatus analysis_status = REAI_ANALYSIS_STATUS_INVALID;
+    ReaiAnalysisStatus analysis_status =
+        reai_get_analysis_status (reai(), reai_response(), binary_id);
 
-    /* if analyses already exists in db */
-    if (reai_db_check_analysis_exists (reai_db(), binary_id)) {
-        LOG_TRACE ("Analysis already exists in database. Fetching status from database.");
-
-        analysis_status = reai_db_get_analysis_status (reai_db(), binary_id);
-        if (!analysis_status) {
-            DISPLAY_ERROR (
-                "Analysis records exist in local database but failed to get "
-                "analysis status from "
-                "database."
-            );
-            return REAI_ANALYSIS_STATUS_INVALID;
-        }
-    } else {
-        LOG_TRACE (
-            "Analysis does not exist in database. Fetching status from "
-            "RevEng.AI servers."
-        );
-
-        analysis_status = reai_get_analysis_status (reai(), reai_response(), binary_id);
-        if (!analysis_status) {
-            DISPLAY_ERROR ("Failed to get analysis status from RevEng.AI servers.");
-            return REAI_ANALYSIS_STATUS_INVALID;
-        }
+    if (!analysis_status) {
+        DISPLAY_ERROR ("Failed to get analysis status from RevEng.AI servers.");
+        return REAI_ANALYSIS_STATUS_INVALID;
     }
 
-    LOG_TRACE ("Fetched analysis status \"%s\".", reai_analysis_status_to_cstr (analysis_status));
+    REAI_LOG_TRACE (
+        "Fetched analysis status \"%s\".",
+        reai_analysis_status_to_cstr (analysis_status)
+    );
     return analysis_status;
 }
 
@@ -992,50 +892,33 @@ ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId b
  * */
 Bool reai_plugin_auto_analyze_opened_binary_file (
     RzCore *core,
-    Float64 max_distance,
     Size    max_results_per_function,
-    Float64 min_confidence
+    Float64 min_confidence,
+    Bool    debug_mode,
+    Bool    apply_to_all
 ) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot perform auto-analysis.");
         return false;
     }
 
-    // get opened binary file and print error if no binary is loaded
-    RzBinFile *binfile = reai_plugin_get_opened_binary_file (core);
-    if (!binfile) {
-        DISPLAY_ERROR ("No binary file opened. Cannot perform auto-analysis.");
-        return false;
-    }
-
-    CString binfile_path = reai_plugin_get_opened_binary_file_path (core);
-    if (!binfile_path) {
-        DISPLAY_ERROR (
-            "Failed to get opened binary file's full path. Cannot "
-            "perform auto-analysis."
-        );
-        return false;
-    }
-
     /* try to get latest analysis for loaded binary (if exists) */
-    ReaiBinaryId bin_id = reai_db_get_latest_analysis_for_file (reai_db(), binfile_path);
+    ReaiBinaryId bin_id = reai_binary_id();
     if (!bin_id) {
         DISPLAY_ERROR (
-            "No RevEng.AI analysis exists for opened file. Please create "
-            "an analysis first."
+            "Please apply an existing analysis or create a new one. I cannot perform auto-analysis "
+            "without an existing RevEng.AI analysis."
         );
-        FREE (binfile_path);
         return false;
     }
 
     /* an analysis must already exist in order to make auto-analysis work */
-    ReaiAnalysisStatus analysis_status = reai_db_get_analysis_status (reai_db(), bin_id);
+    ReaiAnalysisStatus analysis_status = reai_plugin_get_analysis_status_for_binary_id (bin_id);
     if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
         DISPLAY_WARN (
             "Analysis not complete yet. Please wait for some time and "
             "then try again!"
         );
-        FREE (binfile_path);
         return false;
     }
 
@@ -1043,17 +926,15 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
     ReaiFnInfoVec *fn_infos = get_fn_infos (bin_id);
     if (!fn_infos) {
         DISPLAY_ERROR ("Failed to get funciton info for opened binary.");
-        FREE (binfile_path);
         return false;
     }
 
     /* function matches */
     ReaiAnnFnMatchVec *fn_matches =
-        get_fn_matches (bin_id, max_results_per_function, max_distance, NULL);
+        get_fn_matches (bin_id, max_results_per_function, 1 - min_confidence, NULL, debug_mode);
     if (!fn_matches) {
         DISPLAY_ERROR ("Failed to get function matches for opened binary.");
         reai_fn_info_vec_destroy (fn_infos);
-        FREE (binfile_path);
         return false;
     }
 
@@ -1063,7 +944,6 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         DISPLAY_ERROR ("Failed to create a new-name-mapping object.");
         reai_ann_fn_match_vec_destroy (fn_matches);
         reai_fn_info_vec_destroy (fn_infos);
-        FREE (binfile_path);
         return false;
     }
 
@@ -1074,7 +954,6 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         reai_fn_info_vec_destroy (new_name_mapping);
         reai_ann_fn_match_vec_destroy (fn_matches);
         reai_fn_info_vec_destroy (fn_infos);
-        FREE (binfile_path);
         return false;
     }
     reai_plugin_table_set_columnsf (
@@ -1092,7 +971,6 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         reai_fn_info_vec_destroy (new_name_mapping);
         reai_ann_fn_match_vec_destroy (fn_matches);
         reai_fn_info_vec_destroy (fn_infos);
-        FREE (binfile_path);
         return false;
     }
     reai_plugin_table_set_columnsf (
@@ -1125,7 +1003,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         if ((new_name = get_function_name_with_max_confidence (fn_matches, fn->id, &confidence))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (new_name, old_name)) {
-                LOG_INFO (
+                REAI_LOG_INFO (
                     "Name \"%s\" already matches for function at address %llx",
                     old_name,
                     fn_addr
@@ -1135,58 +1013,51 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
 
             /* get function */
             RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn_addr);
-            if (rz_fn) {
-                /* check if fucntion size matches */
-                /* if (rz_analysis_function_linear_size (rz_fn) != fn->size) { */
-                /*     reai_plugin_table_add_rowf ( */
-                /*         failed_renames, */
-                /*         "sssx", */
-                /*         old_name, */
-                /*         new_name, */
-                /*         "size mismatch", */
-                /*         fn_addr */
-                /*     ); */
-                /*     failed_cases_exist = true; */
-                /* } else { */
-                /* rename function */
-                if (rz_analysis_function_rename (rz_fn, new_name)) { // Try renaming in Rizin
-                    reai_plugin_table_add_rowf (
-                        successful_renames,
-                        "ssfx",
-                        old_name,
-                        new_name,
-                        confidence,
-                        fn_addr
-                    );
+            if (apply_to_all || !strncmp (rz_fn->name, "fcn.", 4)) {
+                if (rz_fn) {
+                    if (rizin_analysis_function_force_rename (rz_fn, new_name)) {
+                        reai_plugin_table_add_rowf (
+                            successful_renames,
+                            "ssfx",
+                            old_name,
+                            new_name,
+                            confidence,
+                            fn_addr
+                        );
 
-                    reai_fn_info_vec_append (
-                        new_name_mapping,
-                        &((ReaiFnInfo) {.name = new_name, .id = fn->id})
-                    );
+                        reai_fn_info_vec_append (
+                            new_name_mapping,
+                            &((ReaiFnInfo) {.name = new_name, .id = fn->id})
+                        );
 
-                    success_cases_exist = true;
-                } else {
+                        success_cases_exist = true;
+                    } else {
+                        reai_plugin_table_add_rowf (
+                            failed_renames,
+                            "sssx",
+                            old_name,
+                            new_name,
+                            "rizin rename error",
+                            fn_addr
+                        );
+                        failed_cases_exist = true;
+                    }
+                } else { // If no Rizin funciton exists at given address
                     reai_plugin_table_add_rowf (
                         failed_renames,
                         "sssx",
                         old_name,
                         new_name,
-                        "rizin rename error",
+                        "function not found",
                         fn_addr
                     );
                     failed_cases_exist = true;
                 }
-                /* } */
-            } else { // If no Rizin funciton exists at given address
-                reai_plugin_table_add_rowf (
-                    failed_renames,
-                    "sssx",
-                    old_name,
-                    new_name,
-                    "function not found",
-                    fn_addr
+            } else {
+                REAI_LOG_TRACE (
+                    "Skipping rename for \"%s\". Name already looks valid to me",
+                    rz_fn->name
                 );
-                failed_cases_exist = true;
             }
         } else { // If not able to find a function with given confidence
             reai_plugin_table_add_rowf (
@@ -1232,7 +1103,6 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
     reai_fn_info_vec_destroy (new_name_mapping);
     reai_ann_fn_match_vec_destroy (fn_matches);
     reai_fn_info_vec_destroy (fn_infos);
-    FREE (binfile_path);
 
     return true;
 }
@@ -1260,20 +1130,23 @@ ReaiFunctionId
         return 0;
     }
 
-    ReaiBinaryId bin_id = reai_plugin_get_binary_id_for_opened_binary_file (core);
+    ReaiBinaryId bin_id = reai_binary_id();
     if (!bin_id) {
-        DISPLAY_ERROR ("Failed to get binary ID for opened binary file");
+        DISPLAY_ERROR (
+            "Please create a new analysis or apply an existing analysis. I need an existing "
+            "analysis to get function information."
+        );
         return 0;
     }
 
     ReaiFnInfoVec *fn_infos = NULL;
     /* avoid making multiple calls subsequent calls to same endpoint if possible */
     if (reai_response()->type == REAI_RESPONSE_TYPE_BASIC_FUNCTION_INFO) {
-        LOG_TRACE ("Using previously fetched response of basic function info.");
+        REAI_LOG_TRACE ("Using previously fetched response of basic function info.");
 
         fn_infos = reai_response()->basic_function_info.fn_infos;
     } else {
-        LOG_TRACE ("Fetching basic function info again");
+        REAI_LOG_TRACE ("Fetching basic function info again");
 
         fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
         if (!fn_infos) {
@@ -1284,10 +1157,15 @@ ReaiFunctionId
         }
     }
 
-    REAI_VEC_FOREACH (fn_infos, fn_info, {
-        if (rz_analysis_function_min_addr (rz_fn) <= fn_info->vaddr &&
-            fn_info->vaddr <= rz_analysis_function_max_addr (rz_fn)) {
-            LOG_TRACE (
+    Uint64 base_addr = reai_plugin_get_opened_binary_file_baseaddr (core);
+
+    for (ReaiFnInfo *fn_info = fn_infos->items; fn_info < fn_infos->items + fn_infos->count;
+         fn_info++) {
+        Uint64 min_addr = rz_analysis_function_min_addr (rz_fn) - base_addr;
+        Uint64 max_addr = rz_analysis_function_max_addr (rz_fn) - base_addr;
+
+        if (min_addr <= fn_info->vaddr && fn_info->vaddr <= max_addr) {
+            REAI_LOG_TRACE (
                 "Found function ID for rizin function \"%s\" (\"%s\"): [%llu]",
                 rz_fn->name,
                 fn_info->name,
@@ -1295,11 +1173,106 @@ ReaiFunctionId
             );
             return fn_info->id;
         }
-    });
+    };
 
-    LOG_TRACE ("Function ID not found for function \"%s\"", rz_fn->name);
+    REAI_LOG_TRACE ("Function ID not found for function \"%s\"", rz_fn->name);
 
     return 0;
+}
+
+/**
+ * @b Get a table of similar function name data.
+ *
+ * @param core
+ * @param fcn_name Function name to search simlar functions for,
+ * @param max_results_count
+ * @param confidence
+ * @param debug_mode
+ *
+ * @return @c ReaiPluginTable containing search suggestions on success.
+ * @return @c NULL when no suggestions found.
+ * */
+Bool reai_plugin_search_and_show_similar_functions (
+    RzCore *core,
+    CString fcn_name,
+    Size    max_results_count,
+    Float32 confidence,
+    Bool    debug_mode
+) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid Rizin core porivded. Cannot perform similarity search.");
+        return false;
+    }
+
+    if (!fcn_name) {
+        DISPLAY_ERROR ("Invalid function name porivded. Cannot perform similarity search.");
+        return false;
+    }
+
+    RzAnalysisFunction *fn = rz_analysis_get_function_byname (core->analysis, fcn_name);
+    if (!fn) {
+        DISPLAY_ERROR ("Provided function name does not exist. Cannot get similar function names.");
+        return false;
+    }
+
+    ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
+    if (!fn_id) {
+        DISPLAY_ERROR (
+            "Failed to get function id of given function. Cannot get similar function names."
+        );
+        return false;
+    }
+
+    Float32            maxDistance = 1 - confidence;
+    ReaiAnnFnMatchVec *fnMatches   = reai_batch_function_symbol_ann (
+        reai(),
+        reai_response(),
+        fn_id,
+        NULL, // speculative fn ids
+        max_results_count,
+        maxDistance,
+        NULL, // collections
+        debug_mode
+    );
+
+    if (fnMatches->count) {
+        // Populate table
+        ReaiPluginTable *table = reai_plugin_table_create();
+        reai_plugin_table_set_columnsf (
+            table,
+            "sfns",
+            "Function Name",
+            "Confidence",
+            "Function ID",
+            "Binary Name"
+        );
+        reai_plugin_table_set_title (table, "Function Similarity Search Results");
+
+        REAI_VEC_FOREACH (fnMatches, fnMatch, {
+            reai_plugin_table_add_rowf (
+                table,
+                "sfns",
+                fnMatch->nn_function_name,
+                fnMatch->confidence,
+                fnMatch->nn_function_id,
+                fnMatch->nn_binary_name
+            );
+            REAI_LOG_TRACE (
+                "Similarity Search Suggestion = (.name = \"%s\", .confidence = \"%lf\", "
+                ".function_id = \"%llu\", .binary_name = \"%s\")",
+                fnMatch->nn_function_name,
+                fnMatch->confidence,
+                fnMatch->nn_function_id,
+                fnMatch->nn_binary_name
+            );
+        });
+
+        reai_plugin_table_show (table);
+        reai_plugin_table_destroy (table);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 /**
@@ -1346,39 +1319,6 @@ RzBinFile *reai_plugin_get_opened_binary_file (RzCore *core) {
     }
 
     return rz_list_iter_get_data (head);
-}
-
-/**
- * @b Get operating AI model to use with currently opened binary file.
- *
- * @param core
- *
- * @return @c REAI_MODEL_UNKNOWN on failure.
- * */
-ReaiModel reai_plugin_get_ai_model_for_opened_binary_file (RzCore *core) {
-    if (!core) {
-        DISPLAY_ERROR ("Invalid rizin core provided. Cannot guess AI model.");
-        return REAI_MODEL_UNKNOWN;
-    }
-
-    RzBinFile *binfile = reai_plugin_get_opened_binary_file (core);
-
-    if (binfile && binfile->o && binfile->o->info && binfile->o->info->os) {
-        CString os = binfile->o->info->os;
-        if (!strcmp (os, "linux")) {
-            return REAI_MODEL_X86_LINUX;
-        } else if (!strncmp (os, "Windows", 7)) {
-            return REAI_MODEL_X86_WINDOWS;
-        } else if (!strcmp (os, "iOS") || !strcmp (os, "darwin")) {
-            return REAI_MODEL_X86_MACOS;
-        } else if (!strcmp (os, "android")) {
-            return REAI_MODEL_X86_ANDROID;
-        } else {
-            return REAI_MODEL_UNKNOWN;
-        }
-    }
-
-    return REAI_MODEL_UNKNOWN;
 }
 
 /**
@@ -1442,69 +1382,4 @@ Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore *core) {
     }
 
     return fns->length;
-}
-
-/**
- * @b Get reference to `RzAnalysisFunction` with given name.
- *
- * @param core Rizin core.
- * @param name Name of function to get reference of.
- *
- * @return `RzAnalyisFunction` on success.
- * @return NULL otherwise.
- * */
-RzAnalysisFunction *reai_plugin_get_rizin_analysis_function_with_name (RzCore *core, CString name) {
-    if (!core) {
-        DISPLAY_ERROR ("Invalid Rizin core provided. Cannot get function with given name.");
-        return NULL;
-    }
-
-    if (!name) {
-        DISPLAY_ERROR ("Invalid function name provided. Cannot get function with given name.");
-        return NULL;
-    }
-
-    if (!core->analysis) {
-        DISPLAY_ERROR (
-            "Seems like Rizin analysis is not performed yet. Analysis object is invalid. Cannot "
-            "get function with given name."
-        );
-        return NULL;
-    }
-
-    RzList *fns = rz_analysis_function_list (core->analysis);
-    if (!fns) {
-        DISPLAY_ERROR (
-            "Seems like Rizin analysis is not performed yet. Function list is invalid. Cannot get "
-            "function with given name."
-        );
-        return NULL;
-    }
-
-    RzListIter         *fn_iter = NULL;
-    RzAnalysisFunction *fn      = NULL;
-    rz_list_foreach (fns, fn_iter, fn) {
-        if (!fn->name) {
-            LOG_ERROR (
-                "Function at address 0x%016llx of size 0x%016llx has name=NULL.",
-                fn->addr,
-                rz_analysis_function_linear_size (fn)
-            );
-            continue;
-        }
-
-        if (!strcmp (fn->name, name)) {
-            LOG_TRACE (
-                "Found function with name \"%s\" at address 0x%016llx and has size 0x%016llx",
-                name,
-                fn->addr,
-                rz_analysis_function_linear_size (fn)
-            );
-            return fn;
-        }
-    }
-
-    LOG_TRACE ("Failed to find function with name \"%s\"", name);
-
-    return NULL;
 }

@@ -19,7 +19,6 @@
 
 /* revengai */
 #include <Reai/AnalysisInfo.h>
-#include <Reai/Db.h>
 #include <Reai/Log.h>
 #include <Reai/Api/Api.h>
 #include <Reai/Common.h>
@@ -45,12 +44,12 @@
  * */
 void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     if (!msg) {
-        DISPLAY_ERROR ("Invalid message. Cannot display.");
+        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
         return;
     }
 
-    rz_cons_printf ("%s\n", msg);
-    reai_log_printf (reai_logger(), level, "display", msg);
+    rz_cons_println (msg);
+    reai_log_printf (level, "rizin.display", msg);
 }
 
 /**
@@ -66,8 +65,8 @@ RZ_IPI Bool rz_plugin_init (RzCore* core) {
     }
 
     rzshell_cmddescs_init (core);
-    if(!reai_plugin_init (core)) {
-        DISPLAY_ERROR("Failed to initialize plugin.");
+    if (!reai_plugin_init (core)) {
+        DISPLAY_ERROR ("Failed to initialize plugin.");
     }
 
     return true;
@@ -82,7 +81,7 @@ RZ_IPI Bool rz_plugin_fini (RzCore* core) {
         return false;
     }
 
-    reai_plugin_deinit (core);
+    reai_plugin_deinit();
 
     /* Remove command group from rzshell. The name of this comamnd group must match
      * with the one specified in Root.yaml */

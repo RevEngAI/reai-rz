@@ -252,3 +252,29 @@ ReaiPluginTable* reai_plugin_table_set_title (ReaiPluginTable* table, CString ti
 
     return table;
 }
+
+/**
+ * @b Clear table contents.
+ *
+ * @param table.
+ *
+ * @return @c table on success.
+ * @return @c NULL otherwise.
+ * */
+ReaiPluginTable* reai_plugin_table_clear_contents (ReaiPluginTable* table) {
+    if (!table) {
+        DISPLAY_ERROR ("Invalid table provided.");
+        return NULL;
+    }
+
+    // easiest way to clear contents is to recreate a new table
+    RzTable* new_table = rz_table_new();
+    if (new_table) {
+        rz_table_free (table->table);
+        table->table = new_table;
+        return table;
+    } else {
+        DISPLAY_ERROR ("Failed to clear table contents");
+        return NULL;
+    }
+}

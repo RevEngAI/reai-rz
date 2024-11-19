@@ -17,6 +17,8 @@
 ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
     setWindowTitle ("Plugin Configuration Setup");
 
+    setMinimumSize (500, 150);
+
     QVBoxLayout* mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
 
@@ -42,19 +44,6 @@ ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
         "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     );
     ADD_LABEL_INPUT_ROW (hostLabel, "RevEng.AI Host", leHost, "https://api.reveng.ai/v1");
-    ADD_LABEL_INPUT_ROW (modelLabel, "RevEng.AI AI Model", leModel, "binnet-0.3");
-    ADD_LABEL_INPUT_ROW (
-        dbDirPathLabel,
-        "Plugin Local Database Path",
-        leDbDirPath,
-        reai_plugin_get_default_database_dir_path()
-    );
-    ADD_LABEL_INPUT_ROW (
-        logDirPathLabel,
-        "Plugin Local Log Storage Path",
-        leLogDirPath,
-        reai_plugin_get_default_log_dir_path()
-    );
 
 #undef ADD_LABEL_INPUT_ROW
 
@@ -73,10 +62,7 @@ ConfigSetupDialog::ConfigSetupDialog (QWidget* parent) : QDialog (parent) {
  * @return false otherwise.
  * */
 Bool ConfigSetupDialog::allFieldsFilled() {
-    return !(
-        leHost->text().isEmpty() || leApiKey->text().isEmpty() || leModel->text().isEmpty() ||
-        leDbDirPath->text().isEmpty() || leLogDirPath->text().isEmpty()
-    );
+    return !(leHost->text().isEmpty() || leApiKey->text().isEmpty());
 }
 
 /**
@@ -95,29 +81,6 @@ CString ConfigSetupDialog::getApiKey() {
     return apiKey.constData();
 }
 
-/**
- * @b Get value of model line edit.
- * */
-CString ConfigSetupDialog::getModel() {
-    model = leModel->text().toLatin1();
-    return model.constData();
-}
-
-/**
- * @b Get value of db dir path line edit.
- * */
-CString ConfigSetupDialog::getDbDirPath() {
-    dbDirPath = leDbDirPath->text().toLatin1();
-    return dbDirPath.constData();
-}
-
-/**
- * @b Get value of log dir path line edit.
- * */
-CString ConfigSetupDialog::getLogDirPath() {
-    logDirPath = leLogDirPath->text().toLatin1();
-    return logDirPath.constData();
-}
 
 void ConfigSetupDialog::setHost (CString value) {
     leHost->setText (value);
@@ -125,14 +88,4 @@ void ConfigSetupDialog::setHost (CString value) {
 
 void ConfigSetupDialog::setApiKey (CString value) {
     leApiKey->setText (value);
-}
-
-void ConfigSetupDialog::setModel (CString value) {
-    leModel->setText (value);
-}
-void ConfigSetupDialog::setDbDirPath (CString value) {
-    leDbDirPath->setText (value);
-}
-void ConfigSetupDialog::setLogDirPath (CString value) {
-    leLogDirPath->setText (value);
 }

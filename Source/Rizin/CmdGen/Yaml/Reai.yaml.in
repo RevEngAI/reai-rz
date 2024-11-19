@@ -9,53 +9,57 @@ commands:
     args:
       - name: host
         type: RZ_CMD_ARG_TYPE_STRING
+        default_value: "https://api.reveng.ai/v1"
       - name: api_key
         type: RZ_CMD_ARG_TYPE_STRING
-      - name: model
-        type: RZ_CMD_ARG_TYPE_STRING
+        default_value: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     details:
-      - name: Host
+      - name: Examples 
         entries:
-          - text: https://api.reveng.ai/v1
-            comment: Replace v1 with the current version you want to use.
-      - name: API KEY
-        entries:
-          - text: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
-            comment: API Key provided in RevEng.AI dashboard
-      - name: AI Model
-        entries:
-          - text: binnet-0.3
-            comment: Name and versionof AI model to be used.
+          - text: "REi https://api.reveng.ai/v1 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+            comment: Initialize config with these settings. Replace v1 with the current version you want to use.
+  - name: REm
+    cname: list_available_ai_models
+    summary: Get all available models for analysis.
+    args: []
   - name: REh
     cname: health_check
     summary: Check connection status with RevEngAI servers.
     args: []
-  - name: REu
-    cname: upload_bin
-    summary: Upload currently loaded binary to RevEngAI servers.
-    args: []
-    #    - name: file_path
-    #      type: RZ_CMD_ARG_TYPE_STRING
-    #      optional: false
   - name: REa
     cname: create_analysis
     summary: Upload and analyse currently loaded binary
-    args: []
+    args:
+      - name: prog_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: cmd_line_args
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: ai_model
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+    details:
+      - name: Examples
+        entries:
+          - text: REa ffmpeg "-i input.mp4 -c:v gif output.gif" binnet-0.4-x86-linux
+            comment: "Create analysis for ffmpeg program with given command line arguments."
   - name: REau
     cname: ann_auto_analyze
     summary: Auto analyze binary functions using ANN and perform batch rename.
     modes:
       - RZ_OUTPUT_MODE_STANDARD
     args:
-      - name: distance
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 0.1
-      - name: results_per_function
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 5
       - name: min_confidence
         type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 0.95
+        default_value: 90
+    details:
+      - name: Examples
+        entries:
+          - text: "REau"
+            comment: "Apply auto analysis to this binary with 90% min confidence"
+          - text: "REau 85"
+            comment: "Min 85% confidence"
   - name: REap
     cname: apply_existing_analysis 
     summary: Apply already existing RevEng.AI analysis to this binary.
@@ -64,27 +68,10 @@ commands:
         type: RZ_CMD_ARG_TYPE_NUM
         optional: false
     details:
-      - name: Binary ID 
+      - name: Examples 
         entries:
-          - text: "18700"
-            comment: "Binary ID of analysis to be applied"
-  - name: REs
-    cname: get_analysis_status
-    summary: Get analysis status of given binary id
-    type: RZ_CMD_DESC_TYPE_ARGV_STATE
-    modes:
-      - RZ_OUTPUT_MODE_STANDARD
-    args:
-      - name: binary_id
-        type: RZ_CMD_ARG_TYPE_NUM
-        optional: true
-    details:
-      - name: Binary ID
-        entries:
-          - text: "18244"
-            comment: "Binary ID to check analysis status for"
-          - text: ""
-            comment: "No binary ID defaults to currently loaded binary"
+          - text: "REap 18700"
+            comment: "Apply analysis corresponding to bianry id 18700"
   - name: REfl
     cname: get_basic_function_info
     summary: Get & show basic function info for selected binary.
@@ -102,14 +89,27 @@ commands:
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
     details:
-      - name: Function address
+      - name: Examples
         entries:
-          - text: "0xf9da"
-            comment: "Address of function to be renamed"
-      - name: New name
+          - text: "REfr 0xf9da fopen"
+            comment: "Rename function at 0xf9da to fopen"
+  - name: REfs
+    cname: function_similarity_search
+    summary: RevEng.AI ANN functions similarity search.
+    args:
+      - name: function_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: min_confidence
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 95
+    details:
+      - name: Function Name
         entries:
-          - text: "fopen"
-            comment: "New function name"
+          - text: "REfs sym.main"
+            comment: "Search similar function for sym.main function with minimum confidence of 90%"
+          - text: "REfs __memcmp 95"
+            comment: "Search similar function for __memcmp, with minimum 95% confidence"
   - name: REart
     cname: show_revengai_art
     summary: Show RevEng.AI ASCII art.

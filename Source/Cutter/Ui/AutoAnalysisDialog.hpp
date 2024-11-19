@@ -1,12 +1,12 @@
 /**
- * @file      : FunctionSimilarityDialog.hpp
+ * @file      : AutoAnalysisDialog.hpp
  * @author    : Siddharth Mishra
- * @date      : 25th Sept 2024
+ * @date      : 11th Nov 2024
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-#ifndef REAI_PLUGIN_CUTTER_UI_FUNCTION_SIMILARITY_DIALOG_HPP
-#define REAI_PLUGIN_CUTTER_UI_FUNCTION_SIMILARITY_DIALOG_HPP
+#ifndef REAI_PLUGIN_CUTTER_UI_AUTO_ANALYSIS_DIALOG_HPP
+#define REAI_PLUGIN_CUTTER_UI_AUTO_ANALYSIS_DIALOG_HPP
 
 /* qt */
 #include <QDialog>
@@ -25,20 +25,20 @@
 /* plugin */
 #include <Table.h>
 
-class FunctionSimilarityDialog : public QDialog {
+
+class AutoAnalysisDialog : public QDialog {
     Q_OBJECT;
 
    public:
-    FunctionSimilarityDialog (QWidget* parent);
+    AutoAnalysisDialog (QWidget* parent);
 
    private:
     QVBoxLayout* mainLayout;
-    QLineEdit *  searchBarInput, *maxResultsInput;
     QSlider*     confidenceSlider;
     QCheckBox*   enableDebugModeCheckBox;
-    QCompleter*  fnNameCompleter;
+    QCheckBox*   renameUnknownFunctionsOnlyCheckBox;
 
-    void on_FindSimilarNames();
+    void on_PerformAutoAnalysis();
 };
 
-#endif // REAI_PLUGIN_CUTTER_UI_FUNCTION_SIMILARITY_DIALOG_HPP
+#endif // REAI_PLUGIN_CUTTER_UI_AUTO_ANALYSIS_DIALOG_HPP

@@ -34,6 +34,7 @@ extern "C" {
     ReaiPluginTable*
         reai_plugin_table_set_columnsf (ReaiPluginTable* table, const char* fmtstr, ...);
     ReaiPluginTable* reai_plugin_table_add_rowf (ReaiPluginTable* table, const char* fmtstr, ...);
+    ReaiPluginTable* reai_plugin_table_clear_contents (ReaiPluginTable* table);
     void             reai_plugin_table_show (ReaiPluginTable* table);
 
 #ifdef __cplusplus

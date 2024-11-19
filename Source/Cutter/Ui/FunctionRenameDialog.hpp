@@ -27,7 +27,7 @@ class FunctionRenameDialog : public QDialog {
     Q_OBJECT;
 
    public:
-    FunctionRenameDialog (QWidget* parent, RzCore* core);
+    FunctionRenameDialog (QWidget* parent);
 
     void getNameMapping (std::vector<std::pair<QString, QString>>& map);
     Bool isFinished() const {
