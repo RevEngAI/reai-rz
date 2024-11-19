@@ -99,8 +99,10 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
 }
 
 void ReaiCutterPlugin::setupPlugin() {
+    RzCoreLocked core (Core());
+
     /* if plugin launch fails then terminate */
-    if (!reai_plugin_init()) {
+    if (!reai_plugin_init (core)) {
         REAI_LOG_TRACE ("Plugin initialization incomplete.");
         isInitialized = false;
         return;
@@ -228,6 +230,7 @@ ReaiCutterPlugin::~ReaiCutterPlugin() {
         return;
     }
 
+    RzCoreLocked core (Core());
     reai_plugin_deinit();
 }
 
@@ -285,8 +288,10 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
                               QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel
                           ) == QMessageBox::No;
 
-        if (!reai_plugin_apply_existing_analysis (core, binaryId, applyToAll)) {
-            DISPLAY_ERROR ("Failed to apply existing analysis to this binary file.");
+        if (reai_plugin_apply_existing_analysis (core, binaryId, applyToAll)) {
+            DISPLAY_INFO ("Analysis applied successfully.");
+        } else {
+            DISPLAY_INFO ("Failed to apply existing analysis.");
         }
     } else {
         DISPLAY_ERROR (
@@ -440,7 +445,8 @@ void ReaiCutterPlugin::on_Setup() {
                     reai_config_get_default_path()
                 );
 
-                reai_plugin_init();
+                RzCoreLocked core (Core());
+                reai_plugin_init (core);
             } else {
                 DISPLAY_ERROR ("Failed to save config.");
             }

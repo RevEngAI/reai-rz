@@ -44,7 +44,7 @@ extern "C" {
     } ReaiPlugin;
 
     ReaiPlugin* reai_plugin();
-    Bool        reai_plugin_init();
+    Bool        reai_plugin_init (RzCore* core);
     Bool        reai_plugin_deinit();
 
     Bool reai_plugin_add_bg_work (RzThreadFunction fn, void* user_data);

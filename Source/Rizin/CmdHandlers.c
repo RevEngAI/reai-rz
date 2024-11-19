@@ -76,7 +76,7 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     /* attempt saving config */
     if (reai_plugin_save_config (host, api_key, model)) {
         /* try to reinit config after creating config */
-        if (!reai_plugin_init()) {
+        if (!reai_plugin_init (core)) {
             DISPLAY_ERROR ("Failed to init plugin after creating a new config.");
             return RZ_CMD_STATUS_ERROR;
         }
@@ -139,15 +139,20 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     CString cmdline_args = argv[2];
     CString ai_model     = argv[3];
 
-    return reai_plugin_create_analysis_for_opened_binary_file (
-               core,
-               prog_name,
-               cmdline_args,
-               ai_model,
-               is_private
-           ) ?
-               RZ_CMD_STATUS_OK :
-               RZ_CMD_STATUS_ERROR;
+    if (reai_plugin_create_analysis_for_opened_binary_file (
+            core,
+            prog_name,
+            cmdline_args,
+            ai_model,
+            is_private
+        )) {
+        DISPLAY_INFO ("Analysis created sucessfully");
+        return RZ_CMD_STATUS_OK;
+    }
+
+    DISPLAY_ERROR ("Failed to create analysis");
+
+    return RZ_CMD_STATUS_ERROR;
 }
 
 /**
@@ -160,13 +165,17 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
     Bool rename_unknown_only;
     ASK_QUESTION (rename_unknown_only, true, "Apply analysis only to unknown functions?");
 
-    return reai_plugin_apply_existing_analysis (
-               core,
-               rz_num_get (core->num, argv[1]), // binary id
-               !rename_unknown_only             // apply analysis to all?
-           ) ?
-               RZ_CMD_STATUS_OK :
-               RZ_CMD_STATUS_ERROR;
+    if (reai_plugin_apply_existing_analysis (
+            core,
+            rz_num_get (core->num, argv[1]), // binary id
+            !rename_unknown_only             // apply analysis to all?
+        )) {
+        DISPLAY_INFO ("Existing analysis applied sucessfully");
+        return RZ_CMD_STATUS_OK;
+    }
+
+    DISPLAY_INFO ("Failed to apply existing analysis");
+    return RZ_CMD_STATUS_ERROR;
 }
 
 /**

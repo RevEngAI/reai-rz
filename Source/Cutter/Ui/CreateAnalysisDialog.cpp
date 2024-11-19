@@ -87,13 +87,18 @@ void CreateAnalysisDialog::on_CreateAnalysis() {
         return;
     }
 
-    if (!reai_plugin_create_analysis_for_opened_binary_file (
+    if (reai_plugin_create_analysis_for_opened_binary_file (
             core,
             progName.constData(),
             cmdLineArgs.constData(),
             aiModelName.constData(),
             isPrivate
         )) {
-        DISPLAY_ERROR ("Failed to create new analysis");
+        DISPLAY_INFO ("Analysis created successfully.");
+    } else {
+        DISPLAY_INFO ("Failed to create new analysis analysis.");
     }
+
+
+    close();
 }

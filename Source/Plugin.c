@@ -332,7 +332,12 @@ ReaiFnInfoVec *reai_plugin_get_function_boundaries (RzCore *core) {
  *
  * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
  * */
-Bool reai_plugin_init() {
+Bool reai_plugin_init (RzCore *core) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid rizin core provided.");
+        return false;
+    }
+
     /* load default config */
     reai_plugin()->reai_config = reai_config_load (NULL);
     if (!reai_config()) {
@@ -372,6 +377,18 @@ Bool reai_plugin_init() {
 
     if (!reai_plugin_add_bg_work (get_ai_models_in_bg, reai_plugin())) {
         REAI_LOG_ERROR ("Failed to add get-ai-models bg worker.");
+    }
+
+    // get binary id
+    reai_binary_id() = rz_config_get_i (core->config, "reai.id");
+
+    // if file is not loaded from a project, or the project does not have a binary id
+    // then binary id will be 0
+    if (!reai_binary_id()) {
+        // unlock and create a variable so that in future we can update it
+        rz_config_lock (core->config, false);
+        rz_config_set_i (core->config, "reai.id", 0);
+        rz_config_lock (core->config, true);
     }
 
     return true;
@@ -648,6 +665,7 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (
     reai_fn_info_vec_destroy (fn_boundaries);
 
     reai_binary_id() = bin_id;
+    rz_config_set_i (core->config, "reai.id", reai_binary_id());
 
     return true;
 }
@@ -811,6 +829,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id, Boo
     reai_fn_info_vec_destroy (fn_infos);
 
     reai_binary_id() = bin_id;
+    rz_config_set_i (core->config, "reai.id", reai_binary_id());
 
     return true;
 }
