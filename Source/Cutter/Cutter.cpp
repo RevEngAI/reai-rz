@@ -101,8 +101,20 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
 void ReaiCutterPlugin::setupPlugin() {
     RzCoreLocked core (Core());
 
-    /* if plugin launch fails then terminate */
     if (!reai_plugin_init (core)) {
+        // if plugin failed to load because no config exists
+        if (!reai_config()) {
+            // show setup dialog
+            on_Setup();
+
+            // if config is loaded then happy happy happy
+            if (reai_config()) {
+                isInitialized = true;
+                return;
+            }
+        }
+
+        // otherwise terminate
         REAI_LOG_TRACE ("Plugin initialization incomplete.");
         isInitialized = false;
         return;
