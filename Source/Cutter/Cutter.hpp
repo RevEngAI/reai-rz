@@ -13,6 +13,10 @@
 #include <cutter/core/MainWindow.h>
 #include <cutter/plugins/CutterPlugin.h>
 
+// decompiler is to be implemented through this interface and made available
+// to decompiler widget, and our job is down
+#include <cutter/common/Decompiler.h>
+
 /* qt */
 #include <QObject>
 
@@ -50,9 +54,12 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
 
     Bool isInitialized = false;
 
+    MainWindow* mainWindow = NULL;
+
    public:
     void setupPlugin() override;
     void setupInterface (MainWindow *mainWin) override;
+    void registerDecompilers() override;
     ~ReaiCutterPlugin();
 
     QString getName() const override {
@@ -62,7 +69,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
         return "Siddharth Mishra";
     }
     QString getVersion() const override {
-        return "0";
+        return "1";
     }
     QString getDescription() const override {
         return "AI based reverse engineering helper API & Toolkit";

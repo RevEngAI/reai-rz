@@ -6,8 +6,6 @@
  * */
 
 /* rizin */
-#include "Reai/Api/Response.h"
-#include <Reai/Api/Reai.h>
 #include <rz_analysis.h>
 #include <rz_asm.h>
 #include <rz_cmd.h>
@@ -15,6 +13,7 @@
 #include <rz_lib.h>
 #include <rz_th.h>
 #include <rz_types.h>
+#include <rz_util/rz_annotated_code.h>
 
 /* revengai */
 #include <Reai/AnalysisInfo.h>
@@ -1108,7 +1107,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
 }
 
 /**
- * @b Search for function with given name and get the corresponding function id.
+ * @b Search for given analysis function and get the corresponding function id.
  *
  * @param core
  * @param fn_name
@@ -1382,4 +1381,57 @@ Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore *core) {
     }
 
     return fns->length;
+}
+
+Bool reai_plugin_decompile_at (RzCore *core, ut64 addr) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid arguments");
+        return false;
+    }
+
+    RzAnalysisFunction *fn    = rz_analysis_get_function_at (core->analysis, addr);
+    ReaiFunctionId      fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
+    if (!fn_id) {
+        return false;
+    }
+
+    return !!reai_begin_ai_decompilation (reai(), reai_response(), fn_id);
+}
+
+ReaiAiDecompilationStatus reai_plugin_check_decompiler_status_running_at (RzCore *core, ut64 addr) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid arguments");
+        return false;
+    }
+
+    RzAnalysisFunction *fn    = rz_analysis_get_function_at (core->analysis, addr);
+    ReaiFunctionId      fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
+    if (!fn_id) {
+        return false;
+    }
+
+    return reai_poll_ai_decompilation (reai(), reai_response(), fn_id);
+}
+
+CString reai_plugin_get_decompiled_code_at (RzCore *core, ut64 addr) {
+    if (!core) {
+        DISPLAY_ERROR ("Invalid arguments");
+        return NULL;
+    }
+
+    RzAnalysisFunction *fn    = rz_analysis_get_function_at (core->analysis, addr);
+    ReaiFunctionId      fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
+    if (!fn_id) {
+        return NULL;
+    }
+
+    ReaiAiDecompilationStatus status = reai_poll_ai_decompilation (reai(), reai_response(), fn_id);
+    if (status == REAI_AI_DECOMPILATION_STATUS_SUCCESS) {
+        CString decomp = reai_response()->poll_ai_decompilation.data.decompilation;
+        decomp =
+            decomp ? (strlen (decomp) ? strdup (decomp) : strdup ("(empty)")) : strdup ("(null)");
+        return decomp;
+    }
+
+    return NULL;
 }

@@ -384,6 +384,48 @@ RZ_IPI RzCmdStatus
     return RZ_CMD_STATUS_OK;
 }
 
+RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+    const char* fn_name = argv[1];
+    if (!fn_name) {
+        return RZ_CMD_STATUS_INVALID;
+    }
+
+    RzAnalysisFunction* rzfn = rz_analysis_get_function_byname (core->analysis, fn_name);
+
+    int error_count = 0;
+
+    while (true) {
+        ReaiAiDecompilationStatus status =
+            reai_plugin_check_decompiler_status_running_at (core, rzfn->addr);
+
+        if (error_count > 1) {
+            DISPLAY_ERROR ("failed to decompile function \"%s\"", fn_name);
+            return RZ_CMD_STATUS_ERROR;
+        }
+
+        switch (status) {
+            case REAI_AI_DECOMPILATION_STATUS_ERROR :
+                error_count++;
+            case REAI_AI_DECOMPILATION_STATUS_UNINITIALIZED :
+                reai_plugin_decompile_at (core, rzfn->addr);
+                break;
+            case REAI_AI_DECOMPILATION_STATUS_SUCCESS : {
+                CString code = reai_plugin_get_decompiled_code_at (core, rzfn->addr);
+                if (code) {
+                    rz_cons_println (code);
+                    FREE (code);
+                }
+                return RZ_CMD_STATUS_OK;
+            }
+            default :
+                break;
+        }
+
+        rz_sys_sleep (2);
+    }
+}
+
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc && argv);
 

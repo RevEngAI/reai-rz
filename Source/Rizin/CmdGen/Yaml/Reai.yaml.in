@@ -110,6 +110,13 @@ commands:
             comment: "Search similar function for sym.main function with minimum confidence of 90%"
           - text: "REfs __memcmp 95"
             comment: "Search similar function for __memcmp, with minimum 95% confidence"
+  - name: REd
+    cname: ai_decompile
+    summary: Decompile given function using RevEngAI's AI Decompiler
+    args:
+      - name: function_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
   - name: REart
     cname: show_revengai_art
     summary: Show RevEng.AI ASCII art.

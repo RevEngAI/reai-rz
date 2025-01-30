@@ -92,6 +92,11 @@ extern "C" {
     Uint64     reai_plugin_get_opened_binary_file_baseaddr (RzCore* core);
     Uint64     reai_plugin_get_rizin_analysis_function_count (RzCore* core);
 
+    Bool reai_plugin_decompile_at (RzCore* core, ut64 addr);
+    ReaiAiDecompilationStatus
+             reai_plugin_check_decompiler_status_running_at (RzCore* core, ut64 addr);
+    CString reai_plugin_get_decompiled_code_at (RzCore* core, ut64 addr);
+
 #include "Override.h"
 
 // wrapper macros to make sure first call to any one of these

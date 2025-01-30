@@ -7,9 +7,7 @@
 
 
 /* rizin */
-#include "Reai/Types.h"
 #include <Cutter.h>
-#include <Reai/AnalysisInfo.h>
 #include <rz_analysis.h>
 #include <rz_core.h>
 
@@ -41,6 +39,7 @@
 #include <Cutter/Ui/CreateAnalysisDialog.hpp>
 #include <Plugin.h>
 #include <Cutter/Cutter.hpp>
+#include <Cutter/Decompiler.hpp>
 
 /**
  * Display a message of given level in rizin shell.
@@ -132,6 +131,8 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     if (!isInitialized) {
         return;
     }
+
+    mainWindow = mainWin;
 
     /* get main window's menu bar */
     QMenuBar *menuBar = mainWin->menuBar();
@@ -234,6 +235,10 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     connect (actSetup, &QAction::triggered, this, &ReaiCutterPlugin::on_Setup);
 }
 
+void ReaiCutterPlugin::registerDecompilers() {
+    Core()->registerDecompiler (new ReaiDec (this->parent()));
+}
+
 ReaiCutterPlugin::~ReaiCutterPlugin() {
     if (!isInitialized) {
         return;
@@ -307,6 +312,8 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
             "Failed to get binary id to apply existing analysis. Cannot apply existing analysis."
         );
     }
+
+    mainWindow->refreshAll();
 }
 
 void ReaiCutterPlugin::on_AutoAnalyzeBin() {
@@ -318,6 +325,8 @@ void ReaiCutterPlugin::on_AutoAnalyzeBin() {
 
     AutoAnalysisDialog *autoDlg = new AutoAnalysisDialog ((QWidget *)this->parent());
     autoDlg->exec();
+
+    mainWindow->refreshAll();
 }
 
 void ReaiCutterPlugin::on_RenameFns() {
@@ -415,6 +424,8 @@ void ReaiCutterPlugin::on_RenameFns() {
     }
 
     reai_fn_info_vec_destroy (new_name_map);
+
+    mainWindow->refreshAll();
 }
 
 void ReaiCutterPlugin::on_BinAnalysisHistory() {

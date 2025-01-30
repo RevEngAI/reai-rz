@@ -9,7 +9,7 @@ set(CMAKE_AUTOUIC ON) # Auto User Interface Compiler
 set(CMAKE_AUTORCC ON) # Auto Resource Compile
 
 # main plugin library and sources
-set(ReaiCutterPluginSource "Cutter.cpp" "../Plugin.c" "Ui/ConfigSetupDialog.cpp" "Ui/Table.cpp"
+set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c" "Ui/ConfigSetupDialog.cpp" "Ui/Table.cpp"
                            "Ui/FunctionRenameDialog.cpp" "Ui/FunctionSimilarityDialog.cpp"
                            "Ui/AutoAnalysisDialog.cpp" "Ui/CreateAnalysisDialog.cpp")
 add_library(reai_cutter STATIC MODULE ${ReaiCutterPluginSource})
