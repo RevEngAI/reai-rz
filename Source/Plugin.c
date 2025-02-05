@@ -711,15 +711,37 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id, Boo
 
     /* an analysis must already exist in order to make auto-analysis work */
     ReaiAnalysisStatus analysis_status = reai_get_analysis_status (reai(), reai_response(), bin_id);
-    CString            status_str      = reai_analysis_status_to_cstr (analysis_status);
     if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
-        DISPLAY_WARN (
-            "Analysis not complete yet. Please wait for some time and "
-            "then try again! Current analysis status = %s for binary id = %llu",
-            status_str ? status_str : "INVALID",
-            bin_id
-        );
-        return false;
+        switch (analysis_status) {
+            case REAI_ANALYSIS_STATUS_ERROR : {
+                DISPLAY_WARN (
+                    "There seems to be a problem with analysis.\n"
+                    "Please restart the analysis, or check the provided binary ID."
+                );
+                return false;
+            }
+            case REAI_ANALYSIS_STATUS_QUEUED : {
+                DISPLAY_WARN (
+                    "Analysis for given binary ID hasn't started yet.\n"
+                    "Please try again after sometime."
+                );
+                return false;
+            }
+            case REAI_ANALYSIS_STATUS_PROCESSING : {
+                DISPLAY_WARN (
+                    "Analysis for given binary ID is not complete yet.\n"
+                    "Please try again after sometime."
+                );
+                return false;
+            }
+            default : {
+                DISPLAY_WARN (
+                    "Failed to get analysis information of current binary.\n"
+                    "Check the binary ID once more."
+                );
+                return false;
+            }
+        }
     }
 
     /* names of current functions */
@@ -1383,6 +1405,16 @@ Uint64 reai_plugin_get_rizin_analysis_function_count (RzCore *core) {
     return fns->length;
 }
 
+/**
+ * \b Begin AI decompilation on cloud server for function
+ * at given address (if there exists one).
+ *
+ * \p core
+ * \p addr Address of function.
+ *
+ * \return True on success.
+ * \return False otherwise.
+ * */
 Bool reai_plugin_decompile_at (RzCore *core, ut64 addr) {
     if (!core) {
         DISPLAY_ERROR ("Invalid arguments");
@@ -1398,6 +1430,14 @@ Bool reai_plugin_decompile_at (RzCore *core, ut64 addr) {
     return !!reai_begin_ai_decompilation (reai(), reai_response(), fn_id);
 }
 
+/**
+ * \b Get status of AI decompiler running for function at given address.
+ *
+ * \p core
+ * \p addr Address of function.
+ *
+ * \return ReaiAiDecompilationStatus
+ * */
 ReaiAiDecompilationStatus reai_plugin_check_decompiler_status_running_at (RzCore *core, ut64 addr) {
     if (!core) {
         DISPLAY_ERROR ("Invalid arguments");
@@ -1413,6 +1453,18 @@ ReaiAiDecompilationStatus reai_plugin_check_decompiler_status_running_at (RzCore
     return reai_poll_ai_decompilation (reai(), reai_response(), fn_id);
 }
 
+/**
+ * \b If AI decompilation is complete then get the decompiled code.
+ *
+ * It is recommended to call this function only after decompilation
+ * is complete. Use the check_decompilar_status API for that.
+ *
+ * \p core
+ * \p addr Address of function
+ *
+ * \return AI Decompilation code on success.
+ * \return A string containing "(empty)" otherwise.
+ * */
 CString reai_plugin_get_decompiled_code_at (RzCore *core, ut64 addr) {
     if (!core) {
         DISPLAY_ERROR ("Invalid arguments");

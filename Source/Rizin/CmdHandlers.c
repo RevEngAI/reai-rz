@@ -393,6 +393,9 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
 
     RzAnalysisFunction* rzfn = rz_analysis_get_function_byname (core->analysis, fn_name);
 
+    /* NOTE(brightprogrammer): Error count is a hack used to mitigate the case
+     * where the AI decompilation process is already errored out and user wants
+     * to restart the process. */
     int error_count = 0;
 
     while (true) {

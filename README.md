@@ -23,8 +23,6 @@ ninja -C Build && sudo ninja -C Build install
 
 Before running any of the above commands, you must install cmake, make, ninja, meson, gcc/g++ (if required), pkg-config, libcurl (development package), and [rizin](https://github.com/rizinorg/rizin?tab=readme-ov-file#how-to-build).
 
-If while running rizin, you get address sanitizer (ASAN) issues, reconfigure rizin build again with `-bsanitize=address` and pass a `-D CMAKE_BUILD_TYPE=Debug` when building this plugin.
-
 ## CMake Configure Options
 
 - `BUILD_RIZIN_PLUGIN_ONLY = ON/OFF` : When enabled will build rizin plugin only. This is useful when you only have rizin installed. `ON` by default. Turn this `OFF` when you don't have cutter installed.
@@ -32,7 +30,7 @@ If while running rizin, you get address sanitizer (ASAN) issues, reconfigure riz
 ## Basic Usage
 
 Before being able to use anything in the plugin, a config file in the user's home
-directory is required. Name of file must be `.reai-rz.toml`
+directory is required. Name of file must be `.creait.toml`
 
 ```toml
 apikey = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"    # Replace this with your own API key
@@ -44,7 +42,7 @@ host = "https://api.reveng.ai/v1"                  # API version and base endpoi
 This config file can be generated using the `REi` command after plugin installation.
 Without a config, the plugin will keep erroring out for all other commands.
 
-`REi https://api.reveng.ai/v1 <apikey>`
+`REi https://api.reveng.ai <apikey>`
 
 Execute the above command to automatically create a config file similar to the one above.
 You can get the api key in `https://portal.reveng.ai/settings` API Key section. Once
@@ -57,13 +55,14 @@ After installing rizin plugin, you'll see the following commands listed when you
 
 ```sh
 Usage: RE<imhua?>   # RevEngAI Plugin Commands
-| REi <host>=https://api.reveng.ai/v1 <api_key>=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX # Initialize plugin config.
+| REi <host>=https://api.reveng.ai <api_key>=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX # Initialize plugin config.
 | REm                     # Get all available models for analysis.
 | REh                     # Check connection status with RevEngAI servers.
 | REu                     # Upload currently loaded binary to RevEngAI servers.
 | REa <prog_name> <cmd_line_args> <ai_model> # Upload and analyse currently loaded binary
 | REau[?] <min_confidence>=90 # Auto analyze binary functions using ANN and perform batch rename.
 | REap <bin_id>           # Apply already existing RevEng.AI analysis to this binary.
+| REd  <fn_name>          # Perform AI Decompilation
 | REfl[?]                 # Get & show basic function info for selected binary.
 | REfr <fn_addr> <new_name> # Rename function with given function id to given name.
 | REfs <function_name> <min_confidence>=95 # RevEng.AI ANN functions similarity search.
