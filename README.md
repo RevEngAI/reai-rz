@@ -4,6 +4,13 @@ RevEng.AI plugins for Rizin & Cutter.
 
 ## Installation
 
+### Docker
+
+Don't want to go through all the manual hassle? We have a dockerfile as well.
+Just do `docker build -t reai-rz . && docker run -it reai-rz` after cloning this repo.
+
+### Manual 
+
 PyYaml is a required dependency for the plugin commands. If your package manager manages
 python packages instead of `pip`, then `pipx` will help get an easy installation.
 `pipx` needs to be installed from package manager.
@@ -34,7 +41,7 @@ directory is required. Name of file must be `.creait.toml`
 
 ```toml
 apikey = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"    # Replace this with your own API key
-host = "https://api.reveng.ai/v1"                  # API version and base endpoint
+host = "https://api.reveng.ai"                  # API version and base endpoint
 ```
 
 ### Generating Config File In Plugins
@@ -42,11 +49,11 @@ host = "https://api.reveng.ai/v1"                  # API version and base endpoi
 This config file can be generated using the `REi` command after plugin installation.
 Without a config, the plugin will keep erroring out for all other commands.
 
-`REi https://api.reveng.ai <apikey>`
+`REi <apikey>`
 
 Execute the above command to automatically create a config file similar to the one above.
-You can get the api key in `https://portal.reveng.ai/settings` API Key section. Once
-the config file is generated, exit rizin using `q` command and then run rizin again.
+You can get the api key in `https://portal.reveng.ai/settings` API Key section. The plugin
+will automatically reload the new saved configuration
 
 ### Command List
 
@@ -55,7 +62,7 @@ After installing rizin plugin, you'll see the following commands listed when you
 
 ```sh
 Usage: RE<imhua?>   # RevEngAI Plugin Commands
-| REi <host>=https://api.reveng.ai <api_key>=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX # Initialize plugin config.
+| REi XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX # Initialize plugin config.
 | REm                     # Get all available models for analysis.
 | REh                     # Check connection status with RevEngAI servers.
 | REu                     # Upload currently loaded binary to RevEngAI servers.
@@ -64,7 +71,7 @@ Usage: RE<imhua?>   # RevEngAI Plugin Commands
 | REap <bin_id>           # Apply already existing RevEng.AI analysis to this binary.
 | REd  <fn_name>          # Perform AI Decompilation
 | REfl[?]                 # Get & show basic function info for selected binary.
-| REfr <fn_addr> <new_name> # Rename function with given function id to given name.
+| REfr <old_name> <new_name> # Rename function with given function id to given name.
 | REfs <function_name> <min_confidence>=95 # RevEng.AI ANN functions similarity search.
 | REart                   # Show RevEng.AI ASCII art.
 ```
@@ -121,6 +128,11 @@ sync names between RevEngAI server and rizin.
 
 If you save a rizin project after creating a new analysis, the analysis ID automatically gets
 stored in the rizin project and is automatically loaded when you open the project.
+
+### `REd` : AI Decompiler
+
+This plugin also comes with RevEngAI's AI decompiler. This command can be used to decompile
+a function by using it's name.
 
 ### `REfl` : Function List
 
