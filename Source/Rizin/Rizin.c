@@ -33,11 +33,10 @@
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
 
+CStrVec* dmsgs[REAI_LOG_LEVEL_MAX];
+
 /**
  * Display a message of given level in rizin shell.
- *
- * If message is below error level then it's sent to log file,
- * otherwise it's displayed on screen as well as in log file.
  *
  * @param level
  * @param msg
@@ -48,8 +47,34 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
         return;
     }
 
-    rz_cons_println (msg);
-    reai_log_printf (level, "rizin.display", msg);
+    reai_plugin_append_msg (level, msg);
+
+    /* append logs from each category */
+    for (int x = 0; x < REAI_LOG_LEVEL_MAX; x++) {
+        CStrVec* v = dmsgs[x];
+        for (size_t l = 0; l < v->count; l++) {
+            CString m = v->items[l];
+            reai_log_printf (level, "rizin.display", m);
+            rz_cons_println (m);
+            FREE (v->items[l]);
+        }
+        v->count = 0;
+    }
+}
+
+/**
+ * Apend a message to a vector to be displayed all at once later on.
+ *
+ * @param level
+ * @param msg
+ * */
+void reai_plugin_append_msg (ReaiLogLevel level, CString msg) {
+    if (!msg) {
+        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
+        return;
+    }
+
+    reai_cstr_vec_append (dmsgs[level], &msg);
 }
 
 /**
@@ -62,6 +87,10 @@ RZ_IPI Bool rz_plugin_init (RzCore* core) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
         return false;
+    }
+
+    for (int x = 0; x < REAI_LOG_LEVEL_MAX; x++) {
+        dmsgs[x] = reai_cstr_vec_create();
     }
 
     rzshell_cmddescs_init (core);
@@ -79,6 +108,11 @@ RZ_IPI Bool rz_plugin_fini (RzCore* core) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Failed to free plugin resources.");
         return false;
+    }
+
+    for (int x = 0; x < REAI_LOG_LEVEL_MAX; x++) {
+        reai_cstr_vec_destroy (dmsgs[x]);
+        dmsgs[x] = NULL;
     }
 
     reai_plugin_deinit();

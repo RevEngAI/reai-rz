@@ -41,6 +41,8 @@
 #include <Cutter/Cutter.hpp>
 #include <Cutter/Decompiler.hpp>
 
+CStrVec *dmsgs[REAI_LOG_LEVEL_MAX];
+
 /**
  * Display a message of given level in rizin shell.
  *
@@ -53,6 +55,23 @@
 void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     RETURN_IF (!msg, ERR_INVALID_ARGUMENTS);
 
+    reai_plugin_append_msg (level, msg);
+
+    /* accumulate all messages in order of severity */
+    RzStrBuf sbuf;
+    rz_strbuf_init (&sbuf);
+
+    /* append logs from each category */
+    for (int x = REAI_LOG_LEVEL_TRACE; x < REAI_LOG_LEVEL_MAX; x++) {
+        CStrVec *v = dmsgs[x];
+        for (size_t l = 0; l < v->count; l++) {
+            rz_strbuf_append (&sbuf, v->items[l]);
+            rz_strbuf_append (&sbuf, "\n");
+            FREE (v->items[l]);
+        }
+        v->count = 0;
+    }
+
     static CString win_title[REAI_LOG_LEVEL_MAX] = {0};
 
     win_title[REAI_LOG_LEVEL_INFO]  = "Information";
@@ -62,8 +81,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
     win_title[REAI_LOG_LEVEL_ERROR] = "Error";
     win_title[REAI_LOG_LEVEL_FATAL] = "Critical";
 
-    reai_log_printf (level, "display", "%s", msg);
-
+    /* show final message */
     switch (level) {
         case REAI_LOG_LEVEL_INFO :
         case REAI_LOG_LEVEL_TRACE :
@@ -71,14 +89,20 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
             QMessageBox::information (
                 nullptr,
                 win_title[level],
-                msg,
+                rz_strbuf_get (&sbuf),
                 QMessageBox::Ok,
                 QMessageBox::Ok
             );
             break;
         }
         case REAI_LOG_LEVEL_WARN : {
-            QMessageBox::warning (nullptr, win_title[level], msg, QMessageBox::Ok, QMessageBox::Ok);
+            QMessageBox::warning (
+                nullptr,
+                win_title[level],
+                rz_strbuf_get (&sbuf),
+                QMessageBox::Ok,
+                QMessageBox::Ok
+            );
             break;
         }
         case REAI_LOG_LEVEL_ERROR :
@@ -86,7 +110,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
             QMessageBox::critical (
                 nullptr,
                 win_title[level],
-                msg,
+                rz_strbuf_get (&sbuf),
                 QMessageBox::Ok,
                 QMessageBox::Ok
             );
@@ -95,10 +119,33 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
         default :
             break;
     }
+
+    reai_log_printf (level, "display", "%s", rz_strbuf_get (&sbuf));
+    rz_strbuf_fini (&sbuf);
 }
+
+/**
+ * Apend a message to a vector to be displayed all at once later on.
+ *
+ * @param level
+ * @param msg
+ * */
+void reai_plugin_append_msg (ReaiLogLevel level, CString msg) {
+    if (!msg || level >= REAI_LOG_LEVEL_MAX) {
+        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
+        return;
+    }
+
+    reai_cstr_vec_append (dmsgs[level], &msg);
+}
+
 
 void ReaiCutterPlugin::setupPlugin() {
     RzCoreLocked core (Core());
+
+    for (int x = REAI_LOG_LEVEL_TRACE; x < REAI_LOG_LEVEL_MAX; x++) {
+        dmsgs[x] = reai_cstr_vec_create();
+    }
 
     if (!reai_plugin_init (core)) {
         // if plugin failed to load because no config exists

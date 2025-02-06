@@ -51,6 +51,7 @@ extern "C" {
 
     ReaiFnInfoVec* reai_plugin_get_function_boundaries (RzCore* core);
     void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
+    void           reai_plugin_append_msg (ReaiLogLevel level, CString msg);
     Bool           reai_plugin_check_config_exists();
     CString        reai_plugin_get_default_log_dir_path();
     Bool           reai_plugin_save_config (CString host, CString api_key);
@@ -94,7 +95,7 @@ extern "C" {
 
     Bool reai_plugin_decompile_at (RzCore* core, ut64 addr);
     ReaiAiDecompilationStatus
-             reai_plugin_check_decompiler_status_running_at (RzCore* core, ut64 addr);
+            reai_plugin_check_decompiler_status_running_at (RzCore* core, ut64 addr);
     CString reai_plugin_get_decompiled_code_at (RzCore* core, ut64 addr);
 
 #include "Override.h"
@@ -127,6 +128,26 @@ extern "C" {
 #define DISPLAY_WARN(...)  DISPLAY_MSG (REAI_LOG_LEVEL_WARN, __VA_ARGS__)
 #define DISPLAY_ERROR(...) DISPLAY_MSG (REAI_LOG_LEVEL_ERROR, __VA_ARGS__)
 #define DISPLAY_FATAL(...) DISPLAY_MSG (REAI_LOG_LEVEL_FATAL, __VA_ARGS__)
+
+#define APPEND_MSG(level, ...)                                                                     \
+    do {                                                                                           \
+        Size  msgsz = snprintf (0, 0, __VA_ARGS__) + 1;                                            \
+        Char* msg   = ALLOCATE (Char, msgsz);                                                      \
+        if (!msg) {                                                                                \
+            PRINT_ERR (ERR_OUT_OF_MEMORY);                                                         \
+            break;                                                                                 \
+        }                                                                                          \
+        snprintf (msg, msgsz, __VA_ARGS__);                                                        \
+        reai_plugin_append_msg (level, msg);                                                       \
+        FREE (msg);                                                                                \
+    } while (0)
+
+#define APPEND_TRACE(...) APPEND_MSG (REAI_LOG_LEVEL_TRACE, __VA_ARGS__)
+#define APPEND_INFO(...)  APPEND_MSG (REAI_LOG_LEVEL_INFO, __VA_ARGS__)
+#define APPEND_DEBUG(...) APPEND_MSG (REAI_LOG_LEVEL_DEBUG, __VA_ARGS__)
+#define APPEND_WARN(...)  APPEND_MSG (REAI_LOG_LEVEL_WARN, __VA_ARGS__)
+#define APPEND_ERROR(...) APPEND_MSG (REAI_LOG_LEVEL_ERROR, __VA_ARGS__)
+#define APPEND_FATAL(...) APPEND_MSG (REAI_LOG_LEVEL_FATAL, __VA_ARGS__)
 
 #ifdef __cplusplus
 }
