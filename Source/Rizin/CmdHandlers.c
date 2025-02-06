@@ -48,8 +48,9 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     UNUSED (core && argc);
     REAI_LOG_TRACE ("[CMD] config initialize");
 
-    CString host    = argv[1];
-    CString api_key = argv[2];
+    CString host = "https://api.reveng.ai"; // Hardcode API endpoint
+    // NOTE(brightprogrammer): Developers should just change this in the config file.
+    CString api_key = argv[1];
 
     /* attempt saving config */
     if (reai_plugin_save_config (host, api_key)) {

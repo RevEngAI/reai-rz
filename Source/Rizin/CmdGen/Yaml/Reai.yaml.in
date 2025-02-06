@@ -7,17 +7,14 @@ commands:
     cname: plugin_initialize
     summary: Initialize plugin config.
     args:
-      - name: host
-        type: RZ_CMD_ARG_TYPE_STRING
-        default_value: "https://api.reveng.ai/v1"
       - name: api_key
         type: RZ_CMD_ARG_TYPE_STRING
         default_value: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
     details:
       - name: Examples 
         entries:
-          - text: "REi https://api.reveng.ai/v1 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-            comment: Initialize config with these settings. Replace v1 with the current version you want to use.
+          - text: "REi  XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+            comment: Provide API key for using RevEngAI plugin. 
   - name: REm
     cname: list_available_ai_models
     summary: Get all available models for analysis.
