@@ -36,19 +36,6 @@
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
 
-
-#define ASK_QUESTION(res, default, msg)                                                            \
-    do {                                                                                           \
-        Char input = 0;                                                                            \
-        rz_cons_printf ("%s [%c/%c] : ", msg, (default ? 'Y' : 'y'), (!default ? 'N' : 'n'));      \
-        rz_cons_flush();                                                                           \
-        while (input != 'n' && input != 'N' && input != 'Y' && input != 'y') {                     \
-            input = rz_cons_readchar();                                                            \
-        }                                                                                          \
-        res = (input == 'y' || input == 'Y');                                                      \
-        rz_cons_newline();                                                                         \
-    } while (0)
-
 /**
  * REi
  *
@@ -123,8 +110,14 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
     UNUSED (argc && argv);
     REAI_LOG_TRACE ("[CMD] create analysis");
 
-    Bool is_private;
-    ASK_QUESTION (is_private, true, "Create private analysis?");
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
+    }
+
+    Bool is_private = rz_cons_yesno ('n', "Create private analysis? [Y/n]");
 
     CString prog_name    = argv[1];
     CString cmdline_args = argv[2];
@@ -153,8 +146,15 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
     UNUSED (argc && argv);
     REAI_LOG_TRACE ("[CMD] apply existing analysis");
 
-    Bool rename_unknown_only;
-    ASK_QUESTION (rename_unknown_only, true, "Apply analysis only to unknown functions?");
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
+    }
+
+    Bool rename_unknown_only =
+        rz_cons_yesno ('y', "Apply analysis only to unknown functions? [Y/n]");
 
     if (reai_plugin_apply_existing_analysis (
             core,
@@ -184,6 +184,13 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     UNUSED (output_mode && argc);
     REAI_LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
+    }
+
     // NOTE: this is static here. I don't think it's a good command line option to have
     // Since user won't know about this when issuing the auto-analysis command.
     // Just set it to a large enough value to get good suggestions
@@ -192,9 +199,8 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     Uint32 min_confidence = rz_num_get (core->num, argv[1]);
     min_confidence        = min_confidence > 100 ? 100 : min_confidence;
 
-    Bool debug_mode, rename_unknown_only;
-    ASK_QUESTION (debug_mode, true, "Enable debug symbol suggestions?");
-    ASK_QUESTION (rename_unknown_only, true, "Rename unknown functions only?");
+    Bool debug_mode          = rz_cons_yesno ('y', "Enable debug symbol suggestions? [Y/n]");
+    Bool rename_unknown_only = rz_cons_yesno ('y', "Rename unknown functions only? [Y/n]");
 
     if (reai_plugin_auto_analyze_opened_binary_file (
             core,
@@ -212,19 +218,6 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
         return RZ_CMD_STATUS_ERROR;
     }
 }
-
-/* RZ_IPI RzCmdStatus rz_upload_bin_handler (RzCore* core, int argc, const char** argv) { */
-/*     UNUSED (argc && argv); */
-/*     REAI_LOG_TRACE ("[CMD] upload binary"); */
-/**/
-/*     if (reai_plugin_upload_opened_binary_file (core)) { */
-/*         DISPLAY_ERROR ("File upload successful."); */
-/*         return RZ_CMD_STATUS_OK; */
-/*     } else { */
-/*         DISPLAY_ERROR ("File upload failed."); */
-/*         return RZ_CMD_STATUS_ERROR; */
-/*     } */
-/* } */
 
 /**
  * "REfl"
@@ -246,6 +239,13 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     UNUSED (argc && argv && output_mode);
     REAI_LOG_TRACE ("[CMD] get basic function info");
 
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
+    }
+
     /* get file path of opened binary file */
     CString opened_file = reai_plugin_get_opened_binary_file_path (core);
     if (!opened_file) {
@@ -257,8 +257,8 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     ReaiBinaryId binary_id = reai_binary_id();
     if (!binary_id) {
         DISPLAY_ERROR (
-            "Please apply existing analysis or create a new one. Cannot get function info from "
-            "RevEng.AI without an existing analysis."
+            "Please apply existing RevEngAI analysis (using REap command) or create a new one.\n"
+            "Cannot get function info from RevEng.AI without an existing analysis."
         );
         return RZ_CMD_STATUS_ERROR;
     }
@@ -267,7 +267,8 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     ReaiAnalysisStatus analysis_status = reai_plugin_get_analysis_status_for_binary_id (binary_id);
     if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
         DISPLAY_ERROR (
-            "Analysis not yet complete. Current status = \"%s\"\n",
+            "Analysis not yet complete. Current status is \"%s\"\n"
+            "Please try again after some time. I need a complete analysis to get function info.",
             reai_analysis_status_to_cstr (analysis_status)
         );
         return RZ_CMD_STATUS_OK; // It's ok, check again after sometime
@@ -316,16 +317,15 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
     UNUSED (argc);
     REAI_LOG_TRACE ("[CMD] rename function");
 
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
+    }
+
     Uint64  fn_addr  = rz_num_get (core->num, argv[1]);
     CString new_name = argv[2];
-
-    if (!core->analysis) {
-        DISPLAY_ERROR (
-            "Seems like Rizin analysis is not performed yet. Cannot get function at given address. "
-            "Cannot rename function at given address."
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
 
     RzAnalysisFunction* fn = rz_analysis_get_function_at (core->analysis, fn_addr);
     if (!fn) {
@@ -359,6 +359,13 @@ RZ_IPI RzCmdStatus
     rz_function_similarity_search_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
 
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
+    }
+
     // NOTE: hardcoded because it does not look good in command arguments
     // just to increase simplicity of command
     Uint32 max_results_count = 20;
@@ -367,8 +374,7 @@ RZ_IPI RzCmdStatus
     CString function_name  = argv[1];
     Float32 min_confidence = rz_num_math (core->num, argv[2]);
 
-    Bool debug_mode;
-    ASK_QUESTION (debug_mode, true, "Enable debug symbol suggestions?");
+    Bool debug_mode = rz_cons_yesno ('y', "Enable debug symbol suggestions? [Y/n]");
 
     if (!reai_plugin_search_and_show_similar_functions (
             core,
@@ -389,6 +395,13 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
     const char* fn_name = argv[1];
     if (!fn_name) {
         return RZ_CMD_STATUS_INVALID;
+    }
+
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
     }
 
     RzAnalysisFunction* rzfn = rz_analysis_get_function_byname (core->analysis, fn_name);
