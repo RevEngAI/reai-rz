@@ -82,8 +82,8 @@ commands:
     cname: rename_function
     summary: Rename function with given function id to given name.
     args:
-      - name: fn_addr
-        type: RZ_CMD_ARG_TYPE_NUM
+      - name: old_name 
+        type: RZ_CMD_ARG_TYPE_STRING
         optional: false
       - name: new_name
         type: RZ_CMD_ARG_TYPE_STRING

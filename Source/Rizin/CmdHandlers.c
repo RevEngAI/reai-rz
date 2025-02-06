@@ -55,7 +55,10 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
     if (reai_plugin_save_config (host, api_key)) {
         /* try to reinit config after creating config */
         if (!reai_plugin_init (core)) {
-            DISPLAY_ERROR ("Failed to init plugin after creating a new config.");
+            DISPLAY_ERROR (
+                "Failed to init plugin after creating a new config.\n"
+                "Please try restarting radare."
+            );
             return RZ_CMD_STATUS_ERROR;
         }
     } else {
@@ -112,12 +115,15 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
             rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
         }
     }
 
-    Bool is_private = rz_cons_yesno ('n', "Create private analysis? [Y/n]");
+    Bool is_private = rz_cons_yesno ('y', "Create private analysis? [Y/n]");
 
     CString prog_name    = argv[1];
     CString cmdline_args = argv[2];
@@ -148,7 +154,10 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
             rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
         }
     }
@@ -186,7 +195,10 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
             rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
         }
     }
@@ -212,9 +224,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
         DISPLAY_INFO ("Auto-analysis completed successfully.");
         return RZ_CMD_STATUS_OK;
     } else {
-        DISPLAY_ERROR (
-            "Failed to perform RevEng.AI auto-analysis (apply analysis results in rizin/cutter)"
-        );
+        DISPLAY_ERROR ("Failed to perform RevEng.AI auto-analysis");
         return RZ_CMD_STATUS_ERROR;
     }
 }
@@ -241,7 +251,10 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
             rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
         }
     }
@@ -319,15 +332,18 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
             rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
         }
     }
 
-    Uint64  fn_addr  = rz_num_get (core->num, argv[1]);
+    CString old_name = argv[1];
     CString new_name = argv[2];
 
-    RzAnalysisFunction* fn = rz_analysis_get_function_at (core->analysis, fn_addr);
+    RzAnalysisFunction* fn = rz_analysis_get_function_byname (core->analysis, old_name);
     if (!fn) {
         DISPLAY_ERROR ("Function with given name not found.");
         return RZ_CMD_STATUS_ERROR;
@@ -335,15 +351,23 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
 
     ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
     if (!fn_id) {
-        DISPLAY_ERROR ("Failed to get function id of function with given name.");
+        DISPLAY_ERROR (
+            "A function ID for given function does not exist in RevEngAI analysis.\n"
+            "I won't be able to rename this function."
+        );
         return RZ_CMD_STATUS_ERROR;
     }
 
     /* perform rename operation */
     if (reai_rename_function (reai(), reai_response(), fn_id, new_name)) {
-        rz_analysis_function_rename (fn, new_name);
+        if (rz_analysis_function_rename (fn, new_name)) {
+            DISPLAY_INFO ("Rename success.");
+        } else {
+            DISPLAY_ERROR ("Rename failed in rizin.");
+            return RZ_CMD_STATUS_ERROR;
+        }
     } else {
-        DISPLAY_ERROR ("Failed to rename the function. Please check the function ID and new name.");
+        DISPLAY_ERROR ("Failed to rename the function in RevEngAI.");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -361,7 +385,10 @@ RZ_IPI RzCmdStatus
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
             rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
         }
     }
@@ -399,12 +426,23 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno ('y', "Rizin analysis not performed yet. Should I create one for you? [Y/n]")) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
             rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
         }
     }
 
     RzAnalysisFunction* rzfn = rz_analysis_get_function_byname (core->analysis, fn_name);
+
+    if (!rzfn) {
+        DISPLAY_ERROR (
+            "A function with given name does not exist in Radare.\n"
+            "Cannot decompile :-("
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     /* NOTE(brightprogrammer): Error count is a hack used to mitigate the case
      * where the AI decompilation process is already errored out and user wants
@@ -412,21 +450,35 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
     int error_count = 0;
 
     while (true) {
+        DISPLAY_INFO ("Checking decompilation status...");
+
         ReaiAiDecompilationStatus status =
             reai_plugin_check_decompiler_status_running_at (core, rzfn->addr);
 
-        if (error_count > 1) {
-            DISPLAY_ERROR ("failed to decompile function \"%s\"", fn_name);
-            return RZ_CMD_STATUS_ERROR;
-        }
 
         switch (status) {
             case REAI_AI_DECOMPILATION_STATUS_ERROR :
+                if (!error_count) {
+                    DISPLAY_INFO (
+                        "Looks like the decompilation process failed last time\n"
+                        "I'll restart the decompilation process again..."
+                    );
+                } else if (error_count > 1) {
+                    DISPLAY_ERROR (
+                        "Failed to decompile \"%s\"\n"
+                        "Is this function from RevEngAI's analysis?\n"
+                        "What's the output of REfl?",
+                        fn_name
+                    );
+                    return RZ_CMD_STATUS_ERROR;
+                }
                 error_count++;
             case REAI_AI_DECOMPILATION_STATUS_UNINITIALIZED :
+                DISPLAY_INFO ("No decompilation exists for this function...");
                 reai_plugin_decompile_at (core, rzfn->addr);
                 break;
             case REAI_AI_DECOMPILATION_STATUS_SUCCESS : {
+                DISPLAY_INFO ("AI decompilation complete ;-)\n");
                 CString code = reai_plugin_get_decompiled_code_at (core, rzfn->addr);
                 if (code) {
                     rz_cons_println (code);
@@ -438,6 +490,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                 break;
         }
 
+        DISPLAY_INFO ("Going to sleep for two seconds...");
         rz_sys_sleep (2);
     }
 }

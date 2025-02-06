@@ -110,12 +110,13 @@ RZ_IPI Bool rz_plugin_fini (RzCore* core) {
         return false;
     }
 
+    reai_plugin_deinit();
+
     for (int x = 0; x < REAI_LOG_LEVEL_MAX; x++) {
         reai_cstr_vec_destroy (dmsgs[x]);
         dmsgs[x] = NULL;
     }
 
-    reai_plugin_deinit();
 
     /* Remove command group from rzshell. The name of this comamnd group must match
      * with the one specified in Root.yaml */
