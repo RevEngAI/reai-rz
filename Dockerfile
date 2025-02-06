@@ -34,7 +34,7 @@ RUN wget https://github.com/rizinorg/rizin/archive/refs/tags/v0.7.3.tar.gz && \
 WORKDIR /home/ubuntu
 
 # Download, build and install the latest creait library
-RUN git clone -b v1 https://github.com/RevEngAI/creait && \
+RUN git clone https://github.com/RevEngAI/creait && \
     cd creait && \
     cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_SHARED_LIBS=ON && \
     ninja -C build && \
@@ -44,6 +44,7 @@ RUN git clone -b v1 https://github.com/RevEngAI/creait && \
 WORKDIR /home/ubuntu
 
 # Download, build and install latest plugin.
+# By default, this builds Rizin plugin only, leaving out the cutter plugin.
 RUN git clone https://github.com/RevEngAI/reai-rz && \
     cd reai-rz && \
     cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr/local && \
@@ -59,12 +60,9 @@ RUN echo 'revengai ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # TODO: (FOR THE USER) Create config file
 RUN printf "\
-host         =\"https://api.reveng.ai/v1\"\n \
+host         =\"https://api.reveng.ai\"\n \
 apikey       = \"CHANGEAPIKEYHERE\"\n \
-model        = \"binnet-0.3\"\n \
-db_dir_path  = \"/home/revengai/.reai\"\n \
-log_dir_path = \"/tmp/reai-rz\"\n \
-" > /home/revengai/.reai-rz.toml
+" > /home/revengai/.creait.toml
 
 RUN printf "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" > /home/revengai/.bashrc
 RUN ldconfig
