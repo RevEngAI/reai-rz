@@ -32,7 +32,6 @@
 #include <Reai/Log.h>
 
 /* plugin */
-#include <Cutter/Ui/ConfigSetupDialog.hpp>
 #include <Cutter/Ui/FunctionRenameDialog.hpp>
 #include <Cutter/Ui/FunctionSimilarityDialog.hpp>
 #include <Cutter/Ui/AutoAnalysisDialog.hpp>
@@ -484,38 +483,30 @@ void ReaiCutterPlugin::on_BinAnalysisHistory() {
 }
 
 void ReaiCutterPlugin::on_Setup() {
-    ConfigSetupDialog *setupDialog = new ConfigSetupDialog ((QWidget *)this->parent());
+    bool    ok          = false;
+    QString apiKeyInput = QInputDialog::getText (
+        (QWidget *)this->parent(),
+        "Configure Plugin",
+        "Enter API Key",
+        QLineEdit::Normal,
+        reai_plugin_check_config_exists() ? reai_config()->apikey : "", // Default value
+        &ok
+    );
+    QByteArray baApiKey = apiKeyInput.toLatin1();
+    CString    apiKey   = baApiKey.constData();
 
-    /* if config already exists then load the config into config setup dialog */
-    if (reai_plugin_check_config_exists()) {
-        setupDialog->setHost (reai_config()->host);
-        setupDialog->setApiKey (reai_config()->apikey);
-    }
-
-    int result = setupDialog->exec();
-
-    REAI_LOG_TRACE ("host = %s", setupDialog->getHost());
-    REAI_LOG_TRACE ("api key = %s", setupDialog->getApiKey());
+    REAI_LOG_TRACE ("host = https://api.reveng.ai");
+    REAI_LOG_TRACE ("api key = %s", apiKey);
 
     /* move ahead only if OK was pressed. */
-    if (result == QDialog::Rejected) {
-        return;
-    } else {
-        if (setupDialog->allFieldsFilled()) {
-            if (reai_plugin_save_config (setupDialog->getHost(), setupDialog->getApiKey())) {
-                DISPLAY_INFO (
-                    "Config saved successfully to \"%s\".",
-                    reai_config_get_default_path()
-                );
+    if (ok) {
+        if (reai_plugin_save_config ("https://api.reveng.ai", apiKey)) {
+            DISPLAY_INFO ("Config saved successfully to \"%s\".", reai_config_get_default_path());
 
-                RzCoreLocked core (Core());
-                reai_plugin_init (core);
-            } else {
-                DISPLAY_ERROR ("Failed to save config.");
-            }
+            RzCoreLocked core (Core());
+            reai_plugin_init (core);
         } else {
-            DISPLAY_WARN ("Not all fields are filled. Please complete the configuration setup.");
-            on_Setup(); /* continue setup */
+            DISPLAY_ERROR ("Failed to save config.");
         }
     }
 }

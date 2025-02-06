@@ -21,7 +21,7 @@
 #include <QObject>
 
 /* plugin */
-#include <Cutter/Ui/ConfigSetupDialog.hpp>
+#include <Plugin.h>
 
 /**
  * @b RevEngAI Cutter Plugin class.
@@ -54,7 +54,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
 
     Bool isInitialized = false;
 
-    MainWindow* mainWindow = NULL;
+    MainWindow *mainWindow = NULL;
 
    public:
     void setupPlugin() override;
