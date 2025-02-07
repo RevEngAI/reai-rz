@@ -11,6 +11,17 @@
 ReaiDec::ReaiDec (QObject *parent) : Decompiler ("reaidec", "ReaiDec", parent) {}
 
 bool ReaiDec::isRunning() {
+    /* HACK(brightprogrammer): If a binary ID is not set, this means the plugin
+   * might've just started, and user didn't get a chance to either create a new analysis
+   * or apply an existing one.
+   *
+   * In such a case, attempting to decompile will just create false positives. Rather
+   * we just inform Cutter that we're still decompiling something to stop it from calling
+   * the API endpoint for AI decompilation and filling up error buffers. */
+    if (!reai_binary_id()) {
+        return true;
+    }
+
     RzCoreLocked core (Core());
 
     ReaiAiDecompilationStatus status = reai_plugin_check_decompiler_status_running_at (core, addr);
