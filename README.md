@@ -7,9 +7,19 @@ RevEng.AI plugins for Rizin & Cutter.
 ### Docker
 
 Don't want to go through all the manual hassle? We have a dockerfile as well.
-Just do `docker build -t reai-rz . && docker run -it reai-rz` after cloning this repo.
+Just do :
 
-### Manual 
+```bash
+git clone https://github.com/revengai/reai-rz && cd reai-rz && docker build -t reai-rz . && docker run -v /tmp/userdata:/home/revengai/userdata -it reai-rz
+```
+
+- Store the files you want to access into `/tmp/userdata` directory of host,
+  and access these files through `~/userdata` inside the docker container.
+
+- To be able to use the plugin in one single command. Make sure to initialize your plugin with
+  `REi <api-key>` command. Get your API key from RevEngAI portal.
+
+### Manual
 
 PyYaml is a required dependency for the plugin commands. If your package manager manages
 python packages instead of `pip`, then `pipx` will help get an easy installation.

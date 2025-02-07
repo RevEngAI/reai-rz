@@ -28,7 +28,7 @@ RUN wget https://github.com/rizinorg/rizin/archive/refs/tags/v0.7.3.tar.gz && \
     cd rizin-0.7.3 && \
     meson setup build --prefix=/usr/local --libdir=lib && \
     meson compile -C build && \
-    meson install -C build
+    sudo meson install -C build
 
 # Go back to where we start
 WORKDIR /home/ubuntu
@@ -38,7 +38,7 @@ RUN git clone https://github.com/RevEngAI/creait && \
     cd creait && \
     cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_SHARED_LIBS=ON && \
     ninja -C build && \
-    ninja -C build install
+    sudo ninja -C build install
 
 # Go back to where we start
 WORKDIR /home/ubuntu
@@ -49,13 +49,13 @@ RUN git clone https://github.com/RevEngAI/reai-rz && \
     cd reai-rz && \
     cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr/local && \
     ninja -C build && \
-    ninja -C build install
+    sudo ninja -C build install
 
 # Create a new user and set up a password
 RUN useradd -ms /bin/bash revengai && \
     echo 'revengai:revengai' | chpasswd
 
-# Optionally, add a sudo capability if needed
+# Add a sudo capability without password requirement
 RUN echo 'revengai ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # TODO: (FOR THE USER) Create config file
@@ -74,4 +74,3 @@ WORKDIR /home/revengai
 
 # Ready to use!
 CMD ["bash"]
-
