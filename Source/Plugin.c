@@ -155,13 +155,13 @@ PRIVATE CString get_function_name_with_max_confidence (
         }
     });
 
-    if (!fn_name) {
-        return NULL;
-    }
-
     if (required_confidence) {
         fn_name              = max_confidence >= *required_confidence ? fn_name : NULL;
         *required_confidence = max_confidence;
+    }
+
+    if (!fn_name) {
+        return NULL;
     }
 
     // HACK(brightprogrammer): Instead of allocating again and again,
@@ -813,8 +813,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
                 continue;
             }
 
-            // Rename only those functions whose name starts with "fcn."
-            // NOTE: Not comparing function size here. Can this create problems in future??
+            // NOTE(brightprogrammer): Not comparing function size here. Can this create problems in future??
             if (rizin_analysis_function_force_rename (rz_fn, new_name)) {
                 reai_plugin_table_add_rowf (
                     successful_renames,
