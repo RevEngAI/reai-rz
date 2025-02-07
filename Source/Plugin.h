@@ -65,18 +65,13 @@ extern "C" {
         Bool    is_private
     );
     ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
-    Bool               reai_plugin_apply_existing_analysis (
-                      RzCore*      core,
-                      ReaiBinaryId binary_id,
-                      Bool         apply_to_all
+    Bool               reai_plugin_apply_existing_analysis (RzCore* core, ReaiBinaryId binary_id);
+    Bool               reai_plugin_auto_analyze_opened_binary_file (
+                      RzCore* core,
+                      Size    max_results_per_function,
+                      Float64 min_confidence,
+                      Bool    debug_mode
                   );
-    Bool reai_plugin_auto_analyze_opened_binary_file (
-        RzCore* core,
-        Size    max_results_per_function,
-        Float64 min_confidence,
-        Bool    debug_mode,
-        Bool    apply_to_all
-    );
     ReaiFunctionId
          reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);
     Bool reai_plugin_search_and_show_similar_functions (

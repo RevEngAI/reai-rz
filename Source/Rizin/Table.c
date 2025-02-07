@@ -67,7 +67,8 @@
                             rz_pvector_push (row, rz_str_newf ("0x%" PFMT64x, n));                 \
                         }                                                                          \
                     }                                                                              \
-                } break;                                                                           \
+                    break;                                                                         \
+                }                                                                                  \
                 default :                                                                          \
                     eprintf ("Invalid format string char '%c', use 's' or 'n'\n", fmt);            \
                     break;                                                                         \

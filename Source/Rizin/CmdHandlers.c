@@ -163,13 +163,9 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
         }
     }
 
-    Bool rename_unknown_only =
-        rz_cons_yesno ('y', "Apply analysis only to unknown functions? [Y/n]");
-
     if (reai_plugin_apply_existing_analysis (
             core,
-            rz_num_get (core->num, argv[1]), // binary id
-            !rename_unknown_only             // apply analysis to all?
+            rz_num_get (core->num, argv[1]) // binary id
         )) {
         DISPLAY_INFO ("Existing analysis applied sucessfully");
         return RZ_CMD_STATUS_OK;
@@ -212,15 +208,13 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     Uint32 min_confidence = rz_num_get (core->num, argv[1]);
     min_confidence        = min_confidence > 100 ? 100 : min_confidence;
 
-    Bool debug_mode          = rz_cons_yesno ('y', "Enable debug symbol suggestions? [Y/n]");
-    Bool rename_unknown_only = rz_cons_yesno ('y', "Rename unknown functions only? [Y/n]");
+    Bool debug_mode = rz_cons_yesno ('y', "Enable debug symbol suggestions? [Y/n]");
 
     if (reai_plugin_auto_analyze_opened_binary_file (
             core,
             max_results_per_function,
             min_confidence / 100.f,
-            debug_mode,
-            !rename_unknown_only // apply_to_all = !rename_unknown
+            debug_mode
         )) {
         DISPLAY_INFO ("Auto-analysis completed successfully.");
         return RZ_CMD_STATUS_OK;
