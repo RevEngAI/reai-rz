@@ -56,6 +56,7 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
             CString m = v->items[l];
             reai_log_printf (level, "rizin.display", m);
             rz_cons_println (m);
+            rz_cons_flush();
             FREE (v->items[l]);
         }
         v->count = 0;
