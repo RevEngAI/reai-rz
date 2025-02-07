@@ -10,8 +10,13 @@ Don't want to go through all the manual hassle? We have a dockerfile as well.
 Just do :
 
 ```bash
-git clone https://github.com/revengai/reai-rz && cd reai-rz && docker build -t reai-rz . && docker run -v /tmp/userdata:/home/revengai/userdata -it reai-rz
+git clone https://github.com/revengai/reai-rz && 
+cd reai-rz && sed -i -e 's/APIKEY/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/g' Dockerfile && 
+docker build -t reai-rz . &&
+docker run -v /tmp/userdata:/home/revengai/userdata -it reai-rz
 ```
+
+This will get you a working installation of the rizin plugin in a single command!
 
 - Store the files you want to access into `/tmp/userdata` directory of host,
   and access these files through `~/userdata` inside the docker container.
