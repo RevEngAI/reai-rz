@@ -42,7 +42,9 @@ Before running any of the above commands, you must install cmake, make, ninja, m
 
 ## CMake Configure Options
 
-- `BUILD_RIZIN_PLUGIN_ONLY = ON/OFF` : When enabled will build rizin plugin only. This is useful when you only have rizin installed. `ON` by default. Turn this `OFF` when you don't have cutter installed.
+- `BUILD_CUTTER_PLUGIN = ON/OFF` : When enabled will build cutter plugin alongside rizin plugin. By default
+this is set to `OFF`. If you have cutter installed, and want to use the cutter plugin, set this to on
+by adding `-D BUILD_CUTTER_PLUGIN=ON` in the cmake configure step.
 
 ## Basic Usage
 

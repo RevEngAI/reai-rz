@@ -15,6 +15,6 @@ message(INFO "CREAIT_LIBRARIES = ${CREAIT_LIBRARIES}")
 
 add_subdirectory(Rizin)
 
-if(NOT BUILD_RIZIN_PLUGIN_ONLY)
+if(BUILD_CUTTER_PLUGIN)
   add_subdirectory(Cutter)
 endif()

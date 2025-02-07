@@ -16,7 +16,7 @@ project(reai-rz VERSION 0 LANGUAGES C CXX)
 include(FetchContent)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
-option(BUILD_RIZIN_PLUGIN_ONLY "Whether to build rizin plugin only" ON)
+option(BUILD_CUTTER_PLUGIN "Whether to cutter plugin as well" OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -81,7 +81,7 @@ message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 find_package(Rizin REQUIRED)
 set(RIZIN_INSTALL_PLUGDIR "${Rizin_PLUGINDIR}" CACHE STRING "Directory to install Rizin plugins into")
 
-if(NOT BUILD_RIZIN_PLUGIN_ONLY)
+if(BUILD_CUTTER_PLUGIN)
     find_package(Cutter REQUIRED)
     set(CUTTER_INSTALL_PLUGDIR "${Cutter_USER_PLUGINDIR}" CACHE STRING "Directory to install Cutter plugin into")
 endif()
