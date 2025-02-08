@@ -1244,7 +1244,7 @@ Bool reai_plugin_search_and_show_similar_functions (
         return false;
     }
 
-    Float32            maxDistance = 1 - confidence;
+    Float32            maxDistance = 1 - confidence / 100.f;
     ReaiAnnFnMatchVec *fnMatches   = reai_batch_function_symbol_ann (
         reai(),
         reai_response(),
@@ -1256,7 +1256,7 @@ Bool reai_plugin_search_and_show_similar_functions (
         debug_mode
     );
 
-    if (fnMatches->count) {
+    if (fnMatches && fnMatches->count) {
         // Populate table
         ReaiPluginTable *table = reai_plugin_table_create();
         reai_plugin_table_set_columnsf (
