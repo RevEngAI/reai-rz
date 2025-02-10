@@ -100,6 +100,9 @@ commands:
       - name: min_confidence
         type: RZ_CMD_ARG_TYPE_NUM
         default_value: 95
+      - name: max_results
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 20
     details:
       - name: Function Name
         entries:
@@ -107,6 +110,8 @@ commands:
             comment: "Search similar function for sym.main function with minimum confidence of 90%"
           - text: "REfs __memcmp 95"
             comment: "Search similar function for __memcmp, with minimum 95% confidence"
+          - text: "REfs postHandleCall 72 10"
+            comment: "max 10 results"
   - name: REd
     cname: ai_decompile
     summary: Decompile given function using RevEngAI's AI Decompiler

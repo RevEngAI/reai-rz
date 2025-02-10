@@ -81,7 +81,7 @@ extern "C" {
         RzCore* core,
         CString fcn_name,
         Size    max_results,
-        Float32 confidence,
+        Int32   confidence,
         Bool    debug_mode
     );
 

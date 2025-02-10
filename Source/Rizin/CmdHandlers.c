@@ -244,23 +244,6 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
     UNUSED (argc && argv && output_mode);
     REAI_LOG_TRACE ("[CMD] get basic function info");
 
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
-    }
-
-    /* get file path of opened binary file */
-    CString opened_file = reai_plugin_get_opened_binary_file_path (core);
-    if (!opened_file) {
-        DISPLAY_ERROR ("No binary file opened.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
     /* get binary id of opened file */
     ReaiBinaryId binary_id = reai_binary_id();
     if (!binary_id) {
@@ -271,15 +254,59 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
         return RZ_CMD_STATUS_ERROR;
     }
 
-    /* get analysis status from db after an update and check for completion */
-    ReaiAnalysisStatus analysis_status = reai_plugin_get_analysis_status_for_binary_id (binary_id);
-    if (analysis_status != REAI_ANALYSIS_STATUS_COMPLETE) {
-        DISPLAY_ERROR (
-            "Analysis not yet complete. Current status is \"%s\"\n"
-            "Please try again after some time. I need a complete analysis to get function info.",
-            reai_analysis_status_to_cstr (analysis_status)
-        );
-        return RZ_CMD_STATUS_OK; // It's ok, check again after sometime
+    /* an analysis must already exist in order to make function-rename work */
+    ReaiAnalysisStatus analysis_status =
+        reai_get_analysis_status (reai(), reai_response(), reai_binary_id());
+    switch (analysis_status) {
+        case REAI_ANALYSIS_STATUS_ERROR : {
+            APPEND_ERROR (
+                "The applied/created RevEngAI analysis has errored out.\n"
+                "I need a complete analysis to get function info. Please restart analysis."
+            );
+            return false;
+        }
+        case REAI_ANALYSIS_STATUS_QUEUED : {
+            APPEND_ERROR (
+                "The applied/created RevEngAI analysis is currently in queue.\n"
+                "Please wait for the analysis to be analyzed."
+            );
+            return false;
+        }
+        case REAI_ANALYSIS_STATUS_PROCESSING : {
+            APPEND_ERROR (
+                "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
+                "Please wait for the analysis to complete."
+            );
+            return false;
+        }
+        case REAI_ANALYSIS_STATUS_COMPLETE : {
+            REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
+            break;
+        }
+        default : {
+            APPEND_ERROR (
+                "Oops... something bad happened :-(\n"
+                "I got an invalid value for RevEngAI analysis status.\n"
+                "Consider\n"
+                "\t- Checking the binary ID, reapply the correct one if wrong\n"
+                "\t- Retrying the command\n"
+                "\t- Restarting the plugin\n"
+                "\t- Checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
+                "\t- Checking the connection with RevEngAI host.\n"
+                "\t- Contacting support if the issue persists\n"
+            );
+            return false;
+        }
+    }
+
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
     }
 
     /* make request to get function infos */
@@ -298,7 +325,16 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
 
     rz_table_set_columnsf (table, "nsxx", "function_id", "name", "vaddr", "size");
     REAI_VEC_FOREACH (fn_infos, fn, {
+        // truncate string if exceeds a certain limit
+        char   trunc[4]  = {0};
+        size_t trunc_len = 48;
+        char*  n         = (char*)fn->name;
+        if (strlen (fn->name) > trunc_len) {
+            memcpy (trunc, n + trunc_len - 4, 4);
+            memcpy (n + trunc_len - 4, "...\0", 4);
+        }
         rz_table_add_rowf (table, "nsxx", fn->id, fn->name, fn->vaddr, fn->size);
+        memcpy (n + trunc_len - 4, trunc, 4);
     });
 
     CString table_str = rz_table_tofancystring (table);
@@ -324,6 +360,61 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
 RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
     REAI_LOG_TRACE ("[CMD] rename function");
+
+    /* get binary id of opened file */
+    ReaiBinaryId binary_id = reai_binary_id();
+    if (!binary_id) {
+        DISPLAY_ERROR (
+            "Please apply existing RevEngAI analysis (using REap command) or create a new one.\n"
+            "Cannot get function info from RevEng.AI without an existing analysis."
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    /* an analysis must already exist in order to make function-rename work */
+    ReaiAnalysisStatus analysis_status =
+        reai_get_analysis_status (reai(), reai_response(), reai_binary_id());
+    switch (analysis_status) {
+        case REAI_ANALYSIS_STATUS_ERROR : {
+            APPEND_ERROR (
+                "The applied/created RevEngAI analysis has errored out.\n"
+                "I need a complete analysis to get function info. Please restart analysis."
+            );
+            return false;
+        }
+        case REAI_ANALYSIS_STATUS_QUEUED : {
+            APPEND_ERROR (
+                "The applied/created RevEngAI analysis is currently in queue.\n"
+                "Please wait for the analysis to be analyzed."
+            );
+            return false;
+        }
+        case REAI_ANALYSIS_STATUS_PROCESSING : {
+            APPEND_ERROR (
+                "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
+                "Please wait for the analysis to complete."
+            );
+            return false;
+        }
+        case REAI_ANALYSIS_STATUS_COMPLETE : {
+            REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
+            break;
+        }
+        default : {
+            APPEND_ERROR (
+                "Oops... something bad happened :-(\n"
+                "I got an invalid value for RevEngAI analysis status.\n"
+                "Consider\n"
+                "\t- Checking the binary ID, reapply the correct one if wrong\n"
+                "\t- Retrying the command\n"
+                "\t- Restarting the plugin\n"
+                "\t- Checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
+                "\t- Checking the connection with RevEngAI host.\n"
+                "\t- Contacting support if the issue persists\n"
+            );
+            return false;
+        }
+    }
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
@@ -376,7 +467,10 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
  * */
 RZ_IPI RzCmdStatus
     rz_function_similarity_search_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    if (argc < 3) {
+        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
@@ -388,13 +482,13 @@ RZ_IPI RzCmdStatus
         }
     }
 
-    // NOTE: hardcoded because it does not look good in command arguments
-    // just to increase simplicity of command
-    Uint32 max_results_count = 20;
-
     // Parse command line arguments
-    CString function_name  = argv[1];
-    Float32 min_confidence = rz_num_math (core->num, argv[2]);
+    CString function_name     = argv[1];
+    Uint32  min_confidence    = (Uint32)rz_num_math (core->num, argv[2]);
+    Uint32  max_results_count = (Uint32)rz_num_math (core->num, argv[3]);
+
+    // clamp value between 0 and 100
+    min_confidence = min_confidence < 100 ? min_confidence : 100;
 
     Bool debug_mode = rz_cons_yesno ('y', "Enable debug symbol suggestions? [Y/n]");
 
