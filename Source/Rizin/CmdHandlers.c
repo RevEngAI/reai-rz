@@ -263,21 +263,21 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
                 "The applied/created RevEngAI analysis has errored out.\n"
                 "I need a complete analysis to get function info. Please restart analysis."
             );
-            return false;
+            return RZ_CMD_STATUS_ERROR;
         }
         case REAI_ANALYSIS_STATUS_QUEUED : {
             APPEND_ERROR (
                 "The applied/created RevEngAI analysis is currently in queue.\n"
                 "Please wait for the analysis to be analyzed."
             );
-            return false;
+            return RZ_CMD_STATUS_OK;
         }
         case REAI_ANALYSIS_STATUS_PROCESSING : {
             APPEND_ERROR (
                 "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
                 "Please wait for the analysis to complete."
             );
-            return false;
+            return RZ_CMD_STATUS_OK;
         }
         case REAI_ANALYSIS_STATUS_COMPLETE : {
             REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
@@ -295,7 +295,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
                 "\t- Checking the connection with RevEngAI host.\n"
                 "\t- Contacting support if the issue persists\n"
             );
-            return false;
+            return RZ_CMD_STATUS_ERROR;
         }
     }
 
@@ -380,21 +380,21 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
                 "The applied/created RevEngAI analysis has errored out.\n"
                 "I need a complete analysis to get function info. Please restart analysis."
             );
-            return false;
+            return RZ_CMD_STATUS_ERROR;
         }
         case REAI_ANALYSIS_STATUS_QUEUED : {
             APPEND_ERROR (
                 "The applied/created RevEngAI analysis is currently in queue.\n"
                 "Please wait for the analysis to be analyzed."
             );
-            return false;
+            return RZ_CMD_STATUS_OK;
         }
         case REAI_ANALYSIS_STATUS_PROCESSING : {
             APPEND_ERROR (
                 "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
                 "Please wait for the analysis to complete."
             );
-            return false;
+            return RZ_CMD_STATUS_OK;
         }
         case REAI_ANALYSIS_STATUS_COMPLETE : {
             REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
@@ -412,7 +412,7 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
                 "\t- Checking the connection with RevEngAI host.\n"
                 "\t- Contacting support if the issue persists\n"
             );
-            return false;
+            return RZ_CMD_STATUS_ERROR;
         }
     }
 
