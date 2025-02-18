@@ -208,7 +208,7 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     Uint32 min_confidence = rz_num_get (core->num, argv[1]);
     min_confidence        = min_confidence > 100 ? 100 : min_confidence;
 
-    Bool debug_mode = rz_cons_yesno ('y', "Enable debug symbol suggestions? [Y/n]");
+    Bool debug_mode = rz_cons_yesno ('y', "Restrict suggestions to debug symbols? [Y/n]");
 
     if (reai_plugin_auto_analyze_opened_binary_file (
             core,
