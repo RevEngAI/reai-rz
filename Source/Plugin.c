@@ -129,8 +129,13 @@ const char *rizin_analysis_function_force_rename (RzAnalysisFunction *fcn, CStri
 PRIVATE ReaiAnnFnMatch *get_function_match_with_confidence (
     ReaiAnnFnMatchVec *fn_matches,
     ReaiFunctionId     origin_fn_id,
-    Float64            required_confidence
+    Float64           *required_confidence
 ) {
+    if(!required_confidence) {
+	APPEND_ERROR ("A minimum confidence level is required");
+	return NULL;
+    }
+
     if (!fn_matches) {
         APPEND_ERROR ("Function matches are invalid. Cannot proceed.");
         return NULL;
@@ -153,7 +158,7 @@ PRIVATE ReaiAnnFnMatch *get_function_match_with_confidence (
 
     // return match with max confidence if we've crossed the required confidence
     // level, otherwise a suitable match failed
-    return max_confidence >= required_confidence ? fn_match : NULL;
+    return max_confidence >= *required_confidence ? (*required_confidence = max_confidence, fn_match) : NULL;
 }
 
 /**
@@ -1020,7 +1025,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
 
         /* if we get a match with required confidence level then we add to rename */
         ReaiAnnFnMatch *sim_match = NULL;
-        if ((sim_match = get_function_match_with_confidence (fn_matches, fn->id, min_confidence))) {
+        if ((sim_match = get_function_match_with_confidence (fn_matches, fn->id, &min_confidence))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (sim_match->nn_function_name, old_name)) {
                 REAI_LOG_INFO (
@@ -1274,7 +1279,7 @@ Bool reai_plugin_search_and_show_similar_functions (
         ReaiPluginTable *table = reai_plugin_table_create();
         reai_plugin_table_set_columnsf (
             table,
-            "sfns",
+            "snns",
             "Function Name",
             "Confidence",
             "Function ID",

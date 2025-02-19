@@ -617,6 +617,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     return RZ_CMD_STATUS_ERROR;
                 }
                 error_count++;
+		break;
             case REAI_AI_DECOMPILATION_STATUS_UNINITIALIZED :
                 DISPLAY_INFO ("No decompilation exists for this function...");
                 reai_plugin_decompile_at (core, rzfn->addr);
