@@ -51,6 +51,11 @@ by current user (the user launching the plugin), or there exist environment
 varibles `$TMPDIR` or `$TMP` and those are writable as well.
 So it should be either `$PWD` or `$TMP` or `$TMPDIR`. 
 
+If rizin fails to automatically load the plugin, you can load it by
+running the command `L <plugin_path>`. This is usually something like
+`L /usr/local/lib/rizin/plugins/libreai_rizin.so` on a linux based system.
+The exact path is displayed when installing the plugin.
+
 ### Dependencies
 
 Before running any of the above commands, you must install cmake, make, ninja, meson, gcc/g++ (if required), pkg-config, libcurl (development package), and [rizin](https://github.com/rizinorg/rizin?tab=readme-ov-file#how-to-build).
