@@ -64,11 +64,16 @@ commands:
       - name: bin_id
         type: RZ_CMD_ARG_TYPE_NUM
         optional: false
+      - name: base_addr
+        type: RZ_CMD_ARG_TYPE_NUM
+        optional: true
     details:
       - name: Examples 
         entries:
           - text: "REap 18700"
             comment: "Apply analysis corresponding to bianry id 18700"
+          - text: "REap 18700 0x2000"
+            comment: "Instead of using default base address, use 0x2000 as base address"
   - name: REfl
     cname: get_basic_function_info
     summary: Get & show basic function info for selected binary.

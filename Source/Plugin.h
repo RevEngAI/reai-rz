@@ -30,9 +30,6 @@ extern "C" {
 /* plugin */
 #include <Table.h>
 
-#define REAI_TO_RZ_ADDR(rea) ((rea) + reai_plugin_get_opened_binary_file_baseaddr (core))
-#define RZ_TO_REAI_ADDR(rza) ((rza) - reai_plugin_get_opened_binary_file_baseaddr (core))
-
     REAI_MAKE_VEC (ReaiBgWorkersVec, bg_workers, RzThread*, NULL, NULL);
 
     typedef struct ReaiPlugin {
@@ -68,13 +65,18 @@ extern "C" {
         Bool    is_private
     );
     ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
-    Bool               reai_plugin_apply_existing_analysis (RzCore* core, ReaiBinaryId binary_id);
-    Bool               reai_plugin_auto_analyze_opened_binary_file (
-                      RzCore* core,
-                      Size    max_results_per_function,
-                      Float64 min_confidence,
-                      Bool    debug_mode
+    Bool               reai_plugin_apply_existing_analysis (
+                      RzCore*      core,
+                      ReaiBinaryId binary_id,
+                      Bool         has_custom_base_addr,
+                      Uint64       base_addr
                   );
+    Bool reai_plugin_auto_analyze_opened_binary_file (
+        RzCore* core,
+        Size    max_results_per_function,
+        Float64 min_confidence,
+        Bool    debug_mode
+    );
     ReaiFunctionId
          reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);
     Bool reai_plugin_search_and_show_similar_functions (

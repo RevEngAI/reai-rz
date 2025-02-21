@@ -150,7 +150,6 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
  * "REap"
  * */
 RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc && argv);
     REAI_LOG_TRACE ("[CMD] apply existing analysis");
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
@@ -163,9 +162,15 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
         }
     }
 
+    ReaiBinaryId binary_id            = rz_num_get (core->num, argv[1]); // binary id
+    Bool         has_custom_base_addr = argc >= 3; // third arg is optional custom base addr
+    Uint64       custom_base_addr     = has_custom_base_addr ? rz_num_get (core->num, argv[2]) : 0;
+
     if (reai_plugin_apply_existing_analysis (
             core,
-            rz_num_get (core->num, argv[1]) // binary id
+            binary_id,
+            has_custom_base_addr,
+            custom_base_addr
         )) {
         DISPLAY_INFO ("Existing analysis applied sucessfully");
         return RZ_CMD_STATUS_OK;
@@ -598,6 +603,11 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
 
         ReaiAiDecompilationStatus status =
             reai_plugin_check_decompiler_status_running_at (core, rzfn->addr);
+        REAI_LOG_DEBUG (
+            "Decompilation status for function \"%s\" is \"%s\".",
+            rzfn->name,
+            reai_ai_decompilation_status_to_cstr (status)
+        );
 
 
         switch (status) {
@@ -607,6 +617,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                         "Looks like the decompilation process failed last time\n"
                         "I'll restart the decompilation process again..."
                     );
+                    reai_plugin_decompile_at (core, rzfn->addr);
                 } else if (error_count > 1) {
                     DISPLAY_ERROR (
                         "Failed to decompile \"%s\"\n"
@@ -617,7 +628,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     return RZ_CMD_STATUS_ERROR;
                 }
                 error_count++;
-		break;
+                break;
             case REAI_AI_DECOMPILATION_STATUS_UNINITIALIZED :
                 DISPLAY_INFO ("No decompilation exists for this function...");
                 reai_plugin_decompile_at (core, rzfn->addr);

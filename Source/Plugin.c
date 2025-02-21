@@ -131,9 +131,9 @@ PRIVATE ReaiAnnFnMatch *get_function_match_with_confidence (
     ReaiFunctionId     origin_fn_id,
     Float64           *required_confidence
 ) {
-    if(!required_confidence) {
-	APPEND_ERROR ("A minimum confidence level is required");
-	return NULL;
+    if (!required_confidence) {
+        APPEND_ERROR ("A minimum confidence level is required");
+        return NULL;
     }
 
     if (!fn_matches) {
@@ -158,7 +158,9 @@ PRIVATE ReaiAnnFnMatch *get_function_match_with_confidence (
 
     // return match with max confidence if we've crossed the required confidence
     // level, otherwise a suitable match failed
-    return max_confidence >= *required_confidence ? (*required_confidence = max_confidence, fn_match) : NULL;
+    return max_confidence >= *required_confidence ?
+               (*required_confidence = max_confidence, fn_match) :
+               NULL;
 }
 
 /**
@@ -691,7 +693,12 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (
  * @return True on successful application of renames
  * @return False otherwise.
  * */
-Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
+Bool reai_plugin_apply_existing_analysis (
+    RzCore      *core,
+    ReaiBinaryId bin_id,
+    Bool         has_custom_base_addr,
+    Uint64       base_addr
+) {
     if (!core) {
         APPEND_ERROR ("Invalid Rizin core provided. Cannot apply analysis.");
         return false;
@@ -765,13 +772,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
     reai_plugin_table_set_columnsf (successful_renames, "ssn", "old_name", "new_name", "address");
 #define ADD_TO_SUCCESSFUL_RENAME()                                                                 \
     do {                                                                                           \
-        reai_plugin_table_add_rowf (                                                               \
-            successful_renames,                                                                    \
-            "ssx",                                                                                 \
-            old_name,                                                                              \
-            rz_fn->name,                                                                           \
-            REAI_TO_RZ_ADDR (fn->vaddr)                                                            \
-        );                                                                                         \
+        reai_plugin_table_add_rowf (successful_renames, "ssx", old_name, rz_fn->name, fn_addr);    \
         success_cases_exist = true;                                                                \
     } while (0)
 
@@ -786,13 +787,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
     reai_plugin_table_set_columnsf (failed_renames, "ssn", "old_name", "reason", "address");
 #define ADD_TO_FAILED_RENAME(resn)                                                                 \
     do {                                                                                           \
-        reai_plugin_table_add_rowf (                                                               \
-            failed_renames,                                                                        \
-            "ssx",                                                                                 \
-            old_name,                                                                              \
-            resn,                                                                                  \
-            REAI_TO_RZ_ADDR (fn->vaddr)                                                            \
-        );                                                                                         \
+        reai_plugin_table_add_rowf (failed_renames, "ssx", old_name, resn, fn_addr);               \
         failed_cases_exist = true;                                                                 \
     } while (0)
 
@@ -808,9 +803,12 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
             FREE (old_name);
         }
 
+        Uint64 fn_addr = fn->vaddr + (has_custom_base_addr ?
+                             base_addr :
+                             reai_plugin_get_opened_binary_file_baseaddr (core));
+
         /* get function */
-        RzAnalysisFunction *rz_fn =
-            rz_analysis_get_function_at (core->analysis, REAI_TO_RZ_ADDR (fn->vaddr));
+        RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn_addr);
 
         if (rz_fn) {
             old_name         = strdup (rz_fn->name);
@@ -821,7 +819,7 @@ Bool reai_plugin_apply_existing_analysis (RzCore *core, ReaiBinaryId bin_id) {
                 REAI_LOG_INFO (
                     "Name \"%s\" already matches for function at address %llx",
                     old_name,
-                    REAI_TO_RZ_ADDR (fn->vaddr)
+                    fn_addr
                 );
                 ADD_TO_SUCCESSFUL_RENAME();
             } else {
@@ -898,7 +896,7 @@ ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId b
  * @param max_results per function RevEng.AI function matching parameter.
  * @param max_distance RevEng.AI function matching parameter.
  * */
-Bool reai_plugin_auto_analyze_opened_binary_file (
+Bool reai_plugin_auto_analyze_opened_binary_file_internal (
     RzCore *core,
     Size    max_results_per_function,
     Float64 min_confidence,
@@ -1025,7 +1023,8 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
 
         /* if we get a match with required confidence level then we add to rename */
         ReaiAnnFnMatch *sim_match = NULL;
-        if ((sim_match = get_function_match_with_confidence (fn_matches, fn->id, &min_confidence))) {
+        if ((sim_match =
+                 get_function_match_with_confidence (fn_matches, fn->id, &min_confidence))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (sim_match->nn_function_name, old_name)) {
                 REAI_LOG_INFO (
