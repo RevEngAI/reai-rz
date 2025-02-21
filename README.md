@@ -49,12 +49,20 @@ If you get a segmentation fault after installing the plugin on the first run,
 then please make sure that either your current working directory is writable
 by current user (the user launching the plugin), or there exist environment
 varibles `$TMPDIR` or `$TMP` and those are writable as well.
-So it should be either `$PWD` or `$TMP` or `$TMPDIR`. 
+So it should be either `$PWD` or `$TMP` or `$TMPDIR`.
 
-If rizin fails to automatically load the plugin, you can load it by
-running the command `L <plugin_path>`. This is usually something like
+If rizin fails to automatically load the plugin, you can 
+
+- Open rizin and run `e dir.plugins`. You'll get the exact path where
+rizin expects the plugins to be present. Note the prefix for `/rizin/plugins`.
+It'll be something like `/usr/lib` or `/usr/local/lib`. Now during the plugin
+cmake configure step, provide this prefix path by appending `-D CMAKE_INSTALL_PREFIX=<prefix_path>`
+to the cmake configure command. In my case it looks like this : `cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr`
+
+- load it by running the command `L <plugin_path>`. This is usually something like
 `L /usr/local/lib/rizin/plugins/libreai_rizin.so` on a linux based system.
-The exact path is displayed when installing the plugin.
+The exact path is displayed when installing the plugin. You'll need to do this
+all the time btw, on every rizin run. This is not the best solution.
 
 ### Dependencies
 

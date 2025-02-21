@@ -81,9 +81,12 @@ message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 find_package(Rizin REQUIRED)
 set(RIZIN_INSTALL_PLUGDIR "${Rizin_PLUGINDIR}" CACHE STRING "Directory to install Rizin plugins into")
 
+message("Rizin plugin will be installed at ${CMAKE_INSTALL_PREFIX}/${RIZIN_INSTALL_PLUGDIR}")
+
 if(BUILD_CUTTER_PLUGIN)
     find_package(Cutter REQUIRED)
     set(CUTTER_INSTALL_PLUGDIR "${Cutter_USER_PLUGINDIR}" CACHE STRING "Directory to install Cutter plugin into")
+    message("Cutter plugin will be installed at ${CMAKE_INSTALL_PREFIX}/${CUTTER_INSTALL_PLUGDIR}")
 endif()
 
 add_subdirectory(Source)
