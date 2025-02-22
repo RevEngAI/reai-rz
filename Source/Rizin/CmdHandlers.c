@@ -495,7 +495,7 @@ RZ_IPI RzCmdStatus
     // clamp value between 0 and 100
     min_confidence = min_confidence < 100 ? min_confidence : 100;
 
-    Bool debug_mode = rz_cons_yesno ('y', "Enable debug symbol suggestions? [Y/n]");
+    Bool debug_mode = rz_cons_yesno ('y', "Restrict suggestions to debug symbols? [Y/n]");
 
     if (!reai_plugin_search_and_show_similar_functions (
             core,
