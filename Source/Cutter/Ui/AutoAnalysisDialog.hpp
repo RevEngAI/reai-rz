@@ -36,7 +36,6 @@ class AutoAnalysisDialog : public QDialog {
     QVBoxLayout* mainLayout;
     QSlider*     confidenceSlider;
     QCheckBox*   enableDebugModeCheckBox;
-    QCheckBox*   renameUnknownFunctionsOnlyCheckBox;
 
     void on_PerformAutoAnalysis();
 };

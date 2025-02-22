@@ -23,7 +23,6 @@
 
 /* reai */
 #include <Reai/Util/Vec.h>
-#include <sys/stdio.h>
 
 AutoAnalysisDialog::AutoAnalysisDialog (QWidget* parent) : QDialog (parent) {
     mainLayout = new QVBoxLayout;
@@ -46,10 +45,6 @@ AutoAnalysisDialog::AutoAnalysisDialog (QWidget* parent) : QDialog (parent) {
     mainLayout->addWidget (enableDebugModeCheckBox);
     enableDebugModeCheckBox->setCheckState (Qt::CheckState::Checked);
 
-    renameUnknownFunctionsOnlyCheckBox = new QCheckBox ("Rename unknown functions only", this);
-    mainLayout->addWidget (renameUnknownFunctionsOnlyCheckBox);
-    renameUnknownFunctionsOnlyCheckBox->setCheckState (Qt::CheckState::Checked);
-
     QHBoxLayout* btnLayout = new QHBoxLayout (this);
     mainLayout->addLayout (btnLayout);
 
@@ -65,17 +60,15 @@ AutoAnalysisDialog::AutoAnalysisDialog (QWidget* parent) : QDialog (parent) {
 void AutoAnalysisDialog::on_PerformAutoAnalysis() {
     RzCoreLocked core (Core());
 
-    Float32 confidence = confidenceSlider->value() / 100.f;
-    Bool    debugMode  = enableDebugModeCheckBox->checkState() == Qt::CheckState::Checked;
-    Bool applyToAll = renameUnknownFunctionsOnlyCheckBox->checkState() == Qt::CheckState::Unchecked;
-    Uint32 maxResultCount = 10;
+    Float32 confidence     = confidenceSlider->value() / 100.f;
+    Bool    debugMode      = enableDebugModeCheckBox->checkState() == Qt::CheckState::Checked;
+    Uint32  maxResultCount = 10;
 
     if (!reai_plugin_auto_analyze_opened_binary_file (
             core,
             maxResultCount,
             confidence,
-            debugMode,
-            applyToAll
+            debugMode
         )) {
         DISPLAY_ERROR ("Failed to perfom auto-analysis.");
     }

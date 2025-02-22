@@ -22,7 +22,6 @@
 
 /* reai */
 #include <Reai/Util/Vec.h>
-#include <sys/stdio.h>
 
 CreateAnalysisDialog::CreateAnalysisDialog (QWidget* parent) : QDialog (parent) {
     mainLayout = new QVBoxLayout;

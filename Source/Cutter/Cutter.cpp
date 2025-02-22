@@ -341,14 +341,7 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
         // TODO: ask user here first whether they want to sync function names?
         // Not really a priority though
 
-        Bool applyToAll = QMessageBox::question (
-                              (QWidget *)this->parent(),
-                              "Apply analysis",
-                              "Do you want to rename only unknown functions",
-                              QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel
-                          ) == QMessageBox::No;
-
-        if (reai_plugin_apply_existing_analysis (core, binaryId, applyToAll)) {
+        if (reai_plugin_apply_existing_analysis (core, binaryId, false, 0)) {
             DISPLAY_INFO ("Analysis applied successfully.");
         } else {
             DISPLAY_INFO ("Failed to apply existing analysis.");
