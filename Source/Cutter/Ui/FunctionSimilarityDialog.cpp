@@ -102,7 +102,8 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
             confidenceLabel->setText (QString ("%1 % min confidence").arg (value));
         });
 
-        enableDebugModeCheckBox = new QCheckBox ("Enable debug mode", this);
+        enableDebugModeCheckBox =
+            new QCheckBox ("Restrict suggestions to debug symbols only?", this);
         mainLayout->addWidget (enableDebugModeCheckBox);
         enableDebugModeCheckBox->setCheckState (Qt::CheckState::Checked);
     }
@@ -116,8 +117,8 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
     QByteArray     fnNameByteArr = fnName.toLatin1();
     CString        fnNameCStr    = fnNameByteArr.constData();
 
-    Float32 confidence = confidenceSlider->value() / 100.f;
-    Bool    debugMode  = enableDebugModeCheckBox->checkState() == Qt::CheckState::Checked;
+    Uint32 confidence = confidenceSlider->value();
+    Bool  debugMode  = enableDebugModeCheckBox->checkState() == Qt::CheckState::Checked;
 
     QString maxResultCountStr = maxResultsInput->text();
     bool    success           = false;

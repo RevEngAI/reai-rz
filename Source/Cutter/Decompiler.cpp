@@ -42,8 +42,7 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
 
     // keep polling for decompilation
     while (self->isRunning()) {
-        REAI_LOG_TRACE ("still polling... going for sleep for 2 seconds");
-        rz_sys_sleep (2); // 2 seconds
+        REAI_LOG_TRACE ("still polling...");
     }
 
     // get decompiled code after finished

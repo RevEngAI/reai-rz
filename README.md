@@ -51,6 +51,13 @@ by current user (the user launching the plugin), or there exist environment
 varibles `$TMPDIR` or `$TMP` and those are writable as well.
 So it should be either `$PWD` or `$TMP` or `$TMPDIR`.
 
+If you cannot see dialogs or messages when intercting with plugin in cutter UI,
+make sure that you have a cutter installation with bundled rizin. If your cutter
+installation uses pre-installed rizin, then the way the plugin is written, you'll
+end up using rizin's command line plugin through the cutter UI, and will only be
+able to see output through the command line. Cutter with bundled rizin is very
+important!
+
 If rizin fails to automatically load the plugin, you can 
 
 - Open rizin and run `e dir.plugins`. You'll get the exact path where
