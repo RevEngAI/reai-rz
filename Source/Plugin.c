@@ -896,7 +896,7 @@ ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId b
  * @param max_results per function RevEng.AI function matching parameter.
  * @param max_distance RevEng.AI function matching parameter.
  * */
-Bool reai_plugin_auto_analyze_opened_binary_file_internal (
+Bool reai_plugin_auto_analyze_opened_binary_file (
     RzCore *core,
     Size    max_results_per_function,
     Float64 min_confidence,
