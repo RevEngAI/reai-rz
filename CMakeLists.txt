@@ -40,7 +40,7 @@ if(MSVC) # Windows
     # std::numeric_limits<...>::max()
     # (http://stackoverflow.com/questions/1904635/warning-c4003-and-errors-c2589-and-c2059-on-x-stdnumeric-limitsintmax).
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DNOMINMAX")
-elseif(UNIX) # Linux or macOS
+elseif(UNIX OR MINGW) # Linux or macOS or Windows MinGW-GCC
     # Set C flags
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
