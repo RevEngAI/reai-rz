@@ -50,7 +50,7 @@ ninja -C Build && sudo ninja -C Build install
 For building on windows, run just once script. This will download all dependencies and build anything required and then finally build the plugin.
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; iex .\BuildOnWindows.ps1
+git clone https://github.com/revengai/reai-rz; cd reai-rz; Set-ExecutionPolicy Bypass -Scope Process -Force; iex .\BuildOnWindows.ps1
 ```
 
 ### Possible Errors
