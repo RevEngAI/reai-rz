@@ -50,10 +50,8 @@ ninja -C Build && sudo ninja -C Build install
 For building on windows, run just once script. This will download all dependencies and build anything required and then finally build the plugin.
 
 ```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex .\BuildOnWindows.ps1
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex .\BuildOnWindows.ps1
 ```
-
-WARNING/DISCLAIMER : The script is not ready to use for end-user for now. The plugin is built but is unusable at the moment.
 
 ### Possible Errors
 
