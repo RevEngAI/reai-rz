@@ -118,7 +118,7 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
     CString        fnNameCStr    = fnNameByteArr.constData();
 
     Uint32 confidence = confidenceSlider->value();
-    Bool  debugMode  = enableDebugModeCheckBox->checkState() == Qt::CheckState::Checked;
+    Bool   debugMode  = enableDebugModeCheckBox->checkState() == Qt::CheckState::Checked;
 
     QString maxResultCountStr = maxResultsInput->text();
     bool    success           = false;
@@ -134,7 +134,8 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
             fnNameCStr,
             maxResultCount,
             confidence,
-            debugMode
+            debugMode,
+            NULL
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
     }

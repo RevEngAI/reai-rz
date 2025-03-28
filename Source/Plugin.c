@@ -24,6 +24,7 @@
 #include <Reai/Types.h>
 
 /* libc */
+#include <rz_util/rz_str.h>
 #include <rz_util/rz_sys.h>
 
 /* plugin includes */
@@ -803,9 +804,9 @@ Bool reai_plugin_apply_existing_analysis (
             FREE (old_name);
         }
 
-        Uint64 fn_addr = fn->vaddr + (has_custom_base_addr ?
-                             base_addr :
-                             reai_plugin_get_opened_binary_file_baseaddr (core));
+        Uint64 fn_addr =
+            fn->vaddr +
+            (has_custom_base_addr ? base_addr : reai_plugin_get_opened_binary_file_baseaddr (core));
 
         /* get function */
         RzAnalysisFunction *rz_fn = rz_analysis_get_function_at (core->analysis, fn_addr);
@@ -1185,7 +1186,8 @@ Bool reai_plugin_search_and_show_similar_functions (
     CString fcn_name,
     Size    max_results_count,
     Int32   confidence,
-    Bool    debug_mode
+    Bool    debug_mode,
+    CString collections_csv
 ) {
     if (!core) {
         APPEND_ERROR ("Invalid Rizin core porivded. Cannot perform similarity search.");
@@ -1261,6 +1263,20 @@ Bool reai_plugin_search_and_show_similar_functions (
         return false;
     }
 
+    CStrVec *collections = NULL;
+    if (collections_csv && strlen (collections_csv)) {
+        RzList *list = rz_str_split_duplist (collections_csv, ",", true);
+        collections  = reai_cstr_vec_create();
+
+        RzListIter *it;
+        char       *cname;
+        rz_list_foreach (list, it, cname) {
+            CString n = cname;
+            reai_cstr_vec_append (collections, &n);
+        }
+        rz_list_free (list);
+    }
+
     Float32            maxDistance = 1 - confidence / 100.f;
     ReaiAnnFnMatchVec *fnMatches   = reai_batch_function_symbol_ann (
         reai(),
@@ -1269,9 +1285,13 @@ Bool reai_plugin_search_and_show_similar_functions (
         NULL, // speculative fn ids
         max_results_count,
         maxDistance,
-        NULL, // collections
+        collections,
         debug_mode
     );
+
+    if (collections) {
+        reai_cstr_vec_destroy (collections);
+    }
 
     if (fnMatches && fnMatches->count) {
         // Populate table

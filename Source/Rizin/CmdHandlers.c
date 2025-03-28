@@ -496,13 +496,24 @@ RZ_IPI RzCmdStatus
     min_confidence = min_confidence < 100 ? min_confidence : 100;
 
     Bool debug_mode = rz_cons_yesno ('y', "Restrict suggestions to debug symbols? [Y/n]");
+    Bool collections_restriction = rz_cons_yesno (
+        'n',
+        "Wanna provide collections to restrict search into? (No means search in all collections) "
+        "[y/N]"
+    );
+
+    CString collections_csv = NULL;
+    if (collections_restriction) {
+        collections_csv = rz_cons_input ("Enter comma separated list of collection names : ");
+    }
 
     if (!reai_plugin_search_and_show_similar_functions (
             core,
             function_name,
             max_results_count,
             min_confidence,
-            debug_mode
+            debug_mode,
+            collections_csv
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
         return RZ_CMD_STATUS_ERROR;
