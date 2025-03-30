@@ -75,7 +75,7 @@ extern "C" {
         RzCore* core,
         Size    max_results_per_function,
         Float64 min_confidence,
-        Bool    debug_mode
+        Bool    debug_filter
     );
     ReaiFunctionId
          reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);

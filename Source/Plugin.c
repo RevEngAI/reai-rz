@@ -108,32 +108,31 @@ const char *rizin_analysis_function_force_rename (RzAnalysisFunction *fcn, CStri
 }
 
 /**
- * @b Get name of function with given origin function id having max
- *    confidence.
+ * @b Get name of function with given origin function id having similarity.
  *
- * If multiple functions have same confidence level then the one that appears
+ * If multiple functions have same similarity level then the one that appears
  * first in the array will be returned.
  *
  * Returned pointer MUST NOT freed because it is owned by given @c fn_matches
  * vector. Destroying the vector will automatically free the returned string.
  *
- * @param fn_matches Array that contains all functions with their confidence levels.
+ * @param fn_matches Array that contains all functions with their similarity levels.
  * @param origin_fn_id Function ID to search for.
- * @param confidence Pointer to @c Float64 value specifying min confidence level.
- *        If not @c NULL then value of max confidence of returned function name will
+ * @param required_similarity Pointer to @c Float64 value specifying min similarity level.
+ *        If not @c NULL then value of max similarity of returned function name will
  *        be stored in this pointer.
- *        If @c NULL then just the function with max confidence will be selected.
+ *        This is a required argument.
  *
  * @return @c Pointer to an item from the provided vector on success. 
  * @return @c NULL otherwise.
  * */
-PRIVATE ReaiAnnFnMatch *get_function_match_with_confidence (
+PRIVATE ReaiAnnFnMatch *get_function_match_with_similarity (
     ReaiAnnFnMatchVec *fn_matches,
     ReaiFunctionId     origin_fn_id,
-    Float64           *required_confidence
+    Float64           *required_similarity
 ) {
-    if (!required_confidence) {
-        APPEND_ERROR ("A minimum confidence level is required");
+    if (!required_similarity) {
+        APPEND_ERROR ("A minimum similarity level is required");
         return NULL;
     }
 
@@ -147,20 +146,20 @@ PRIVATE ReaiAnnFnMatch *get_function_match_with_confidence (
         return NULL;
     }
 
-    Float64         max_confidence = 0;    // The maximum available confidence among suggestions
-    ReaiAnnFnMatch *fn_match       = NULL; // Function name with max confidence out of all
+    Float64         max_similarity = 0;    // The maximum available similarity among suggestions
+    ReaiAnnFnMatch *fn_match       = NULL; // Function name with max similarity out of all
     REAI_VEC_FOREACH (fn_matches, match, {
-        /* otherwise find function with max confidence */
-        if ((match->confidence > max_confidence) && (match->origin_function_id == origin_fn_id)) {
+        /* otherwise find function with max similarity */
+        if ((match->confidence > max_similarity) && (match->origin_function_id == origin_fn_id)) {
             fn_match       = match;
-            max_confidence = match->confidence;
+            max_similarity = match->confidence; // is similarity but named confidence in API
         }
     });
 
-    // return match with max confidence if we've crossed the required confidence
+    // return match with max similarity if we've crossed the required similarity
     // level, otherwise a suitable match failed
-    return max_confidence >= *required_confidence ?
-               (*required_confidence = max_confidence, fn_match) :
+    return max_similarity >= *required_similarity ?
+               (*required_similarity = max_similarity, fn_match) :
                NULL;
 }
 
@@ -209,10 +208,11 @@ PRIVATE ReaiFnInfoVec *get_fn_infos (ReaiBinaryId bin_id) {
  *
  * The returned vector must be destroyed after use.
  *
- * @param bin_id
- * @param max_results
- * @param max_dist
- * @param collections
+ * @param bin_id Binary id to get ANN function similarity results for.
+ * @param max_results Maximum number of results per function.
+ * @param min_similarity Minimum required similarity level for a good match.   
+ * @param collections Collections to search into. Emtpy means all collections.
+ * @param debug_filter Restrict search suggestions to debug symbols only.
  *
  * @return @c ReaiAnnFnMatchVec on success.
  * @return @c NULL otherwise.
@@ -220,9 +220,9 @@ PRIVATE ReaiFnInfoVec *get_fn_infos (ReaiBinaryId bin_id) {
 PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
     ReaiBinaryId bin_id,
     Uint32       max_results,
-    Float64      max_dist,
+    Float64      min_similarity,
     CStrVec     *collections,
-    Bool         debug_mode
+    Bool         debug_filter
 ) {
     if (!bin_id) {
         APPEND_ERROR ("Invalid binary ID provided. Cannot get function matches.");
@@ -234,9 +234,9 @@ PRIVATE ReaiAnnFnMatchVec *get_fn_matches (
         reai_response(),
         bin_id,
         max_results,
-        max_dist,
+        1 - min_similarity,
         collections,
-        debug_mode
+        debug_filter
     );
 
     if (!fn_matches) {
@@ -893,15 +893,15 @@ ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId b
  * @b Automatically rename all funcitons with matching names.
  *
  * @param core To get currently opened binary file.
- * @param max_distance RevEng.AI function matching parameter.
- * @param max_results per function RevEng.AI function matching parameter.
- * @param max_distance RevEng.AI function matching parameter.
+ * @param max_results_per_function Maximum number of search results to return for each function. 
+ * @param min_similarity Minimum similarity filter. Functions without minimum similarity requirement are ignored. 
+ * @param debug_filter Restrict search suggestions to debug symbols only. 
  * */
 Bool reai_plugin_auto_analyze_opened_binary_file (
     RzCore *core,
     Size    max_results_per_function,
-    Float64 min_confidence,
-    Bool    debug_mode
+    Float64 min_similarity,
+    Bool    debug_filter
 ) {
     if (!core) {
         APPEND_ERROR ("Invalid rizin core provided. Cannot perform auto-analysis.");
@@ -937,7 +937,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
 
     /* function matches */
     ReaiAnnFnMatchVec *fn_matches =
-        get_fn_matches (bin_id, max_results_per_function, 1 - min_confidence, NULL, debug_mode);
+        get_fn_matches (bin_id, max_results_per_function, min_similarity, NULL, debug_filter);
     if (!fn_matches) {
         APPEND_ERROR ("Failed to get function matches for opened binary.");
         reai_fn_info_vec_destroy (fn_infos);
@@ -968,9 +968,10 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         "Old Name",
         "New Name",
         "Source Binary",
-        "Confidence",
+        "Similarity",
         "Address"
     );
+
 #define ADD_TO_SUCCESSFUL_RENAME()                                                                 \
     do {                                                                                           \
         reai_plugin_table_add_rowf (                                                               \
@@ -979,7 +980,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
             old_name,                                                                              \
             sim_match->nn_function_name,                                                           \
             sim_match->nn_binary_name,                                                             \
-            min_confidence,                                                                        \
+            min_similarity,                                                                        \
             fn_addr                                                                                \
         );                                                                                         \
                                                                                                    \
@@ -991,24 +992,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
         success_cases_exist = true;                                                                \
     } while (0)
 
-    ReaiPluginTable *failed_renames = reai_plugin_table_create();
-    if (!failed_renames) {
-        APPEND_ERROR ("Failed to create table to display new name mapping.");
-        reai_fn_info_vec_destroy (new_name_mapping);
-        reai_ann_fn_match_vec_destroy (fn_matches);
-        reai_fn_info_vec_destroy (fn_infos);
-        reai_plugin_table_destroy (successful_renames);
-        return false;
-    }
-    reai_plugin_table_set_columnsf (failed_renames, "ssn", "Old Name", "Reason", "Address");
-#define ADD_TO_FAILED_RENAME(resn)                                                                 \
-    do {                                                                                           \
-        reai_plugin_table_add_rowf (failed_renames, "ssx", old_name, resn, fn_addr);               \
-        failed_cases_exist = true;                                                                 \
-    } while (0)
-
     Bool success_cases_exist = false;
-    Bool failed_cases_exist  = false;
 
     /* display information about what renames will be performed 
      * add rename information to new name mapping *
@@ -1022,10 +1006,10 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
 
         Uint64 fn_addr = fn->vaddr + reai_plugin_get_opened_binary_file_baseaddr (core);
 
-        /* if we get a match with required confidence level then we add to rename */
+        /* if we get a match with required similairty level then we add to rename */
         ReaiAnnFnMatch *sim_match = NULL;
         if ((sim_match =
-                 get_function_match_with_confidence (fn_matches, fn->id, &min_confidence))) {
+                 get_function_match_with_similarity (fn_matches, fn->id, &min_similarity))) {
             /* If functions already are same then no need to rename */
             if (!strcmp (sim_match->nn_function_name, old_name)) {
                 REAI_LOG_INFO (
@@ -1051,10 +1035,18 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
                 ADD_TO_SUCCESSFUL_RENAME();
                 rz_strbuf_fini (&new_name_buf);
             } else { // If function not found at address
-                ADD_TO_FAILED_RENAME ("function not found");
+                REAI_LOG_TRACE (
+                    "function not found (.old_name = \"%s\", .addr = 0x%lx)",
+                    old_name,
+                    fn_addr
+                );
             }
-        } else {     // If not able to find a function with given confidence
-            ADD_TO_FAILED_RENAME ("match not found");
+        } else { // If not able to find a function with given similairty
+            REAI_LOG_TRACE (
+                "similar match not found (.old_name = \"%s\", .addr = 0x%lx)",
+                old_name,
+                fn_addr
+            );
         }
     });
 
@@ -1064,10 +1056,6 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
 
     if (success_cases_exist) {
         reai_plugin_table_show (successful_renames);
-    }
-
-    if (failed_cases_exist) {
-        reai_plugin_table_show (failed_renames);
     }
 
     /* perform a batch rename */
@@ -1085,13 +1073,11 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
     }
 
     reai_plugin_table_destroy (successful_renames);
-    reai_plugin_table_destroy (failed_renames);
     reai_fn_info_vec_destroy (new_name_mapping);
     reai_ann_fn_match_vec_destroy (fn_matches);
     reai_fn_info_vec_destroy (fn_infos);
 
 #undef ADD_TO_SUCCESSFUL_RENAME
-#undef ADD_TO_FAILED_RENAME
 
     return true;
 }
@@ -1173,10 +1159,10 @@ ReaiFunctionId
  * @b Get a table of similar function name data.
  *
  * @param core
- * @param fcn_name Function name to search simlar functions for,
- * @param max_results_count
- * @param confidence
- * @param debug_mode
+ * @param fcn_name Function name to search simlar functionsns for,
+ * @param max_results_count Maximum number of results per function.
+ * @param min_similarity Minimum required similarity level for a good match.
+ * @param debug_filter Restrict search suggestions to debug symbols only. 
  *
  * @return @c ReaiPluginTable containing search suggestions on success.
  * @return @c NULL when no suggestions found.
@@ -1185,8 +1171,8 @@ Bool reai_plugin_search_and_show_similar_functions (
     RzCore *core,
     CString fcn_name,
     Size    max_results_count,
-    Int32   confidence,
-    Bool    debug_mode,
+    Int32   min_similarity,
+    Bool    debug_filter,
     CString collections_csv
 ) {
     if (!core) {
@@ -1277,7 +1263,7 @@ Bool reai_plugin_search_and_show_similar_functions (
         rz_list_free (list);
     }
 
-    Float32            maxDistance = 1 - confidence / 100.f;
+    Float32            maxDistance = 1.f - (min_similarity / 100.f);
     ReaiAnnFnMatchVec *fnMatches   = reai_batch_function_symbol_ann (
         reai(),
         reai_response(),
@@ -1286,7 +1272,7 @@ Bool reai_plugin_search_and_show_similar_functions (
         max_results_count,
         maxDistance,
         collections,
-        debug_mode
+        debug_filter
     );
 
     if (collections) {
@@ -1300,7 +1286,7 @@ Bool reai_plugin_search_and_show_similar_functions (
             table,
             "snns",
             "Function Name",
-            "Confidence",
+            "Similarity",
             "Function ID",
             "Binary Name"
         );
@@ -1311,15 +1297,15 @@ Bool reai_plugin_search_and_show_similar_functions (
                 table,
                 "sfns",
                 fnMatch->nn_function_name,
-                fnMatch->confidence,
+                fnMatch->confidence, // named confidence in API but is actually similarity
                 fnMatch->nn_function_id,
                 fnMatch->nn_binary_name
             );
             REAI_LOG_TRACE (
-                "Similarity Search Suggestion = (.name = \"%s\", .confidence = \"%lf\", "
+                "Similarity Search Suggestion = (.name = \"%s\", .similarity = \"%lf\", "
                 ".function_id = \"%llu\", .binary_name = \"%s\")",
                 fnMatch->nn_function_name,
-                fnMatch->confidence,
+                fnMatch->confidence, // named confidence in API but is actually similarity
                 fnMatch->nn_function_id,
                 fnMatch->nn_binary_name
             );

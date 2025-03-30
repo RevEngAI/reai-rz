@@ -34,8 +34,8 @@ class FunctionSimilarityDialog : public QDialog {
    private:
     QVBoxLayout* mainLayout;
     QLineEdit *  searchBarInput, *maxResultsInput;
-    QSlider*     confidenceSlider;
-    QCheckBox*   enableDebugModeCheckBox;
+    QSlider*     similaritySlider;
+    QCheckBox*   enableDebugFilterCheckBox;
     QCompleter*  fnNameCompleter;
 
     void on_FindSimilarNames();

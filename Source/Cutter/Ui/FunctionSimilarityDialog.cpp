@@ -88,24 +88,24 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
         );
     }
 
-    /* Create sliders to select confidence levels and distance */
+    /* Create sliders to select similarity levels and distance */
     {
-        confidenceSlider = new QSlider (Qt::Horizontal);
-        confidenceSlider->setMinimum (1);
-        confidenceSlider->setMaximum (100);
-        confidenceSlider->setValue (90);
-        mainLayout->addWidget (confidenceSlider);
+        similaritySlider = new QSlider (Qt::Horizontal);
+        similaritySlider->setMinimum (1);
+        similaritySlider->setMaximum (100);
+        similaritySlider->setValue (90);
+        mainLayout->addWidget (similaritySlider);
 
-        QLabel* confidenceLabel = new QLabel ("90% min confidence");
-        mainLayout->addWidget (confidenceLabel);
-        connect (confidenceSlider, &QSlider::valueChanged, [confidenceLabel] (int value) {
-            confidenceLabel->setText (QString ("%1 % min confidence").arg (value));
+        QLabel* similarityLabel = new QLabel ("90% min similarity");
+        mainLayout->addWidget (similarityLabel);
+        connect (similaritySlider, &QSlider::valueChanged, [similarityLabel] (int value) {
+            similarityLabel->setText (QString ("%1 % min similarity").arg (value));
         });
 
-        enableDebugModeCheckBox =
+        enableDebugFilterCheckBox =
             new QCheckBox ("Restrict suggestions to debug symbols only?", this);
-        mainLayout->addWidget (enableDebugModeCheckBox);
-        enableDebugModeCheckBox->setCheckState (Qt::CheckState::Checked);
+        mainLayout->addWidget (enableDebugFilterCheckBox);
+        enableDebugFilterCheckBox->setCheckState (Qt::CheckState::Checked);
     }
 }
 
@@ -117,8 +117,8 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
     QByteArray     fnNameByteArr = fnName.toLatin1();
     CString        fnNameCStr    = fnNameByteArr.constData();
 
-    Uint32 confidence = confidenceSlider->value();
-    Bool   debugMode  = enableDebugModeCheckBox->checkState() == Qt::CheckState::Checked;
+    Uint32 required_similarity = similaritySlider->value();
+    Bool   debugFilter         = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
 
     QString maxResultCountStr = maxResultsInput->text();
     bool    success           = false;
@@ -133,8 +133,8 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
             core,
             fnNameCStr,
             maxResultCount,
-            confidence,
-            debugMode,
+            required_similarity,
+            debugFilter,
             NULL
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");

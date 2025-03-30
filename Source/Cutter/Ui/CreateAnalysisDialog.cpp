@@ -41,7 +41,7 @@ CreateAnalysisDialog::CreateAnalysisDialog (QWidget* parent) : QDialog (parent) 
     REAI_VEC_FOREACH (reai_ai_models(), ai_model, { aiModelInput->addItem (*ai_model); });
     mainLayout->addWidget (aiModelInput);
 
-    isAnalysisPrivateCheckBox = new QCheckBox ("Enable debug mode", this);
+    isAnalysisPrivateCheckBox = new QCheckBox ("Create private analysis?", this);
     mainLayout->addWidget (isAnalysisPrivateCheckBox);
     isAnalysisPrivateCheckBox->setCheckState (Qt::CheckState::Checked);
 

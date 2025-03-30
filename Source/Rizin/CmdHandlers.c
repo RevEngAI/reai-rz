@@ -210,15 +210,15 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     // Just set it to a large enough value to get good suggestions
     const Size max_results_per_function = 10;
 
-    Uint32 min_confidence = rz_num_get (core->num, argv[1]);
-    min_confidence        = min_confidence > 100 ? 100 : min_confidence;
+    Uint32 min_similarity = rz_num_get (core->num, argv[1]);
+    min_similarity        = min_similarity > 100 ? 100 : min_similarity;
 
     Bool debug_mode = rz_cons_yesno ('y', "Restrict suggestions to debug symbols? [Y/n]");
 
     if (reai_plugin_auto_analyze_opened_binary_file (
             core,
             max_results_per_function,
-            min_confidence / 100.f,
+            min_similarity / 100.f,
             debug_mode
         )) {
         DISPLAY_INFO ("Auto-analysis completed successfully.");
@@ -489,11 +489,11 @@ RZ_IPI RzCmdStatus
 
     // Parse command line arguments
     CString function_name     = argv[1];
-    Uint32  min_confidence    = (Uint32)rz_num_math (core->num, argv[2]);
+    Uint32  min_similarity    = (Uint32)rz_num_math (core->num, argv[2]);
     Uint32  max_results_count = (Uint32)rz_num_math (core->num, argv[3]);
 
     // clamp value between 0 and 100
-    min_confidence = min_confidence < 100 ? min_confidence : 100;
+    min_similarity = min_similarity < 100 ? min_similarity : 100;
 
     Bool debug_mode = rz_cons_yesno ('y', "Restrict suggestions to debug symbols? [Y/n]");
     Bool collections_restriction = rz_cons_yesno (
@@ -511,7 +511,7 @@ RZ_IPI RzCmdStatus
             core,
             function_name,
             max_results_count,
-            min_confidence,
+            min_similarity,
             debug_mode,
             collections_csv
         )) {

@@ -10,7 +10,7 @@ Don't want to go through all the manual hassle? We have a dockerfile as well.
 Just do :
 
 ```bash
-git clone https://github.com/revengai/reai-rz && 
+git clone https://github.com/revengai/reai-rz &&
 cd reai-rz && docker build --no-cache --build-arg apikey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t reai-rz . &&
 docker run -v /tmp/userdata:/home/revengai/userdata -it reai-rz
 ```
@@ -68,18 +68,18 @@ end up using rizin's command line plugin through the cutter UI, and will only be
 able to see output through the command line. Cutter with bundled rizin is very
 important!
 
-If rizin fails to automatically load the plugin, you can 
+If rizin fails to automatically load the plugin, you can
 
 - Open rizin and run `e dir.plugins`. You'll get the exact path where
-rizin expects the plugins to be present. Note the prefix for `/rizin/plugins`.
-It'll be something like `/usr/lib` or `/usr/local/lib`. Now during the plugin
-cmake configure step, provide this prefix path by appending `-D CMAKE_INSTALL_PREFIX=<prefix_path>`
-to the cmake configure command. In my case it looks like this : `cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr`
+  rizin expects the plugins to be present. Note the prefix for `/rizin/plugins`.
+  It'll be something like `/usr/lib` or `/usr/local/lib`. Now during the plugin
+  cmake configure step, provide this prefix path by appending `-D CMAKE_INSTALL_PREFIX=<prefix_path>`
+  to the cmake configure command. In my case it looks like this : `cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr`
 
 - load it by running the command `L <plugin_path>`. This is usually something like
-`L /usr/local/lib/rizin/plugins/libreai_rizin.so` on a linux based system.
-The exact path is displayed when installing the plugin. You'll need to do this
-all the time btw, on every rizin run. This is not the best solution.
+  `L /usr/local/lib/rizin/plugins/libreai_rizin.so` on a linux based system.
+  The exact path is displayed when installing the plugin. You'll need to do this
+  all the time btw, on every rizin run. This is not the best solution.
 
 ### Dependencies
 
@@ -88,8 +88,8 @@ Before running any of the above commands, you must install cmake, make, ninja, m
 ## CMake Configure Options
 
 - `BUILD_CUTTER_PLUGIN = ON/OFF` : When enabled will build cutter plugin alongside rizin plugin. By default
-this is set to `OFF`. If you have cutter installed, and want to use the cutter plugin, set this to on
-by adding `-D BUILD_CUTTER_PLUGIN=ON` in the cmake configure step.
+  this is set to `OFF`. If you have cutter installed, and want to use the cutter plugin, set this to on
+  by adding `-D BUILD_CUTTER_PLUGIN=ON` in the cmake configure step.
 
 ## Basic Usage
 
@@ -124,12 +124,12 @@ Usage: RE<imhua?>   # RevEngAI Plugin Commands
 | REh                     # Check connection status with RevEngAI servers.
 | REu                     # Upload currently loaded binary to RevEngAI servers.
 | REa <prog_name> <cmd_line_args> <ai_model> # Upload and analyse currently loaded binary
-| REau[?] <min_confidence>=90 # Auto analyze binary functions using ANN and perform batch rename.
+| REau[?] <min_similarity>=90 # Auto analyze binary functions using ANN and perform batch rename.
 | REap <bin_id>           # Apply already existing RevEng.AI analysis to this binary.
 | REd  <fn_name>          # Perform AI Decompilation
 | REfl[?]                 # Get & show basic function info for selected binary.
 | REfr <old_name> <new_name> # Rename function with given function id to given name.
-| REfs <function_name> <min_confidence>=95 # RevEng.AI ANN functions similarity search.
+| REfs <function_name> <min_similarity>=95 # RevEng.AI ANN functions similarity search.
 | REart                   # Show RevEng.AI ASCII art.
 ```
 
@@ -170,7 +170,7 @@ stored in the rizin project and is automatically loaded when you open the projec
 ### `REau` : Auto Analysis
 
 After analysis is complete, the command will get function matches for all functions in a binary,
-that have a confidence greater than that provide as command argument and rename the current names
+that have a similarity level greater than that provide as command argument and rename the current names
 with best match.
 
 Save your rizin project after performing an auto-analysis. Or when you re-open the binary, apply
@@ -202,8 +202,8 @@ Rename a function in RevEng.AI analysis. Renames function in both rizin and RevE
 
 ### `REfs` : Function Search
 
-Searches for functions similar to provided function and have a confidence greater than
-the provided `min_confidence`.
+Searches for functions similar to provided function and have a similarity level greater than
+the provided `min_similarity`.
 
 ### `REart`
 

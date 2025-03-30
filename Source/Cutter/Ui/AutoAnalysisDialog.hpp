@@ -34,8 +34,8 @@ class AutoAnalysisDialog : public QDialog {
 
    private:
     QVBoxLayout* mainLayout;
-    QSlider*     confidenceSlider;
-    QCheckBox*   enableDebugModeCheckBox;
+    QSlider*     similaritySlider;
+    QCheckBox*   enableDebugFilterCheckBox;
 
     void on_PerformAutoAnalysis();
 };
