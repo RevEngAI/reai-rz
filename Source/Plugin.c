@@ -777,23 +777,7 @@ Bool reai_plugin_apply_existing_analysis (
         success_cases_exist = true;                                                                \
     } while (0)
 
-    ReaiPluginTable *failed_renames = reai_plugin_table_create();
-    if (!failed_renames) {
-        APPEND_ERROR ("Failed to create table to display failed rename operations.");
-        reai_plugin_table_destroy (successful_renames);
-        reai_fn_info_vec_destroy (fn_infos);
-        return false;
-    }
-    reai_plugin_table_set_title (failed_renames, "Failed Function Rename Operations");
-    reai_plugin_table_set_columnsf (failed_renames, "ssn", "old_name", "reason", "address");
-#define ADD_TO_FAILED_RENAME(resn)                                                                 \
-    do {                                                                                           \
-        reai_plugin_table_add_rowf (failed_renames, "ssx", old_name, resn, fn_addr);               \
-        failed_cases_exist = true;                                                                 \
-    } while (0)
-
     Bool success_cases_exist = false;
-    Bool failed_cases_exist  = false;
 
     /* display information about what renames will be performed */ /* add rename information to new name mapping */
     /* rename the functions in rizin */
@@ -829,7 +813,11 @@ Bool reai_plugin_apply_existing_analysis (
                 ADD_TO_SUCCESSFUL_RENAME();
             }
         } else { // If no Rizin funciton exists at given address
-            ADD_TO_FAILED_RENAME ("rizin function not found at address");
+            REAI_LOG_ERROR (
+                "function not found (.name = \"%s\", .addr = 0x%llx)",
+                old_name,
+                fn_addr
+            );
         }
     });
 
@@ -841,20 +829,14 @@ Bool reai_plugin_apply_existing_analysis (
         reai_plugin_table_show (successful_renames);
     }
 
-    if (failed_cases_exist) {
-        reai_plugin_table_show (failed_renames);
-    }
-
     // Mass Destruction!!!!
     reai_plugin_table_destroy (successful_renames);
-    reai_plugin_table_destroy (failed_renames);
     reai_fn_info_vec_destroy (fn_infos);
 
     reai_binary_id() = bin_id;
     rz_config_set_i (core->config, "reai.id", reai_binary_id());
 
 #undef ADD_TO_SUCCESSFUL_RENAME
-#undef ADD_TO_FAILED_RENAME
 
     return true;
 }
@@ -1013,7 +995,7 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
             /* If functions already are same then no need to rename */
             if (!strcmp (sim_match->nn_function_name, old_name)) {
                 REAI_LOG_INFO (
-                    "Name \"%s\" already matches for function at address %llx",
+                    "Name \"%s\" already matches for function at address 0x%llx",
                     old_name,
                     fn_addr
                 );
@@ -1035,8 +1017,8 @@ Bool reai_plugin_auto_analyze_opened_binary_file (
                 ADD_TO_SUCCESSFUL_RENAME();
                 rz_strbuf_fini (&new_name_buf);
             } else { // If function not found at address
-                REAI_LOG_TRACE (
-                    "function not found (.old_name = \"%s\", .addr = 0x%lx)",
+                REAI_LOG_ERROR (
+                    "function not found (.old_name = \"%s\", .addr = 0x%llx)",
                     old_name,
                     fn_addr
                 );
