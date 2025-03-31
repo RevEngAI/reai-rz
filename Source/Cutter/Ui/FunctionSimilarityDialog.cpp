@@ -73,10 +73,12 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
         fnNameCompleter->setCaseSensitivity (Qt::CaseInsensitive);
         searchBarInput->setCompleter (fnNameCompleter);
 
-        maxResultsInput = new QLineEdit (this);
-        maxResultsInput->setPlaceholderText ("Maximum search result count... eg: 5");
-        maxResultsInput->setText ("5");
-        searchBarLayout->addWidget (maxResultsInput);
+        maxResultCountInput = new QSpinBox (this);
+        maxResultCountInput->setValue (10);
+        maxResultCountInput->setMinimum (1);
+        maxResultCountInput->setPrefix ("Max ");
+        maxResultCountInput->setSuffix (" results");
+        searchBarLayout->addWidget (maxResultCountInput);
 
         QPushButton* searchButton = new QPushButton ("Search", this);
         searchBarLayout->addWidget (searchButton);
@@ -88,7 +90,12 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
         );
     }
 
-    /* Create sliders to select similarity levels and distance */
+    /* textbox for taking in collection names in csv format */
+    collectionNamesInput = new QLineEdit (this);
+    collectionNamesInput->setPlaceholderText ("Comma separated list of collection names");
+    mainLayout->addWidget (collectionNamesInput);
+
+    /* Create slider to select similarity level */
     {
         similaritySlider = new QSlider (Qt::Horizontal);
         similaritySlider->setMinimum (1);
@@ -119,15 +126,11 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
 
     Uint32 required_similarity = similaritySlider->value();
     Bool   debugFilter         = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
+    Int32  maxResultCount      = maxResultCountInput->value();
 
-    QString maxResultCountStr = maxResultsInput->text();
-    bool    success           = false;
-    Int32   maxResultCount    = maxResultCountStr.toInt (&success);
-
-    if (!success) {
-        DISPLAY_ERROR ("Failed to convert max result count input to integer.");
-        return;
-    }
+    const QString& collectionNamesCsv        = collectionNamesInput->text();
+    QByteArray     collectionNamesCsvByteArr = collectionNamesCsv.toLatin1();
+    CString        collectionNamesCsvCStr    = collectionNamesCsvByteArr.constData();
 
     if (!reai_plugin_search_and_show_similar_functions (
             core,
@@ -135,7 +138,7 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
             maxResultCount,
             required_similarity,
             debugFilter,
-            NULL
+            collectionNamesCsvCStr
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
     }

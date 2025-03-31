@@ -108,6 +108,9 @@ commands:
       - name: max_results
         type: RZ_CMD_ARG_TYPE_NUM
         default_value: 20
+      - name: collections
+        type: RZ_CMD_ARG_TYPE_STRING
+        default_value: ""
     details:
       - name: Function Name
         entries:
@@ -116,7 +119,25 @@ commands:
           - text: "REfs __memcmp 95"
             comment: "Search similar function for __memcmp, with minimum 95% similarity"
           - text: "REfs postHandleCall 72 10"
-            comment: "max 10 results"
+            comment: "Max 10 results"
+          - text: 'REfs fcn.8086.xmrig-0ddf8e62 80 10 "CoinMiner, xmrminer, biminer"'
+            comment: "Search only in provided list of comma separated collection names"
+  - name: REfsd
+    cname: function_similarity_search_debug
+    summary: RevEng.AI ANN functions similarity search. Suggestions restricted to debug symbols only.
+    args:
+      - name: function_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: min_similarity
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 95
+      - name: max_results
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 20
+      - name: collections
+        type: RZ_CMD_ARG_TYPE_STRING
+        default_value: ""
   - name: REd
     cname: ai_decompile
     summary: Decompile given function using RevEngAI's AI Decompiler

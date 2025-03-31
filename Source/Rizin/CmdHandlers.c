@@ -491,28 +491,17 @@ RZ_IPI RzCmdStatus
     CString function_name     = argv[1];
     Uint32  min_similarity    = (Uint32)rz_num_math (core->num, argv[2]);
     Uint32  max_results_count = (Uint32)rz_num_math (core->num, argv[3]);
+    CString collections_csv   = argv[4];
 
     // clamp value between 0 and 100
     min_similarity = min_similarity < 100 ? min_similarity : 100;
-
-    Bool debug_mode = rz_cons_yesno ('y', "Restrict suggestions to debug symbols? [Y/n]");
-    Bool collections_restriction = rz_cons_yesno (
-        'n',
-        "Wanna provide collections to restrict search into? (No means search in all collections) "
-        "[y/N]"
-    );
-
-    CString collections_csv = NULL;
-    if (collections_restriction) {
-        collections_csv = rz_cons_input ("Enter comma separated list of collection names : ");
-    }
 
     if (!reai_plugin_search_and_show_similar_functions (
             core,
             function_name,
             max_results_count,
             min_similarity,
-            debug_mode,
+            false, // Don't restrict suggestions to debug symbols only.
             collections_csv
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
@@ -521,6 +510,53 @@ RZ_IPI RzCmdStatus
 
     return RZ_CMD_STATUS_OK;
 }
+
+/**
+ * "REfsd"
+ *
+ * @b Similar function name search with debug symbol suggestions only.
+ * */
+RZ_IPI RzCmdStatus
+    rz_function_similarity_search_debug_handler (RzCore* core, int argc, const char** argv) {
+    if (argc < 4) {
+        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
+
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        if (rz_cons_yesno (
+                'y',
+                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
+            )) {
+            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+        }
+    }
+
+    // Parse command line arguments
+    CString function_name     = argv[1];
+    Uint32  min_similarity    = (Uint32)rz_num_math (core->num, argv[2]);
+    Uint32  max_results_count = (Uint32)rz_num_math (core->num, argv[3]);
+    CString collections_csv   = argv[4];
+
+    // clamp value between 0 and 100
+    min_similarity = min_similarity < 100 ? min_similarity : 100;
+
+    if (!reai_plugin_search_and_show_similar_functions (
+            core,
+            function_name,
+            max_results_count,
+            min_similarity,
+            true, // Restrict symbol suggestions to debug symbols only
+            collections_csv
+        )) {
+        DISPLAY_ERROR ("Failed to get similar functions search result.");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    return RZ_CMD_STATUS_OK;
+}
+
 
 RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);

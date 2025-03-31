@@ -14,6 +14,7 @@
 #include <QSlider>
 #include <QTableWidget>
 #include <QCheckBox>
+#include <QSpinBox>
 #include <QVBoxLayout>
 
 /* rizin */
@@ -33,7 +34,8 @@ class FunctionSimilarityDialog : public QDialog {
 
    private:
     QVBoxLayout* mainLayout;
-    QLineEdit *  searchBarInput, *maxResultsInput;
+    QLineEdit *  searchBarInput, *collectionNamesInput;
+    QSpinBox*    maxResultCountInput;
     QSlider*     similaritySlider;
     QCheckBox*   enableDebugFilterCheckBox;
     QCompleter*  fnNameCompleter;
