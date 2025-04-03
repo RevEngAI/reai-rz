@@ -99,6 +99,15 @@ extern "C" {
             reai_plugin_check_decompiler_status_running_at (RzCore* core, ut64 addr);
     CString reai_plugin_get_decompiled_code_at (RzCore* core, ut64 addr);
 
+    Bool reai_plugin_collection_search (
+        RzCore* core,
+        CString partial_collection_name,
+        CString partial_binary_name,
+        CString partial_binary_sha256,
+        CString model_name,
+        CString tags_csv
+    );
+
 #include "Override.h"
 
 // wrapper macros to make sure first call to any one of these

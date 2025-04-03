@@ -698,6 +698,187 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
     }
 }
 
+RZ_IPI RzCmdStatus rz_collection_search_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString partial_collection_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString partial_binary_name     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    CString partial_binary_sha256   = argv[3] && strlen (argv[3]) ? argv[3] : NULL;
+    CString model_name              = argv[4] && strlen (argv[4]) ? argv[4] : NULL;
+    CString tags_csv                = argv[5] && strlen (argv[5]) ? argv[5] : NULL;
+
+    if (reai_plugin_collection_search (
+            core,
+            partial_collection_name,
+            partial_binary_name,
+            partial_binary_sha256,
+            model_name,
+            tags_csv
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+
+    return RZ_CMD_STATUS_ERROR;
+}
+RZ_IPI RzCmdStatus
+    rz_collection_search_by_binary_name_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString partial_binary_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString model_name          = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    if (reai_plugin_collection_search (core, NULL, partial_binary_name, NULL, model_name, NULL)) {
+        return RZ_CMD_STATUS_OK;
+    }
+
+    return RZ_CMD_STATUS_ERROR;
+}
+RZ_IPI RzCmdStatus
+    rz_collection_search_by_collection_name_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString partial_collection_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString model_name              = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    if (reai_plugin_collection_search (
+            core,
+            partial_collection_name,
+            NULL,
+            NULL,
+            model_name,
+            NULL
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+
+    return RZ_CMD_STATUS_ERROR;
+}
+RZ_IPI RzCmdStatus
+    rz_collection_search_by_hash_value_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString partial_binary_sha256 = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString model_name            = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    if (reai_plugin_collection_search (core, NULL, NULL, partial_binary_sha256, model_name, NULL)) {
+        return RZ_CMD_STATUS_OK;
+    }
+
+    return RZ_CMD_STATUS_ERROR;
+}
+
+static RzCmdStatus collection_basic_info_ordered_by_order_in (
+    RzCore*                        core,
+    int                            argc,
+    const char**                   argv,
+    ReaiCollectionBasicInfoOrderBy order_by,
+    ReaiCollectionBasicInfoOrderIn order_in
+) {
+    UNUSED (core && argc && argv && order_by && order_in);
+    return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+    );
+}
+RZ_IPI RzCmdStatus
+    rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
+    return collection_basic_info_ordered_by_order_in (
+        core,
+        argc,
+        argv,
+        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
+        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+    );
+}
+
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc && argv);
 

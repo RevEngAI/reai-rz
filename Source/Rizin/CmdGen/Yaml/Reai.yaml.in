@@ -149,3 +149,6 @@ commands:
     cname: show_revengai_art
     summary: Show RevEng.AI ASCII art.
     args: []
+  - name: REc 
+    summary: RevEngAI Commands For Interacting With Collections 
+    subcommands: @SUBCOMMANDS_FILES_BASE@/Collections.yaml

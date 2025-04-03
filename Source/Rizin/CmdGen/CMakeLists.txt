@@ -23,8 +23,12 @@ set(CmdDescsReaiYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Reai.yaml.in")
 set(CmdDescsReaiYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Reai.yaml")
 configure_file(${CmdDescsReaiYamlIn} ${CmdDescsReaiYaml} @ONLY)
 
+set(CmdDescsCollectionsYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Collections.yaml.in")
+set(CmdDescsCollectionsYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Collections.yaml")
+configure_file(${CmdDescsCollectionsYamlIn} ${CmdDescsCollectionsYaml} @ONLY)
+
 set(CmdDescGenerator "${CMAKE_CURRENT_SOURCE_DIR}/Generators/CmdDescsGenerator.py")
-set(CmdDescYamlFiles "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Root.yaml" "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Reai.yaml")
+set(CmdDescYamlFiles ${CmdDescsReaiYaml} ${CmdDescsRootYaml} ${CmdDescsCollectionsYaml})
 set(CmdDescOutputFiles "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c" "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h")
 
 add_custom_command(
@@ -42,6 +46,7 @@ set_target_properties(
     PROPERTIES
     ADDITIONAL_CLEAN_FILES ${CmdDescsReaiYaml}
     ADDITIONAL_CLEAN_FILES ${CmdDescsRootYaml}
+    ADDITIONAL_CLEAN_FILES ${CmdDescsCollectionsYaml}
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c"
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h"
 )

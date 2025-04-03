@@ -543,6 +543,24 @@ Bool reai_plugin_save_config (CString host, CString api_key) {
     return true;
 }
 
+CStrVec *csv_to_vec (CString csv) {
+    CStrVec *v = NULL;
+    if (csv && strlen (csv)) {
+        RzList *list = rz_str_split_duplist (csv, ",", true);
+        v            = reai_cstr_vec_create();
+
+        RzListIter *it;
+        char       *cname;
+        rz_list_foreach (list, it, cname) {
+            CString n = cname;
+            reai_cstr_vec_append (v, &n);
+        }
+        rz_list_free (list);
+    }
+
+    return v;
+}
+
 /**
  * @b If a binary file is opened, then upload the binary file.
  *
@@ -1231,19 +1249,7 @@ Bool reai_plugin_search_and_show_similar_functions (
         return false;
     }
 
-    CStrVec *collections = NULL;
-    if (collections_csv && strlen (collections_csv)) {
-        RzList *list = rz_str_split_duplist (collections_csv, ",", true);
-        collections  = reai_cstr_vec_create();
-
-        RzListIter *it;
-        char       *cname;
-        rz_list_foreach (list, it, cname) {
-            CString n = cname;
-            reai_cstr_vec_append (collections, &n);
-        }
-        rz_list_free (list);
-    }
+    CStrVec *collections = csv_to_vec (collections_csv);
 
     Float32            maxDistance = 1.f - (min_similarity / 100.f);
     ReaiAnnFnMatchVec *fnMatches   = reai_batch_function_symbol_ann (
@@ -1491,4 +1497,72 @@ CString reai_plugin_get_decompiled_code_at (RzCore *core, ut64 addr) {
     }
 
     return NULL;
+}
+
+Bool reai_plugin_collection_search (
+    RzCore *core,
+    CString partial_collection_name,
+    CString partial_binary_name,
+    CString partial_binary_sha256,
+    CString model_name,
+    CString tags_csv
+) {
+    if (!core) {
+        APPEND_ERROR ("Invalid arguments");
+        return false;
+    }
+
+    CStrVec *tags = csv_to_vec (tags_csv);
+
+    ReaiCollectionSearchResultVec *results = reai_collection_search (
+        reai(),
+        reai_response(),
+        partial_collection_name,
+        partial_binary_name,
+        partial_binary_sha256,
+        tags,
+        model_name
+    );
+
+    if (tags) {
+        reai_cstr_vec_destroy (tags);
+    }
+
+    if (results) {
+        results = reai_collection_search_result_vec_clone_create (results);
+    } else {
+        return false;
+    }
+
+    ReaiPluginTable *t = reai_plugin_table_create();
+    reai_plugin_table_set_title (t, "Collections Search Results");
+    reai_plugin_table_set_columnsf (
+        t,
+        "snssss",
+        "name",
+        "id",
+        "scope",
+        "last updated",
+        "model",
+        "owner"
+    );
+
+    REAI_VEC_FOREACH (results, csr, {
+        reai_plugin_table_add_rowf (
+            t,
+            "snssss",
+            csr->collection_name,
+            csr->collection_name,
+            csr->scope,
+            csr->last_updated_at,
+            csr->model_name,
+            csr->owned_by
+        );
+    });
+
+    reai_plugin_table_show (t);
+    reai_plugin_table_destroy (t);
+    reai_collection_search_result_vec_destroy (results);
+
+    return true;
 }

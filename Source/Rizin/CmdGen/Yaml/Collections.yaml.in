@@ -1,0 +1,343 @@
+# SPDX-FileCopyrightText: 2025 Siddharth Mishra <admin@brightprogrammer.in>
+# SPDX-License-Identifier: All Rights Reserved.
+---
+name: @SUBCOMMANDS_FILES_BASE@/Collections.yaml 
+commands:
+  - name: REca
+    summary: Get information about collections, ordered in ascending order.
+    subcommands:
+      - name: REcat
+        summary: Get information about collections, ordered by creation time, in ascending order. 
+        cname: collection_basic_info_time_asc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcat rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcat miner otp"
+                comment: Search for collections with name miner, ordered by creation time, and are official only [o], team only [t] and public only [p]
+              - text: "REcat mirai u"
+                comment: user only [u] 
+              - text: "REcat bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcat mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcat mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcao
+        summary: Get information about collections, ordered by collection owner, in ascending order. 
+        cname: collection_basic_info_owner_asc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcao rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcao miner otp"
+                comment: Search for collections with name miner, ordered by collection owner, and are official only [o], team only [t] and public only [p]
+              - text: "REcao mirai u"
+                comment: user only [u] 
+              - text: "REcao bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcao mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcao mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcan
+        summary: Get information about collections, ordered by collection name, in ascending order. 
+        cname: collection_basic_info_name_asc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcan rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcan miner otp"
+                comment: Search for collections with name miner, ordered by collection name, and are official only [o], team only [t] and public only [p]
+              - text: "REcan mirai u"
+                comment: user only [u] 
+              - text: "REcan bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcan mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcan mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcam
+        summary: Get information about collections, ordered by model version, in ascending order. 
+        cname: collection_basic_info_model_asc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcam rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcam miner otp"
+                comment: Search for collections with name miner, ordered by model version, and are official only [o], team only [t] and public only [p]
+              - text: "REcam mirai u"
+                comment: user only [u] 
+              - text: "REcam bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcam mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcam mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcas
+        summary: Get information about collections, ordered by collection size, in ascending order. 
+        cname: collection_basic_info_size_asc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcas rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcas miner otp"
+                comment: Search for collections with name miner, ordered by collection size, and are official only [o], team only [t] and public only [p]
+              - text: "REcas mirai u"
+                comment: user only [u] 
+              - text: "REcas bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcas mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcas mysql"
+                comment: Search can be done without any filters as well! 
+  - name: REcd
+    summary: Get information about collections, ordered in descending order.
+    subcommands:
+      - name: REcdt
+        summary: Get information about collections, ordered by creation time, in descending order. 
+        cname: collection_basic_info_time_desc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcdt rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcdt miner otp"
+                comment: Search for collections with name miner, ordered by creation time, and are official only [o], team only [t] and public only [p]
+              - text: "REcdt mirai u"
+                comment: user only [u] 
+              - text: "REcdt bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcdt mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcdt mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcdo
+        summary: Get information about collections, ordered by collection owner, in descending order. 
+        cname: collection_basic_info_owner_desc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcdo rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcdo miner otp"
+                comment: Search for collections with name miner, ordered by collection owner, and are official only [o], team only [t] and public only [p]
+              - text: "REcdo mirai u"
+                comment: user only [u] 
+              - text: "REcdo bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcdo mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcdo mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcdn
+        summary: Get information about collections, ordered by collection name, in descending order. 
+        cname: collection_basic_info_name_desc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcdn rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcdn miner otp"
+                comment: Search for collections with name miner, ordered by collection name, and are official only [o], team only [t] and public only [p]
+              - text: "REcdn mirai u"
+                comment: user only [u] 
+              - text: "REcdn bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcdn mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcdn mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcdm
+        summary: Get information about collections, ordered by model version, in descending order. 
+        cname: collection_basic_info_model_desc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcdm rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcdm miner otp"
+                comment: Search for collections with name miner, ordered by model version, and are official only [o], team only [t] and public only [p]
+              - text: "REcdm mirai u"
+                comment: user only [u] 
+              - text: "REcdm bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcdm mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcdm mysql"
+                comment: Search can be done without any filters as well! 
+      - name: REcds
+        summary: Get information about collections, ordered by collection size, in descending order. 
+        cname: collection_basic_info_size_desc
+        args:
+          - name: search_term 
+            type: RZ_CMD_ARG_TYPE_STRING
+          - name: filter_flags
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+        details:
+          - name: Examples
+            entries:
+              - text: "REcds rat outp"
+                comment: In total four filters available. [o] - order, [u] - user and [t] - creation time, [p] - public. 
+              - text: "REcds miner otp"
+                comment: Search for collections with name miner, ordered by collection size, and are official only [o], team only [t] and public only [p]
+              - text: "REcds mirai u"
+                comment: user only [u] 
+              - text: "REcds bruteratel uo"
+                comment: user only [u], official only [o] 
+              - text: "REcds mysql utop"
+                comment: Order of filter flags can change without changing the search results 
+              - text: "REcds mysql"
+                comment: Search can be done without any filters as well! 
+  - name: REcs
+    summary: Perform a collection search through either partial collection name, binary name or sha256 hash of binary.
+    subcommands:
+    - name: REcs
+      summary: Perform a collection search through either partial collection name, binary name or sha256 hash of binary.
+      cname: collection_search
+      args:
+        - name: partial_collection_name
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+        - name: partial_binary_name 
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+        - name: partial_binary_sha256
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+        - name: model_name 
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+        - name: tags 
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+      details:
+        - name: Examples
+          entries:
+            - text: REcs gafgyt 
+              comment: Perform collection search using a partial collection name  
+            - text: REcs "" xmrig
+              comment: Perform collection search using a partial binary name 
+            - text: REcs "" "" 79a5c74f
+              comment: Perform collection search using a partial SHA256 hash
+            - text: REcs xmrig xmrig 79a5c74f
+              comment: Can combine all search parameters at the same time as well
+            - text: REcs xmrig "" 79a5c74f binnet-0.5-x86-linux
+              comment: Can provide model name as well to narrow down to latest model version 
+    - name: REcsc
+      summary: Perform a collection search through partial collection name only.
+      cname: collection_search_by_collection_name
+      args:
+        - name: partial_collection_name
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+        - name: model_name 
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+      details:
+        - name: Examples
+          entries:
+            - text: REcsc gafgyt 
+              comment: Perform collection search using a partial collection name  
+            - text: REcsc xmrig binnet-0.5-x86-linux
+              comment: Can provide model name as well to narrow down to latest model version 
+            - text: REcsc xmrig binnet-0.4-x86-linux
+              comment: Or to an older model version. If you have an older analysis incompatible with latest versions
+    - name: REcsb
+      summary: Perform a collection search through partial binary name only.
+      cname: collection_search_by_binary_name
+      args:
+        - name: partial_binary_name
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+        - name: model_name 
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+      details:
+        - name: Examples
+          entries:
+            - text: REcsb miner 
+              comment: Perform collection search using a partial binary name  
+            - text: REcsb xmrig binnet-0.5-x86-linux
+              comment: Can provide model name as well to narrow down to latest model version 
+            - text: REcsb xmrig binnet-0.4-x86-linux
+              comment: Or to an older model version. If you have an older analysis incompatible with latest versions
+    - name: REcsh
+      summary: Perform a collection search through partial SHA256 hash only.
+      cname: collection_search_by_hash_value
+      args:
+        - name: partial_binary_sha256
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+        - name: model_name 
+          type: RZ_CMD_ARG_TYPE_STRING
+          default_value: ""
+      details:
+        - name: Examples
+          entries:
+            - text: REcsh 0a569366eee 
+              comment: Perform collection search using a partial SHA256 hash 
+            - text: REcsh 79a5c74f binnet-0.5-x86-linux
+              comment: Can provide model name as well to narrow down to latest model version 
+            - text: REcsh 79a5c74f binnet-0.4-x86-linux
+              comment: Or to an older model version. If you have an older analysis incompatible with latest versions
