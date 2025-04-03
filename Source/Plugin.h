@@ -108,6 +108,14 @@ extern "C" {
         CString tags_csv
     );
 
+    Bool reai_plugin_collection_basic_info (
+        RzCore*                            core,
+        CString                            search_term,
+        ReaiCollectionBasicInfoFilterFlags filter_flags,
+        ReaiCollectionBasicInfoOrderBy     order_by,
+        ReaiCollectionBasicInfoOrderIn     order_in
+    );
+
 #include "Override.h"
 
 // wrapper macros to make sure first call to any one of these

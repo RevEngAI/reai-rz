@@ -767,116 +767,269 @@ RZ_IPI RzCmdStatus
     return RZ_CMD_STATUS_ERROR;
 }
 
-static RzCmdStatus collection_basic_info_ordered_by_order_in (
-    RzCore*                        core,
-    int                            argc,
-    const char**                   argv,
-    ReaiCollectionBasicInfoOrderBy order_by,
-    ReaiCollectionBasicInfoOrderIn order_in
-) {
-    UNUSED (core && argc && argv && order_by && order_in);
-    return RZ_CMD_STATUS_OK;
+static Bool str_to_filter_flags (CString filters, ReaiCollectionBasicInfoFilterFlags* flags) {
+    if (!filters || !flags) {
+        return false;
+    }
+
+    while (*filters) {
+        switch (*filters) {
+            case 'o' :
+                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_OFFICIAL;
+                break;
+            case 'u' :
+                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_PUBLIC;
+                break;
+            case 't' :
+                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_TEAM;
+                break;
+            case 'p' :
+                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_PUBLIC;
+                break;
+            default :
+                APPEND_ERROR (
+                    "Invalid filter flag '%c'.\nAvailable flags are [o] - official, [u] - user, "
+                    "[t] - team, [p] - public only",
+                    *filters
+                );
+                return false;
+                break;
+        }
+        filters++;
+    }
+
+    return true;
 }
 
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
-    return collection_basic_info_ordered_by_order_in (
-        core,
-        argc,
-        argv,
-        REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-        REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
-    );
+    UNUSED (argc);
+    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
+    if (!str_to_filter_flags (filters, &filter_flags)) {
+        APPEND_ERROR ("Failed to understand provided filter flags");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    if (reai_plugin_collection_basic_info (
+            core,
+            search_term,
+            filter_flags,
+            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
+            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+        )) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
 }
 
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
@@ -923,7 +1076,7 @@ RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const c
         "::    :::::::    :::::    ::::          %%%%%      %%%%%       %%%%%%%%%         %%%%%%%  "
         "      %%%%%%%%%%%%%%    %%%%%     %%%%%@   %%%%%%%%%%%%%%%%    @@@    @@@   @@@@ "
         "@@@@@@@@\n"
-        "::::::::::::      ::::::::::::                                                            "
+        ":.::::::::::      ::::::::::::                                                            "
         "                                          %%%%        %%%%%                             \n"
         ":::::::::::        :::::::::::                                                            "
         "                                          %%%%%%%%%%%%%%%%%                             \n"
