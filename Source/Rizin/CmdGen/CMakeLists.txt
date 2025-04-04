@@ -15,6 +15,8 @@ endif()
 # Generate Root.yaml with corrected file paths.
 set(SUBCOMMANDS_FILES_BASE "${CMAKE_CURRENT_SOURCE_DIR}/Yaml")
 
+
+# Provide files IN and OUT that are to be configured by CMake
 set(CmdDescsRootYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Root.yaml.in")
 set(CmdDescsRootYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Root.yaml")
 configure_file(${CmdDescsRootYamlIn} ${CmdDescsRootYaml} @ONLY)
@@ -27,8 +29,14 @@ set(CmdDescsCollectionsYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Collections.yaml
 set(CmdDescsCollectionsYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Collections.yaml")
 configure_file(${CmdDescsCollectionsYamlIn} ${CmdDescsCollectionsYaml} @ONLY)
 
+set(CmdDescsFunctionsYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Functions.yaml.in")
+set(CmdDescsFunctionsYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Functions.yaml")
+configure_file(${CmdDescsFunctionsYamlIn} ${CmdDescsFunctionsYaml} @ONLY)
+
+
+# Pass generated files to command descriptor code generator.
 set(CmdDescGenerator "${CMAKE_CURRENT_SOURCE_DIR}/Generators/CmdDescsGenerator.py")
-set(CmdDescYamlFiles ${CmdDescsReaiYaml} ${CmdDescsRootYaml} ${CmdDescsCollectionsYaml})
+set(CmdDescYamlFiles ${CmdDescsReaiYaml} ${CmdDescsRootYaml} ${CmdDescsCollectionsYaml} ${CmdDescsFunctionsYaml})
 set(CmdDescOutputFiles "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c" "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h")
 
 add_custom_command(
@@ -38,6 +46,8 @@ add_custom_command(
     COMMENT "Generating CmdDescs.c and CmdDescs.h"
 )
 
+
+# Make the code generated available as library
 add_library(reai_cmdescs ${CmdDescOutputFiles})
 target_link_libraries(reai_cmdescs PUBLIC Rizin::Core)
 target_include_directories(reai_cmdescs PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../..)

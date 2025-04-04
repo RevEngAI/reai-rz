@@ -31,6 +31,7 @@
 /* plugin includes */
 #include <Plugin.h>
 #include <Table.h>
+#include <stdlib.h>
 
 /**
  * NOTE: This is a background worker. Must not be used directly.
@@ -544,7 +545,7 @@ Bool reai_plugin_save_config (CString host, CString api_key) {
     return true;
 }
 
-CStrVec *csv_to_vec (CString csv) {
+CStrVec *csv_to_cstr_vec (CString csv) {
     CStrVec *v = NULL;
     if (csv && strlen (csv)) {
         RzList *list = rz_str_split_duplist (csv, ",", true);
@@ -555,6 +556,24 @@ CStrVec *csv_to_vec (CString csv) {
         rz_list_foreach (list, it, cname) {
             CString n = cname;
             reai_cstr_vec_append (v, &n);
+        }
+        rz_list_free (list);
+    }
+
+    return v;
+}
+
+U64Vec *csv_to_u64_vec (CString csv) {
+    U64Vec *v = NULL;
+    if (csv && strlen (csv)) {
+        RzList *list = rz_str_split_duplist (csv, ",", true);
+        v            = reai_u64_vec_create();
+
+        RzListIter *it;
+        char       *cname;
+        rz_list_foreach (list, it, cname) {
+            Uint64 n = strtoull (cname, NULL, 10);
+            reai_u64_vec_append (v, &n);
         }
         rz_list_free (list);
     }
@@ -1174,7 +1193,8 @@ Bool reai_plugin_search_and_show_similar_functions (
     Size    max_results_count,
     Int32   min_similarity,
     Bool    debug_filter,
-    CString collections_csv
+    CString collection_ids_csv,
+    CString binary_ids_csv
 ) {
     if (!core) {
         APPEND_ERROR ("Invalid Rizin core porivded. Cannot perform similarity search.");
@@ -1250,22 +1270,27 @@ Bool reai_plugin_search_and_show_similar_functions (
         return false;
     }
 
-    CStrVec *collections = csv_to_vec (collections_csv);
+    U64Vec *collection_ids = csv_to_u64_vec (collection_ids_csv);
+    U64Vec *binary_ids     = csv_to_u64_vec (binary_ids_csv);
 
-    Float32            maxDistance = 1.f - (min_similarity / 100.f);
-    ReaiAnnFnMatchVec *fnMatches   = reai_batch_function_symbol_ann (
+    Float32           maxDistance = 1.f - (min_similarity / 100.f);
+    ReaiSimilarFnVec *fnMatches   = reai_get_similar_functions (
         reai(),
         reai_response(),
         fn_id,
-        NULL, // speculative fn ids
         max_results_count,
         maxDistance,
-        collections,
-        debug_filter
+        collection_ids,
+        debug_filter,
+        binary_ids
     );
 
-    if (collections) {
-        reai_cstr_vec_destroy (collections);
+    if (collection_ids) {
+        reai_u64_vec_destroy (collection_ids);
+    }
+
+    if (binary_ids) {
+        reai_u64_vec_destroy (binary_ids);
     }
 
     if (fnMatches && fnMatches->count) {
@@ -1273,30 +1298,24 @@ Bool reai_plugin_search_and_show_similar_functions (
         ReaiPluginTable *table = reai_plugin_table_create();
         reai_plugin_table_set_columnsf (
             table,
-            "snns",
+            "snsnn",
             "Function Name",
-            "Similarity",
             "Function ID",
-            "Binary Name"
+            "Binary Name",
+            "Binary ID",
+            "Similarity"
         );
         reai_plugin_table_set_title (table, "Function Similarity Search Results");
 
         REAI_VEC_FOREACH (fnMatches, fnMatch, {
             reai_plugin_table_add_rowf (
                 table,
-                "sfns",
-                fnMatch->nn_function_name,
-                fnMatch->confidence, // named confidence in API but is actually similarity
-                fnMatch->nn_function_id,
-                fnMatch->nn_binary_name
-            );
-            REAI_LOG_TRACE (
-                "Similarity Search Suggestion = (.name = \"%s\", .similarity = \"%lf\", "
-                ".function_id = \"%llu\", .binary_name = \"%s\")",
-                fnMatch->nn_function_name,
-                fnMatch->confidence, // named confidence in API but is actually similarity
-                fnMatch->nn_function_id,
-                fnMatch->nn_binary_name
+                "snsnf",
+                fnMatch->function_name,
+                fnMatch->function_id,
+                fnMatch->binary_name,
+                fnMatch->binary_id,
+                (1 - fnMatch->distance) * 100
             );
         });
 
@@ -1513,7 +1532,7 @@ Bool reai_plugin_collection_search (
         return false;
     }
 
-    CStrVec *tags = csv_to_vec (tags_csv);
+    CStrVec *tags = csv_to_cstr_vec (tags_csv);
 
     ReaiCollectionSearchResultVec *results = reai_collection_search (
         reai(),
@@ -1654,17 +1673,28 @@ Bool reai_plugin_collection_basic_info (
 
     ReaiPluginTable *t = reai_plugin_table_create();
     reai_plugin_table_set_title (t, title);
-    reai_plugin_table_set_columnsf (t, "snsnss", "name", "id", "scope", "size", "model", "owner");
+    reai_plugin_table_set_columnsf (
+        t,
+        "snsnsss",
+        "name",
+        "id",
+        "scope",
+        "size",
+        "model",
+        "description",
+        "owner"
+    );
 
     REAI_VEC_FOREACH (basic_info_vec, csr, {
         reai_plugin_table_add_rowf (
             t,
-            "snsnss",
+            "snsnsss",
             csr->collection_name,
             csr->collection_id,
             csr->collection_scope,
             csr->collection_size,
             csr->model_name,
+            csr->description,
             csr->collection_owner
         );
     });

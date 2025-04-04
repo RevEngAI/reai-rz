@@ -74,70 +74,6 @@ commands:
             comment: "Apply analysis corresponding to bianry id 18700"
           - text: "REap 18700 0x2000"
             comment: "Instead of using default base address, use 0x2000 as base address"
-  - name: REfl
-    cname: get_basic_function_info
-    summary: Get & show basic function info for selected binary.
-    modes:
-      - RZ_OUTPUT_MODE_STANDARD
-    args: []
-  - name: REfr
-    cname: rename_function
-    summary: Rename function with given function id to given name.
-    args:
-      - name: old_name 
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-      - name: new_name
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-    details:
-      - name: Examples
-        entries:
-          - text: "REfr 0xf9da fopen"
-            comment: "Rename function at 0xf9da to fopen"
-  - name: REfs
-    cname: function_similarity_search
-    summary: RevEng.AI ANN functions similarity search.
-    args:
-      - name: function_name
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-      - name: min_similarity
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 95
-      - name: max_results
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 20
-      - name: collections
-        type: RZ_CMD_ARG_TYPE_STRING
-        default_value: ""
-    details:
-      - name: Function Name
-        entries:
-          - text: "REfs sym.main"
-            comment: "Search similar function for sym.main function with minimum similarity of 90%"
-          - text: "REfs __memcmp 95"
-            comment: "Search similar function for __memcmp, with minimum 95% similarity"
-          - text: "REfs postHandleCall 72 10"
-            comment: "Max 10 results"
-          - text: 'REfs fcn.8086.xmrig-0ddf8e62 80 10 "CoinMiner, xmrminer, biminer"'
-            comment: "Search only in provided list of comma separated collection names"
-  - name: REfsd
-    cname: function_similarity_search_debug
-    summary: RevEng.AI ANN functions similarity search. Suggestions restricted to debug symbols only.
-    args:
-      - name: function_name
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-      - name: min_similarity
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 95
-      - name: max_results
-        type: RZ_CMD_ARG_TYPE_NUM
-        default_value: 20
-      - name: collections
-        type: RZ_CMD_ARG_TYPE_STRING
-        default_value: ""
   - name: REd
     cname: ai_decompile
     summary: Decompile given function using RevEngAI's AI Decompiler
@@ -150,5 +86,8 @@ commands:
     summary: Show RevEng.AI ASCII art.
     args: []
   - name: REc 
-    summary: RevEngAI Commands For Interacting With Collections 
+    summary: RevEngAI commands for interacting with collections 
     subcommands: @SUBCOMMANDS_FILES_BASE@/Collections.yaml
+  - name: REf 
+    summary: RevEngAI commands for interacting with functions 
+    subcommands: @SUBCOMMANDS_FILES_BASE@/Functions.yaml

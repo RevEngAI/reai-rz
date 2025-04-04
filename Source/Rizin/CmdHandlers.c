@@ -488,10 +488,11 @@ RZ_IPI RzCmdStatus
     }
 
     // Parse command line arguments
-    CString function_name     = argv[1];
-    Uint32  min_similarity    = (Uint32)rz_num_math (core->num, argv[2]);
-    Uint32  max_results_count = (Uint32)rz_num_math (core->num, argv[3]);
-    CString collections_csv   = argv[4];
+    CString function_name      = argv[1];
+    Uint32  min_similarity     = (Uint32)rz_num_math (core->num, argv[2]);
+    Uint32  max_results_count  = (Uint32)rz_num_math (core->num, argv[3]);
+    CString collection_ids_csv = argv[4];
+    CString binary_ids_csv     = argv[5];
 
     // clamp value between 0 and 100
     min_similarity = min_similarity < 100 ? min_similarity : 100;
@@ -502,7 +503,8 @@ RZ_IPI RzCmdStatus
             max_results_count,
             min_similarity,
             false, // Don't restrict suggestions to debug symbols only.
-            collections_csv
+            collection_ids_csv,
+            binary_ids_csv
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
         return RZ_CMD_STATUS_ERROR;
@@ -524,6 +526,9 @@ RZ_IPI RzCmdStatus
     }
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    // TODO: make this a config setting
+    // This can be set to y/n in config. If set to y then we'll try to perform rizin analysis automatically,
+    // otherwise just inform the user about the issue and report a failure in command execution
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
         if (rz_cons_yesno (
                 'y',
@@ -534,10 +539,15 @@ RZ_IPI RzCmdStatus
     }
 
     // Parse command line arguments
-    CString function_name     = argv[1];
-    Uint32  min_similarity    = (Uint32)rz_num_math (core->num, argv[2]);
-    Uint32  max_results_count = (Uint32)rz_num_math (core->num, argv[3]);
-    CString collections_csv   = argv[4];
+    CString function_name      = argv[1];
+    Uint32  min_similarity     = (Uint32)rz_num_math (core->num, argv[2]);
+    Uint32  max_results_count  = (Uint32)rz_num_math (core->num, argv[3]);
+    CString collection_ids_csv = argv[4];
+    CString binary_ids_csv     = argv[5];
+
+    // TODO: keep an LRU of binary and collection ids
+    // No need to allow the user to reset the recently used collection and binary ids, just provide an
+    // option to show it through a command.
 
     // clamp value between 0 and 100
     min_similarity = min_similarity < 100 ? min_similarity : 100;
@@ -547,8 +557,9 @@ RZ_IPI RzCmdStatus
             function_name,
             max_results_count,
             min_similarity,
-            true, // Restrict symbol suggestions to debug symbols only
-            collections_csv
+            true, // Restrict suggestions to debug symbols only.
+            collection_ids_csv,
+            binary_ids_csv
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
         return RZ_CMD_STATUS_ERROR;

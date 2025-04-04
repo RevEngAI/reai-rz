@@ -85,7 +85,8 @@ extern "C" {
         Size    max_results,
         Int32   confidence,
         Bool    debug_mode,
-        CString collections_csv
+        CString collection_ids_csv,
+        CString binary_ids_csv
     );
 
     RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
