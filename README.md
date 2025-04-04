@@ -6,9 +6,6 @@ RevEng.AI plugins for Rizin & Cutter.
 
 ### Docker
 
-Don't want to go through all the manual hassle? We have a dockerfile as well.
-Just do :
-
 ```bash
 git clone https://github.com/revengai/reai-rz &&
 cd reai-rz && docker build --build-arg REVENG_APIKEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t reai-rz . &&
