@@ -6,23 +6,24 @@ RevEng.AI plugins for Rizin & Cutter.
 
 ### Docker
 
+Build with:
+
 ```bash
 git clone https://github.com/revengai/reai-rz &&
-cd reai-rz && docker build --build-arg REVENG_APIKEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t reai-rz . &&
+cd reai-rz && git submodule update --init --recursive &&
+docker build --build-arg REVENG_APIKEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t reai-rz .
+```
+
+Then run rizin with the following command:
+```bash
 docker run -v {file}:/home/revengai/ -it reai-rz {file}
 ```
 
-This will get you a working installation of the rizin plugin in a single command!
+Notes:
 
-- Store the files you want to access into `/tmp/userdata` directory of host,
-  and access these files through `~/userdata` inside the docker container.
-
-- Make sure to put correct value for `REVENG_APIKEY` build arg. You can also change it after installing
-  though, through directly editing config file, or using the `REi` command inside the plugin.
-  You can also set an offline or custom host by setting the `REVENG_HOST` variable.
-
-- This will do a clean build always to make sure you get latest commits of all RevEngAI maintained
-  repos. If you don't want to do that, just remove the `--no-cache` flag passed to `docker build ...`
+- Make sure to put correct value for `REVENG_APIKEY` build arg. You can also change it after installing by
+  directly editing the guest config file, or using the `REi` command inside the plugin. Your API key can be found under account settings in the Web Portal.
+- You can also use an offline installation or custom host by setting the `REVENG_HOST` variable. 
 
 ### Manual
 
@@ -116,19 +117,18 @@ After installing rizin plugin, you'll see the following commands listed when you
 `RE?` command in rizin shell.
 
 ```sh
-Usage: RE<imhua?>   # RevEngAI Plugin Commands
-| REi XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX # Initialize plugin config.
+Usage: RE<?>   # RevEngAI Plugin Commands
+| REi <api_key>=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX # Initialize plugin config.
 | REm                     # Get all available models for analysis.
 | REh                     # Check connection status with RevEngAI servers.
-| REu                     # Upload currently loaded binary to RevEngAI servers.
 | REa <prog_name> <cmd_line_args> <ai_model> # Upload and analyse currently loaded binary
 | REau[?] <min_similarity>=90 # Auto analyze binary functions using ANN and perform batch rename.
-| REap <bin_id>           # Apply already existing RevEng.AI analysis to this binary.
-| REd  <fn_name>          # Perform AI Decompilation
-| REfl[?]                 # Get & show basic function info for selected binary.
-| REfr <old_name> <new_name> # Rename function with given function id to given name.
-| REfs <function_name> <min_similarity>=95 # RevEng.AI ANN functions similarity search.
+| REap <bin_id> [<base_addr>] # Apply already existing RevEng.AI analysis to this binary.
+| REd <function_name>     # Decompile given function using RevEngAI's AI Decompiler
 | REart                   # Show RevEng.AI ASCII art.
+| REc<ads>                # RevEngAI commands for interacting with collections
+| REf<lrs?>               # RevEngAI commands for interacting with functions
+[0x00000000]>
 ```
 
 ### `REh` : Health Check
