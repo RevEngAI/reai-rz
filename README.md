@@ -11,8 +11,8 @@ Just do :
 
 ```bash
 git clone https://github.com/revengai/reai-rz &&
-cd reai-rz && docker build --no-cache --build-arg apikey=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t reai-rz . &&
-docker run -v /tmp/userdata:/home/revengai/userdata -it reai-rz
+cd reai-rz && docker build --build-arg REVENG_APIKEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t reai-rz . &&
+docker run -v {file}:/home/revengai/ -it reai-rz {file}
 ```
 
 This will get you a working installation of the rizin plugin in a single command!
@@ -20,8 +20,9 @@ This will get you a working installation of the rizin plugin in a single command
 - Store the files you want to access into `/tmp/userdata` directory of host,
   and access these files through `~/userdata` inside the docker container.
 
-- Make sure to put correct value for `apikey` build arg. You can also change it after installing
+- Make sure to put correct value for `REVENG_APIKEY` build arg. You can also change it after installing
   though, through directly editing config file, or using the `REi` command inside the plugin.
+  You can also set an offline or custom host by setting the `REVENG_HOST` variable.
 
 - This will do a clean build always to make sure you get latest commits of all RevEngAI maintained
   repos. If you don't want to do that, just remove the `--no-cache` flag passed to `docker build ...`
