@@ -1659,7 +1659,7 @@ Bool reai_plugin_collection_basic_info (
     REAI_VEC_FOREACH (basic_info_vec, csr, {
         reai_plugin_table_add_rowf (
             t,
-            "snssss",
+            "snsnss",
             csr->collection_name,
             csr->collection_id,
             csr->collection_scope,

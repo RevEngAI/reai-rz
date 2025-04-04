@@ -768,8 +768,12 @@ RZ_IPI RzCmdStatus
 }
 
 static Bool str_to_filter_flags (CString filters, ReaiCollectionBasicInfoFilterFlags* flags) {
-    if (!filters || !flags) {
+    if (!flags) {
         return false;
+    }
+
+    if (!filters) {
+        return true;
     }
 
     while (*filters) {
