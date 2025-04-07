@@ -10,42 +10,34 @@ execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import yaml" RESULT_VARIABLE
 # if return code is not zero
 if(${PY_YAML_FOUND})
     message(FATAL_ERROR "PyYaml is a required dependency for generating command descriptions. Please install PyYaml.")
+    message(FATAL_ERROR "PyYaml is used only to generate commands. It can be installed in a dedicated python virtual environment, and used from there.")
+    message(FATAL_ERROR "The plugin does not require PyYaml, once the build is complete, and you don't wish to rebuild it in near future.")
 endif()
 
 # Generate Root.yaml with corrected file paths.
 set(SUBCOMMANDS_FILES_BASE "${CMAKE_CURRENT_SOURCE_DIR}/Yaml")
 
-
-# Provide files IN and OUT that are to be configured by CMake
-set(CmdDescsRootYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Root.yaml.in")
-set(CmdDescsRootYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Root.yaml")
-configure_file(${CmdDescsRootYamlIn} ${CmdDescsRootYaml} @ONLY)
-
-set(CmdDescsReaiYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Reai.yaml.in")
-set(CmdDescsReaiYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Reai.yaml")
-configure_file(${CmdDescsReaiYamlIn} ${CmdDescsReaiYaml} @ONLY)
-
-set(CmdDescsCollectionsYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Collections.yaml.in")
-set(CmdDescsCollectionsYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Collections.yaml")
-configure_file(${CmdDescsCollectionsYamlIn} ${CmdDescsCollectionsYaml} @ONLY)
-
-set(CmdDescsFunctionsYamlIn "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/Functions.yaml.in")
-set(CmdDescsFunctionsYaml "${CMAKE_CURRENT_BINARY_DIR}/Yaml/Functions.yaml")
-configure_file(${CmdDescsFunctionsYamlIn} ${CmdDescsFunctionsYaml} @ONLY)
-
-
-# Pass generated files to command descriptor code generator.
+# Generator code and it's generated code
 set(CmdDescGenerator "${CMAKE_CURRENT_SOURCE_DIR}/Generators/CmdDescsGenerator.py")
-set(CmdDescYamlFiles ${CmdDescsReaiYaml} ${CmdDescsRootYaml} ${CmdDescsCollectionsYaml} ${CmdDescsFunctionsYaml})
 set(CmdDescOutputFiles "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c" "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h")
 
+# Provide files IN and OUT that are to be configured by CMake
+set(YAML_FILES Root Reai Collections Functions Analysis)
+set(CmdDescYamlFiles "")
+foreach(name IN LISTS YAML_FILES)
+    set(infile "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/${name}.yaml.in")
+    set(outfile "${CMAKE_CURRENT_BINARY_DIR}/Yaml/${name}.yaml")
+    configure_file(${infile} ${outfile} @ONLY)
+    list(APPEND CmdDescYamlFiles ${outfile})
+endforeach()
+
+# Generate command descriptor code for Rizin plugin
 add_custom_command(
     OUTPUT ${CmdDescOutputFiles}
     COMMAND "${Python3_EXECUTABLE}" ${CmdDescGenerator} --output-dir ${CMAKE_CURRENT_BINARY_DIR} --src-output-dir ${CMAKE_CURRENT_BINARY_DIR} ${CmdDescYamlFiles}
     DEPENDS ${CmdDescYamlFiles}
     COMMENT "Generating CmdDescs.c and CmdDescs.h"
 )
-
 
 # Make the code generated available as library
 add_library(reai_cmdescs ${CmdDescOutputFiles})
@@ -54,9 +46,7 @@ target_include_directories(reai_cmdescs PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../..
 set_target_properties(
     reai_cmdescs
     PROPERTIES
-    ADDITIONAL_CLEAN_FILES ${CmdDescsReaiYaml}
-    ADDITIONAL_CLEAN_FILES ${CmdDescsRootYaml}
-    ADDITIONAL_CLEAN_FILES ${CmdDescsCollectionsYaml}
+    ADDITIONAL_CLEAN_FILES ${CmdDescYamlFiles}
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c"
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h"
 )

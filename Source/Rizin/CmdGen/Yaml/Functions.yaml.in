@@ -7,8 +7,6 @@ commands:
   - name: REfl
     cname: get_basic_function_info
     summary: Get & show basic function info for selected binary.
-    modes:
-      - RZ_OUTPUT_MODE_STANDARD
     args: []
   - name: REfr
     cname: rename_function

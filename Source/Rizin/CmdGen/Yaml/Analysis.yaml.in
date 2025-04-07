@@ -1,0 +1,87 @@
+
+# SPDX-FileCopyrightText: 2025 Siddharth Mishra <admin@brightprogrammer.in>
+# SPDX-License-Identifier: All Rights Reserved.
+---
+name: @SUBCOMMANDS_FILES_BASE@/Analysis.yaml 
+commands:
+  - name: REac
+    cname: create_analysis_private
+    summary: Create a PRIVATE RevEngAI analysis for currently opened binary
+    args:
+      - name: prog_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: cmd_line_args
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: ai_model
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+    details:
+      - name: Examples
+        entries:
+          - text: REac ffmpeg "-i input.mp4 -c:v gif output.gif" binnet-0.5-x86-linux
+            comment: "Create analysis for ffmpeg program with given command line arguments."
+  - name: REacp
+    cname: create_analysis_public
+    summary: Create a PUBLIC RevEngAI analysis for currently opened binary
+    args:
+      - name: prog_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: cmd_line_args
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: ai_model
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+    details:
+      - name: Examples
+        entries:
+          - text: REacp ffmpeg "-i input.mp4 -c:v gif output.gif" binnet-0.5-x86-linux
+            comment: "Create analysis for ffmpeg program with given command line arguments."
+  - name: REau
+    cname: ann_auto_analyze
+    summary: Auto analyze binary functions using ANN and perform batch rename.
+    args:
+      - name: min_similarity
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 90
+    details:
+      - name: Examples
+        entries:
+          - text: "REau"
+            comment: "Apply auto analysis to this binary with 90% min similarity"
+          - text: "REau 85"
+            comment: "Min 85% similairty"
+  - name: REaud
+    cname: ann_auto_analyze_restrict_debug
+    summary: Auto analyze binary functions using ANN and perform batch rename. Restrict renamed symbols to debug names only.
+    args:
+      - name: min_similarity
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 90
+    details:
+      - name: Examples
+        entries:
+          - text: "REau"
+            comment: "Apply auto analysis to this binary with 90% min similarity"
+          - text: "REau 85"
+            comment: "Min 85% similairty"
+  - name: REap
+    cname: apply_existing_analysis 
+    summary: Apply already existing RevEng.AI analysis to this binary.
+    args:
+      - name: bin_id
+        type: RZ_CMD_ARG_TYPE_NUM
+        optional: false
+      - name: base_addr
+        type: RZ_CMD_ARG_TYPE_NUM
+        optional: true
+    details:
+      - name: Examples 
+        entries:
+          - text: "REap 18700"
+            comment: "Apply analysis corresponding to bianry id 18700"
+          - text: "REap 18700 0x2000"
+            comment: "Instead of using default base address, use 0x2000 as base address"

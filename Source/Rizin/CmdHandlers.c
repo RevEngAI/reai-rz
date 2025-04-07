@@ -105,26 +105,16 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
 }
 
 /**
- * "REa"
- *
- * NOTE: The default way to get ai model would be to use "REm" command.
- *       Get list of all available AI models and then use one to create a new analysis.
+ * "REac"
  * */
-RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const char** argv) {
+RZ_IPI RzCmdStatus rz_create_analysis_private_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc && argv);
     REAI_LOG_TRACE ("[CMD] create analysis");
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
-
-    Bool is_private = rz_cons_yesno ('y', "Create private analysis? [Y/n]");
 
     CString prog_name    = argv[1];
     CString cmdline_args = argv[2];
@@ -135,7 +125,39 @@ RZ_IPI RzCmdStatus rz_create_analysis_handler (RzCore* core, int argc, const cha
             prog_name,
             cmdline_args,
             ai_model,
-            is_private
+            true // private analysis
+        )) {
+        DISPLAY_INFO ("Analysis created sucessfully");
+        return RZ_CMD_STATUS_OK;
+    }
+
+    DISPLAY_ERROR ("Failed to create analysis");
+
+    return RZ_CMD_STATUS_ERROR;
+}
+
+/**
+ * "REacp"
+ * */
+RZ_IPI RzCmdStatus rz_create_analysis_public_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc && argv);
+    REAI_LOG_TRACE ("[CMD] create analysis");
+
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+    }
+
+    CString prog_name    = argv[1];
+    CString cmdline_args = argv[2];
+    CString ai_model     = argv[3];
+
+    if (reai_plugin_create_analysis_for_opened_binary_file (
+            core,
+            prog_name,
+            cmdline_args,
+            ai_model,
+            false // public analysis
         )) {
         DISPLAY_INFO ("Analysis created sucessfully");
         return RZ_CMD_STATUS_OK;
@@ -154,12 +176,7 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
     ReaiBinaryId binary_id            = rz_num_get (core->num, argv[1]); // binary id
@@ -182,27 +199,14 @@ RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, c
 
 /**
  * REau
- *
- * @b Perform a Batch Symbol ANN request with current binary ID and
- *    automatically rename all methods.
  * */
-RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
-    RzCore*      core,
-    int          argc,
-    const char** argv,
-    RzOutputMode output_mode
-) {
-    UNUSED (output_mode && argc);
+RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
     REAI_LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
     // NOTE: this is static here. I don't think it's a good command line option to have
@@ -213,15 +217,55 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
     Uint32 min_similarity = rz_num_get (core->num, argv[1]);
     min_similarity        = min_similarity > 100 ? 100 : min_similarity;
 
-    Bool debug_mode = rz_cons_yesno ('y', "Restrict suggestions to debug symbols? [Y/n]");
 
     if (reai_plugin_auto_analyze_opened_binary_file (
             core,
             max_results_per_function,
             min_similarity / 100.f,
-            debug_mode
+            false // no restrictions on debug or non-debug for symbol suggestions
         )) {
-        DISPLAY_INFO ("Auto-analysis completed successfully.");
+        DISPLAY_INFO (
+            "Auto-analysis completed successfully. Renamed names might contain debug and non-debug "
+            "symbols."
+        );
+        return RZ_CMD_STATUS_OK;
+    } else {
+        DISPLAY_ERROR ("Failed to perform RevEng.AI auto-analysis");
+        return RZ_CMD_STATUS_ERROR;
+    }
+}
+
+/**
+ * REaud
+ * */
+RZ_IPI RzCmdStatus
+    rz_ann_auto_analyze_restrict_debug_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
+
+    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
+    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+    }
+
+    // NOTE: this is static here. I don't think it's a good command line option to have
+    // Since user won't know about this when issuing the auto-analysis command.
+    // Just set it to a large enough value to get good suggestions
+    const Size max_results_per_function = 10;
+
+    Uint32 min_similarity = rz_num_get (core->num, argv[1]);
+    min_similarity        = min_similarity > 100 ? 100 : min_similarity;
+
+
+    if (reai_plugin_auto_analyze_opened_binary_file (
+            core,
+            max_results_per_function,
+            min_similarity / 100.f,
+            true // restrict symbol suggestions to debug mode only.
+        )) {
+        DISPLAY_INFO (
+            "Auto-analysis completed successfully. Only debug symbols were used for renaming."
+        );
         return RZ_CMD_STATUS_OK;
     } else {
         DISPLAY_ERROR ("Failed to perform RevEng.AI auto-analysis");
@@ -240,13 +284,8 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (
  *       If analysis for binary file does not exist then this will again return
  *       with an error.
  * */
-RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
-    RzCore*      core,
-    int          argc,
-    const char** argv,
-    RzOutputMode output_mode
-) {
-    UNUSED (argc && argv && output_mode);
+RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc && argv);
     REAI_LOG_TRACE ("[CMD] get basic function info");
 
     /* get binary id of opened file */
@@ -306,12 +345,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
     /* make request to get function infos */
@@ -368,12 +402,7 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
     /* get binary id of opened file */
@@ -479,12 +508,7 @@ RZ_IPI RzCmdStatus
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
     // Parse command line arguments
@@ -530,12 +554,7 @@ RZ_IPI RzCmdStatus
     // This can be set to y/n in config. If set to y then we'll try to perform rizin analysis automatically,
     // otherwise just inform the user about the issue and report a failure in command execution
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
     // Parse command line arguments
@@ -578,12 +597,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
     if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        if (rz_cons_yesno (
-                'y',
-                "Rizin analysis not performed yet. Should I create one for you? [Y/n]"
-            )) {
-            rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-        }
+        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
     /* get binary id of opened file */
