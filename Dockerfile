@@ -63,8 +63,8 @@ RUN cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr/local && \
 
 # TODO: (FOR THE USER) Create config file
 RUN printf "\
-host         = \"$REVENG_HOST\"\n \
-apikey       = \"$REVENG_APIKEY\"\n \
+host         = \"$REVENG_HOST\"\n\
+apikey       = \"$REVENG_APIKEY\"\n\
 " > /home/revengai/.creait.toml
 
 RUN printf "export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" > /home/revengai/.bashrc
