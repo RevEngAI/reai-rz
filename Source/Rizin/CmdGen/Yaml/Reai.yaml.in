@@ -33,13 +33,16 @@ commands:
       - name: function_name
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
-  - name: REart
-    cname: show_revengai_art
-    summary: Show RevEng.AI ASCII art.
-    args: []
+  - name: REb 
+    summary: RevEngAI commands for interacting with binaries 
+    subcommands: @SUBCOMMANDS_FILES_BASE@/Binaries.yaml
   - name: REc 
     summary: RevEngAI commands for interacting with collections 
     subcommands: @SUBCOMMANDS_FILES_BASE@/Collections.yaml
   - name: REf 
     summary: RevEngAI commands for interacting with functions 
     subcommands: @SUBCOMMANDS_FILES_BASE@/Functions.yaml
+  - name: REart
+    cname: show_revengai_art
+    summary: Show RevEng.AI ASCII art.
+    args: []

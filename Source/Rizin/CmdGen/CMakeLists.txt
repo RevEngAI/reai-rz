@@ -22,7 +22,7 @@ set(CmdDescGenerator "${CMAKE_CURRENT_SOURCE_DIR}/Generators/CmdDescsGenerator.p
 set(CmdDescOutputFiles "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c" "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h")
 
 # Provide files IN and OUT that are to be configured by CMake
-set(YAML_FILES Root Reai Collections Functions Analysis)
+set(YAML_FILES Root Reai Collections Functions Analysis Binaries)
 set(CmdDescYamlFiles "")
 foreach(name IN LISTS YAML_FILES)
     set(infile "${CMAKE_CURRENT_SOURCE_DIR}/Yaml/${name}.yaml.in")
@@ -43,10 +43,16 @@ add_custom_command(
 add_library(reai_cmdescs ${CmdDescOutputFiles})
 target_link_libraries(reai_cmdescs PUBLIC Rizin::Core)
 target_include_directories(reai_cmdescs PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../..)
+foreach(f in LISTS CmdDescYamlFiles)
+    set_target_properties(
+        reai_cmdescs
+        PROPERTIES
+        ADDITIONAL_CLEAN_FILES ${f}
+    )
+endforeach()
 set_target_properties(
     reai_cmdescs
     PROPERTIES
-    ADDITIONAL_CLEAN_FILES ${CmdDescYamlFiles}
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.c"
     ADDITIONAL_CLEAN_FILES "${CMAKE_CURRENT_BINARY_DIR}/Output/CmdDescs.h"
 )

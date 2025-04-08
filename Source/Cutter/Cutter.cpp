@@ -248,6 +248,12 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         return;
     }
 
+    // TODO: When searching for similar functions, provide a button to search and select collections
+    // The button will open a pop-up window and allow user to search and select collections by their names,
+    // where the dialog will automatically store the correspondign collection ids in the backend
+    // This popup must also provide a link to open collections in browser.
+    // Similarly when doing a binary search, follow a similar UX as described for collections search.
+
     actCreateAnalysis           = reaiMenu->addAction ("Create New Analysis");
     actApplyExistingAnalysis    = reaiMenu->addAction ("Apply Existing Analysis");
     actRenameFns                = reaiMenu->addAction ("Rename Functions");

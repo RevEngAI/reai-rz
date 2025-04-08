@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: 2025 Siddharth Mishra <admin@brightprogrammer.in>
+# SPDX-License-Identifier: All Rights Reserved.
+---
+name: @SUBCOMMANDS_FILES_BASE@/Binaries.yaml 
+commands:
+  - name: REbl
+    summary: Provide link to show more binary information on RevEngAI portal
+    cname: binary_link
+    args:
+      - name: binary_id
+        type: RZ_CMD_ARG_TYPE_NUM
+  - name: REbs
+    summary: Commands for performing binary search in RevEngAI
+    subcommands:
+      - name: REbs
+        cname: binary_search 
+        summary: Search for binaries using partial name, partial sha256 hash, etc... 
+        args:
+          - name: partial_name 
+            type: RZ_CMD_ARG_TYPE_STRING
+            optional: false
+          - name: partial_sha256 
+            type: RZ_CMD_ARG_TYPE_STRING
+            optional: false
+          - name: model_name
+            type: RZ_CMD_ARG_TYPE_STRING
+            optional: false
+          - name: tags_csv 
+            type: RZ_CMD_ARG_TYPE_STRING
+            optional: false
+      - name: REbsn
+        cname: binary_search_by_name 
+        summary: Search for binaries using partial name only.
+        args:
+          - name: partial_name 
+            type: RZ_CMD_ARG_TYPE_STRING
+            optional: false
+          - name: model_name
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""
+      - name: REbsh
+        cname: binary_search_by_sha256
+        summary: Search for binaries using partial sha256 hash only.
+        args:
+          - name: partial_sha256 
+            type: RZ_CMD_ARG_TYPE_STRING
+            optional: false
+          - name: model_name
+            type: RZ_CMD_ARG_TYPE_STRING
+            default_value: ""

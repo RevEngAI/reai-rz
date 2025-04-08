@@ -3,6 +3,12 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Collections.yaml 
 commands:
+  - name: REcl
+    summary: Provide a RevEngAI link to view more information about collection in browser.
+    cname: collection_link 
+    args:
+      - name: collection_id
+        type: RZ_CMD_ARG_TYPE_NUM
   - name: REca
     summary: Get information about collections, ordered in ascending order.
     subcommands:

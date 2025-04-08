@@ -830,6 +830,9 @@ static Bool str_to_filter_flags (CString filters, ReaiCollectionBasicInfoFilterF
     return true;
 }
 
+/**
+ * REcat
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -853,6 +856,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcao
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -876,6 +883,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcan
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -899,6 +910,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcam
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -922,6 +937,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcas
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -945,6 +964,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcdt
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -968,6 +991,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcdo
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -991,6 +1018,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcdn
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -1014,6 +1045,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcdm
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -1037,6 +1072,10 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REcds
+ * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -1060,6 +1099,104 @@ RZ_IPI RzCmdStatus
     }
     return RZ_CMD_STATUS_ERROR;
 }
+
+/**
+ * REbs
+ * */
+RZ_IPI RzCmdStatus rz_binary_search_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString partial_name   = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString partial_sha256 = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    CString model_name     = argv[3] && strlen (argv[3]) ? argv[3] : NULL;
+    CString tags_csv       = argv[4] && strlen (argv[4]) ? argv[4] : NULL;
+
+    if (reai_plugin_binary_search (core, partial_name, partial_sha256, model_name, tags_csv)) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
+}
+
+/**
+ * REbsn
+ * */
+RZ_IPI RzCmdStatus rz_binary_search_by_name_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString partial_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString model_name   = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    if (reai_plugin_binary_search (core, partial_name, NULL, model_name, NULL)) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
+}
+
+/**
+ * REbsh
+ * */
+RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    CString partial_sha256 = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
+    CString model_name     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+
+    if (reai_plugin_binary_search (core, NULL, partial_sha256, model_name, NULL)) {
+        return RZ_CMD_STATUS_OK;
+    }
+    return RZ_CMD_STATUS_ERROR;
+}
+
+/**
+ * REcl
+ * */
+RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    ReaiCollectionId cid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+
+    // generate portal link
+    char* host = strdup (reai_plugin()->reai_config->host);
+    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
+    if (!host) {
+        APPEND_ERROR ("Failed to generate portal link");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    // TODO: should we also get basic collection information and display it here?
+    DISPLAY_INFO ("%s/collections/%llu", host, cid);
+
+    return RZ_CMD_STATUS_OK;
+}
+
+/**
+ * REbl
+ * */
+RZ_IPI RzCmdStatus rz_binary_link_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    ReaiBinaryId bid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+
+    // generate portal link
+    char* host = strdup (reai_plugin()->reai_config->host);
+    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
+    if (!host) {
+        APPEND_ERROR ("Failed to generate portal link");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    // TODO: should we also get basic binary information and display it here?
+    DISPLAY_INFO (
+        "%s/analyses/%llu?analysis-id=%llu",
+        host,
+        bid,
+        reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
+    );
+
+    return RZ_CMD_STATUS_OK;
+}
+
+
 
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc && argv);

@@ -1705,3 +1705,71 @@ Bool reai_plugin_collection_basic_info (
 
     return true;
 }
+
+Bool reai_plugin_binary_search (
+    RzCore *core,
+    CString partial_name,
+    CString partial_sha256,
+    CString model_name,
+    CString tags_csv
+) {
+    if (!core) {
+        APPEND_ERROR ("Invalid arguments");
+        return false;
+    }
+
+    CStrVec *tags = csv_to_cstr_vec (tags_csv);
+
+    ReaiBinarySearchResultVec *results = reai_binary_search (
+        reai(),
+        reai_response(),
+        partial_name,
+        partial_sha256,
+        tags,
+        model_name
+    );
+
+    if (tags) {
+        reai_cstr_vec_destroy (tags);
+    }
+
+    if (results) {
+        results = reai_binary_search_result_vec_clone_create (results);
+    } else {
+        return false;
+    }
+
+    ReaiPluginTable *t = reai_plugin_table_create();
+    reai_plugin_table_set_title (t, "Collections Search Results");
+    reai_plugin_table_set_columnsf (
+        t,
+        "snnssss",
+        "name",
+        "binary_id",
+        "analysis_id",
+        "model",
+        "owner",
+        "created_at",
+        "sha256"
+    );
+
+    REAI_VEC_FOREACH (results, bsr, {
+        reai_plugin_table_add_rowf (
+            t,
+            "snnssss",
+            bsr->binary_name,
+            bsr->binary_id,
+            bsr->analysis_id,
+            bsr->model_name,
+            bsr->owned_by,
+            bsr->created_at,
+            bsr->sha_256_hash
+        );
+    });
+
+    reai_plugin_table_show (t);
+    reai_plugin_table_destroy (t);
+    reai_binary_search_result_vec_destroy (results);
+
+    return true;
+}

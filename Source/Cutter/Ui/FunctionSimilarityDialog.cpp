@@ -138,7 +138,8 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
             maxResultCount,
             required_similarity,
             debugFilter,
-            collectionNamesCsvCStr
+            collectionNamesCsvCStr,
+            NULL // TODO: binary ids csv
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
     }

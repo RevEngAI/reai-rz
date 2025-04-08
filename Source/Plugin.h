@@ -117,6 +117,14 @@ extern "C" {
         ReaiCollectionBasicInfoOrderIn     order_in
     );
 
+    Bool reai_plugin_binary_search (
+        RzCore* core,
+        CString partial_name,
+        CString partial_sha256,
+        CString model_name,
+        CString tags_csv
+    );
+
 #include "Override.h"
 
 // wrapper macros to make sure first call to any one of these
