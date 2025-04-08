@@ -13,6 +13,7 @@
 #include <QLineEdit>
 #include <QTableWidget>
 #include <QVBoxLayout>
+#include <QTableWidget>
 #include <QComboBox>
 
 /* rizin */
@@ -29,14 +30,26 @@ class CollectionSearchDialog : public QDialog {
     Q_OBJECT;
 
    public:
-    CollectionSearchDialog (QWidget* parent);
+    CollectionSearchDialog (QWidget* parent, bool openPageOnDoubleClick);
+
+    const QStringList& getSelectedCollectionIds() const {
+        return selectedCollectionIds;
+    }
 
    private:
-    QVBoxLayout* mainLayout;
-    QLineEdit *  partialCollectionNameInput, *partialBinaryNameInput, *partialBinarySha256Input;
-    QComboBox*   modelNameInput;
+    QVBoxLayout*  mainLayout;
+    QLineEdit *   partialCollectionNameInput, *partialBinaryNameInput, *partialBinarySha256Input;
+    QComboBox*    modelNameInput;
+    QStringList   headerLabels;
+    QTableWidget* table;
+
+    QStringList selectedCollectionIds;
+    bool        openPageOnDoubleClick;
 
     void on_PerformCollectionSearch();
+    void on_TableCellDoubleClick (int row, int column);
+
+    void addNewRowToResultsTable (QTableWidget* t, const QStringList& row);
 };
 
 #endif // REAI_PLUGIN_CUTTER_UI_COLLECTION_SEARCH_DIALOG_HPP

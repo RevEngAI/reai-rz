@@ -15,6 +15,8 @@
 #include <QHBoxLayout>
 #include <QScrollArea>
 #include <QPushButton>
+#include <QHeaderView>
+#include <QDesktopServices>
 #include <QLabel>
 
 /* cutter */
@@ -24,21 +26,24 @@
 /* reai */
 #include <Reai/Util/Vec.h>
 
-CollectionSearchDialog::CollectionSearchDialog (QWidget* parent) : QDialog (parent) {
+CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOnDoubleClick)
+    : QDialog (parent), openPageOnDoubleClick (openPageOnDoubleClick) {
+    setMinimumSize (QSize (960, 540));
+
     mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
     setWindowTitle ("Collection Search");
 
     partialCollectionNameInput = new QLineEdit (this);
-    partialCollectionNameInput->setPlaceholderText ("partial collection name");
+    partialCollectionNameInput->setPlaceholderText ("collection name");
     mainLayout->addWidget (partialCollectionNameInput);
 
     partialBinaryNameInput = new QLineEdit (this);
-    partialBinaryNameInput->setPlaceholderText ("partial binary name");
+    partialBinaryNameInput->setPlaceholderText ("binary name");
     mainLayout->addWidget (partialBinaryNameInput);
 
     partialBinarySha256Input = new QLineEdit (this);
-    partialBinarySha256Input->setPlaceholderText ("partial binary sha256");
+    partialBinarySha256Input->setPlaceholderText ("binary sha256");
     mainLayout->addWidget (partialBinarySha256Input);
 
     modelNameInput = new QComboBox (this);
@@ -54,6 +59,20 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent) : QDialog (pare
     btnLayout->addWidget (cancelBtn);
     btnLayout->addWidget (okBtn);
 
+    headerLabels << "name";
+    headerLabels << "id";
+    headerLabels << "scope";
+    headerLabels << "last updated";
+    headerLabels << "model";
+    headerLabels << "owner";
+
+    table = new QTableWidget;
+    table->setEditTriggers (QAbstractItemView::NoEditTriggers);
+    table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
+    table->setColumnCount (6);
+    table->setHorizontalHeaderLabels (headerLabels);
+    mainLayout->addWidget (table);
+
     connect (
         okBtn,
         &QPushButton::clicked,
@@ -61,6 +80,12 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent) : QDialog (pare
         &CollectionSearchDialog::on_PerformCollectionSearch
     );
     connect (cancelBtn, &QPushButton::clicked, this, &QDialog::close);
+    connect (
+        table,
+        &QTableWidget::cellDoubleClicked,
+        this,
+        &CollectionSearchDialog::on_TableCellDoubleClick
+    );
 }
 
 void CollectionSearchDialog::on_PerformCollectionSearch() {
@@ -85,14 +110,61 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
         modelNameCStr                   = modelNameByteArr.constData();
     }
 
-    if (!reai_plugin_collection_search (
-            core,
-            partialCollectionNameCStr,
-            partialBinaryNameCStr,
-            partialBinarySha256CStr,
-            modelNameCStr,
-            NULL
-        )) {
-        DISPLAY_ERROR ("Failed to perfom collection search.");
+    ReaiCollectionSearchResultVec* results = reai_collection_search (
+        reai(),
+        reai_response(),
+        partialCollectionNameCStr,
+        partialBinaryNameCStr,
+        partialBinarySha256CStr,
+        NULL,
+        modelNameCStr
+    );
+
+    if (results) {
+        results = reai_collection_search_result_vec_clone_create (results);
+    } else {
+        DISPLAY_ERROR ("Failed to get collection search results");
+        return;
+    }
+
+    table->clearContents();
+    REAI_VEC_FOREACH (results, csr, {
+        QStringList row;
+        row << csr->collection_name;
+        row << QString::number (csr->collection_id);
+        row << csr->scope;
+        row << csr->last_updated_at;
+        row << csr->model_name;
+        row << csr->owned_by;
+
+        addNewRowToResultsTable (table, row);
+    });
+
+    reai_collection_search_result_vec_destroy (results);
+}
+
+void CollectionSearchDialog::on_TableCellDoubleClick (int row, int column) {
+    UNUSED (column);
+
+    if (openPageOnDoubleClick) {
+        // generate portal URL from host URL
+        const char* hostCStr = reai_plugin()->reai_config->host;
+        QString     host     = QString::fromUtf8 (hostCStr);
+        host.replace ("api", "portal", Qt::CaseSensitive); // replaces first occurrence
+
+        // fetch collection id and open url
+        QString collectionId = table->item (row, 1)->text();
+        QString link         = QString ("%1/collections/%2").arg (host).arg (collectionId);
+        QDesktopServices::openUrl (link);
+    } else {
+        selectedCollectionIds << table->itemAt (row, 1)->text();
+    }
+}
+
+void CollectionSearchDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {
+    Size tableRowCount = t->rowCount();
+    t->insertRow (tableRowCount);
+    for (Int32 i = 0; i < headerLabels.size(); i++) {
+        t->setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
     }
 }

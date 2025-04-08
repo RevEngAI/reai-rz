@@ -527,10 +527,11 @@ void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
 }
 
 void ReaiCutterPlugin::on_CollectionSearch() {
-    CollectionSearchDialog *searchDlg = new CollectionSearchDialog ((QWidget *)this->parent());
-    searchDlg->show();
+    CollectionSearchDialog *searchDlg =
+        new CollectionSearchDialog ((QWidget *)this->parent(), true);
+    searchDlg->exec();
 }
 void ReaiCutterPlugin::on_BinarySearch() {
-    BinarySearchDialog *searchDlg = new BinarySearchDialog ((QWidget *)this->parent());
-    searchDlg->show();
+    BinarySearchDialog *searchDlg = new BinarySearchDialog ((QWidget *)this->parent(), true);
+    searchDlg->exec();
 }

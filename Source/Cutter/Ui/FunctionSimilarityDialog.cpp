@@ -29,6 +29,8 @@
 #include <Reai/Util/Vec.h>
 
 FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (parent) {
+    setMinimumSize (540, 360);
+
     mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
     setWindowTitle ("Function Similarity Search");
@@ -185,11 +187,15 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
 }
 
 void FunctionSimilarityDialog::on_SearchCollections() {
-    CollectionSearchDialog* csDlg = new CollectionSearchDialog (NULL);
-    csDlg->show();
+    CollectionSearchDialog* csDlg = new CollectionSearchDialog ((QWidget*)this, false);
+    csDlg->exec();
+    collectionIdsInput->setText (
+        collectionIdsInput->text() + csDlg->getSelectedCollectionIds().join (",")
+    );
 }
 
 void FunctionSimilarityDialog::on_SearchBinaries() {
-    BinarySearchDialog* bsDlg = new BinarySearchDialog (NULL);
-    bsDlg->show();
+    BinarySearchDialog* bsDlg = new BinarySearchDialog ((QWidget*)this, false);
+    bsDlg->exec();
+    binaryIdsInput->setText (binaryIdsInput->text() + bsDlg->getSelectedBinaryIds().join (","));
 }
