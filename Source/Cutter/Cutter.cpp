@@ -34,6 +34,8 @@
 /* plugin */
 #include <Cutter/Ui/FunctionRenameDialog.hpp>
 #include <Cutter/Ui/FunctionSimilarityDialog.hpp>
+#include <Cutter/Ui/BinarySearchDialog.hpp>
+#include <Cutter/Ui/CollectionSearchDialog.hpp>
 #include <Cutter/Ui/AutoAnalysisDialog.hpp>
 #include <Cutter/Ui/CreateAnalysisDialog.hpp>
 #include <Plugin.h>
@@ -259,6 +261,8 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     actRenameFns                = reaiMenu->addAction ("Rename Functions");
     actAutoAnalyzeBin           = reaiMenu->addAction ("Auto Analyze Binary");
     actFunctionSimilaritySearch = reaiMenu->addAction ("Function Similarity Search");
+    actCollectionSearch         = reaiMenu->addAction ("Collection Search");
+    actBinarySearch             = reaiMenu->addAction ("Binary Search");
     actBinAnalysisHistory       = reaiMenu->addAction ("Binary Analysis History");
     actSetup                    = reaiMenu->addAction ("Plugin Config Setup");
 
@@ -276,6 +280,13 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         this,
         &ReaiCutterPlugin::on_FunctionSimilaritySearch
     );
+    connect (
+        actCollectionSearch,
+        &QAction::triggered,
+        this,
+        &ReaiCutterPlugin::on_CollectionSearch
+    );
+    connect (actBinarySearch, &QAction::triggered, this, &ReaiCutterPlugin::on_BinarySearch);
     connect (
         actBinAnalysisHistory,
         &QAction::triggered,
@@ -511,7 +522,15 @@ void ReaiCutterPlugin::on_Setup() {
 }
 
 void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
-    RzCoreLocked              core (Core());
     FunctionSimilarityDialog *searchDlg = new FunctionSimilarityDialog ((QWidget *)this->parent());
+    searchDlg->show();
+}
+
+void ReaiCutterPlugin::on_CollectionSearch() {
+    CollectionSearchDialog *searchDlg = new CollectionSearchDialog ((QWidget *)this->parent());
+    searchDlg->show();
+}
+void ReaiCutterPlugin::on_BinarySearch() {
+    BinarySearchDialog *searchDlg = new BinarySearchDialog ((QWidget *)this->parent());
     searchDlg->show();
 }

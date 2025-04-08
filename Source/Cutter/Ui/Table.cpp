@@ -294,6 +294,7 @@ void reai_plugin_table_show (ReaiPluginTable* table) {
     if (table->title) {
         tableDisplayDlg->setWindowTitle (table->title);
     }
+    tableDisplayDlg->setMinimumSize (QSize (960, 540));
 
     QVBoxLayout* mainLayout = new QVBoxLayout();
     mainLayout->addWidget ((QTableWidget*)table);

@@ -11,7 +11,8 @@ set(CMAKE_AUTORCC ON) # Auto Resource Compile
 # main plugin library and sources
 set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c" "Ui/Table.cpp"
                            "Ui/FunctionRenameDialog.cpp" "Ui/FunctionSimilarityDialog.cpp"
-                           "Ui/AutoAnalysisDialog.cpp" "Ui/CreateAnalysisDialog.cpp")
+                           "Ui/AutoAnalysisDialog.cpp" "Ui/CreateAnalysisDialog.cpp"
+                           "Ui/BinarySearchDialog.cpp" "Ui/CollectionSearchDialog.cpp")
 add_library(reai_cutter STATIC MODULE ${ReaiCutterPluginSource})
 target_link_libraries(reai_cutter PUBLIC Cutter::Cutter Rizin::Core ${CREAIT_LIBRARIES})
 

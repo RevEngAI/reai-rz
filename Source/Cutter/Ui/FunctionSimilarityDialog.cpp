@@ -9,6 +9,8 @@
 #include <Plugin.h>
 #include <Reai/Api/Reai.h>
 #include <Cutter/Ui/FunctionSimilarityDialog.hpp>
+#include <Cutter/Ui/CollectionSearchDialog.hpp>
+#include <Cutter/Ui/BinarySearchDialog.hpp>
 
 /* qt */
 #include <QVBoxLayout>
@@ -90,10 +92,43 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
         );
     }
 
-    /* textbox for taking in collection names in csv format */
-    collectionNamesInput = new QLineEdit (this);
-    collectionNamesInput->setPlaceholderText ("Comma separated list of collection names");
-    mainLayout->addWidget (collectionNamesInput);
+    /* textbox for taking in collection ids in csv format */
+    QHBoxLayout* collectionsLayout = new QHBoxLayout;
+    mainLayout->addLayout (collectionsLayout);
+    {
+        collectionIdsInput = new QLineEdit (this);
+        collectionIdsInput->setPlaceholderText ("Comma separated list of collection IDs");
+
+        QPushButton* collectionIdsSearchBtn = new QPushButton ("Search Collections");
+        connect (
+            collectionIdsSearchBtn,
+            &QPushButton::pressed,
+            this,
+            &FunctionSimilarityDialog::on_SearchCollections
+        );
+
+        collectionsLayout->addWidget (collectionIdsInput);
+        collectionsLayout->addWidget (collectionIdsSearchBtn);
+    }
+
+    /* textbox for taking in binary ids in csv format */
+    QHBoxLayout* binariesLayout = new QHBoxLayout;
+    mainLayout->addLayout (binariesLayout);
+    {
+        binaryIdsInput = new QLineEdit (this);
+        binaryIdsInput->setPlaceholderText ("Comma separated list of binary IDs");
+
+        QPushButton* binaryIdsSearchBtn = new QPushButton ("Search Binaries");
+        connect (
+            binaryIdsSearchBtn,
+            &QPushButton::pressed,
+            this,
+            &FunctionSimilarityDialog::on_SearchBinaries
+        );
+
+        binariesLayout->addWidget (binaryIdsInput);
+        binariesLayout->addWidget (binaryIdsSearchBtn);
+    }
 
     /* Create slider to select similarity level */
     {
@@ -128,9 +163,13 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
     Bool   debugFilter         = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
     Int32  maxResultCount      = maxResultCountInput->value();
 
-    const QString& collectionNamesCsv        = collectionNamesInput->text();
-    QByteArray     collectionNamesCsvByteArr = collectionNamesCsv.toLatin1();
-    CString        collectionNamesCsvCStr    = collectionNamesCsvByteArr.constData();
+    const QString& collectionIdsCsv        = collectionIdsInput->text();
+    QByteArray     collectionIdsCsvByteArr = collectionIdsCsv.toLatin1();
+    CString        collectionIdsCsvCStr    = collectionIdsCsvByteArr.constData();
+
+    const QString& binaryIdsCsv        = collectionIdsInput->text();
+    QByteArray     binaryIdsCsvByteArr = collectionIdsCsv.toLatin1();
+    CString        binaryIdsCsvCStr    = collectionIdsCsvByteArr.constData();
 
     if (!reai_plugin_search_and_show_similar_functions (
             core,
@@ -138,9 +177,19 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
             maxResultCount,
             required_similarity,
             debugFilter,
-            collectionNamesCsvCStr,
-            NULL // TODO: binary ids csv
+            collectionIdsCsvCStr,
+            binaryIdsCsvCStr
         )) {
         DISPLAY_ERROR ("Failed to get similar functions search result.");
     }
+}
+
+void FunctionSimilarityDialog::on_SearchCollections() {
+    CollectionSearchDialog* csDlg = new CollectionSearchDialog (NULL);
+    csDlg->show();
+}
+
+void FunctionSimilarityDialog::on_SearchBinaries() {
+    BinarySearchDialog* bsDlg = new BinarySearchDialog (NULL);
+    bsDlg->show();
 }

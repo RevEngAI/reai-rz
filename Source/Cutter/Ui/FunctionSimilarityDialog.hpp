@@ -34,13 +34,15 @@ class FunctionSimilarityDialog : public QDialog {
 
    private:
     QVBoxLayout* mainLayout;
-    QLineEdit *  searchBarInput, *collectionNamesInput;
+    QLineEdit *  searchBarInput, *collectionIdsInput, *binaryIdsInput;
     QSpinBox*    maxResultCountInput;
     QSlider*     similaritySlider;
     QCheckBox*   enableDebugFilterCheckBox;
     QCompleter*  fnNameCompleter;
 
     void on_FindSimilarNames();
+    void on_SearchCollections();
+    void on_SearchBinaries();
 };
 
 #endif // REAI_PLUGIN_CUTTER_UI_FUNCTION_SIMILARITY_DIALOG_HPP
