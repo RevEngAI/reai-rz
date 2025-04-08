@@ -1166,6 +1166,8 @@ RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const cha
     // TODO: should we also get basic collection information and display it here?
     DISPLAY_INFO ("%s/collections/%llu", host, cid);
 
+    FREE (host);
+
     return RZ_CMD_STATUS_OK;
 }
 
@@ -1192,6 +1194,8 @@ RZ_IPI RzCmdStatus rz_binary_link_handler (RzCore* core, int argc, const char** 
         bid,
         reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
     );
+
+    FREE (host);
 
     return RZ_CMD_STATUS_OK;
 }
