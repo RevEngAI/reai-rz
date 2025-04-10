@@ -1177,7 +1177,16 @@ RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const cha
 RZ_IPI RzCmdStatus rz_binary_link_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
 
-    ReaiBinaryId bid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+    ReaiBinaryId bid = 0;
+    if (argc == 2) {
+        bid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+        if (!bid) {
+            DISPLAY_ERROR ("Invalid binary ID provided.");
+            return RZ_CMD_STATUS_ERROR;
+        }
+    } else {
+        bid = reai_binary_id();
+    }
 
     // generate portal link
     char* host = strdup (reai_plugin()->reai_config->host);

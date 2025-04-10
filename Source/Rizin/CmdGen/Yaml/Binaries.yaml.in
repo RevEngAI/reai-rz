@@ -9,6 +9,7 @@ commands:
     args:
       - name: binary_id
         type: RZ_CMD_ARG_TYPE_NUM
+        optional: true
   - name: REbs
     summary: Commands for performing binary search in RevEngAI
     subcommands:
