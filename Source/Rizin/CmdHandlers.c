@@ -841,7 +841,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -868,7 +868,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -895,7 +895,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -922,7 +922,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -949,7 +949,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -976,7 +976,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -1003,7 +1003,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -1030,7 +1030,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -1057,7 +1057,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -1084,7 +1084,7 @@ RZ_IPI RzCmdStatus
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
-        APPEND_ERROR ("Failed to understand provided filter flags");
+        DISPLAY_ERROR ("Failed to understand provided filter flags");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -1159,7 +1159,7 @@ RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const cha
     char* host = strdup (reai_plugin()->reai_config->host);
     host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
     if (!host) {
-        APPEND_ERROR ("Failed to generate portal link");
+        DISPLAY_ERROR ("Failed to generate portal link");
         return RZ_CMD_STATUS_ERROR;
     }
 
@@ -1183,7 +1183,7 @@ RZ_IPI RzCmdStatus rz_binary_link_handler (RzCore* core, int argc, const char** 
     char* host = strdup (reai_plugin()->reai_config->host);
     host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
     if (!host) {
-        APPEND_ERROR ("Failed to generate portal link");
+        DISPLAY_ERROR ("Failed to generate portal link");
         return RZ_CMD_STATUS_ERROR;
     }
 
