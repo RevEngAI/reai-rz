@@ -493,23 +493,23 @@ void ReaiCutterPlugin::on_BinAnalysisHistory() {
 }
 
 void ReaiCutterPlugin::on_Setup() {
-    bool    ok          = false;
-    QString apiKeyInput = QInputDialog::getText (
-        (QWidget *)this->parent(),
-        "Configure Plugin",
-        "Enter API Key",
-        QLineEdit::Normal,
-        reai_plugin_check_config_exists() ? reai_config()->apikey : "", // Default value
-        &ok
-    );
-    QByteArray baApiKey = apiKeyInput.toLatin1();
-    CString    apiKey   = baApiKey.constData();
-
-    REAI_LOG_TRACE ("host = https://api.reveng.ai");
-    REAI_LOG_TRACE ("api key = %s", apiKey);
+    QInputDialog *iDlg = new QInputDialog ((QWidget *)this->parent());
+    iDlg->setInputMode (QInputDialog::TextInput);
+    iDlg->setTextValue (reai_plugin_check_config_exists() ? reai_config()->apikey : "");
+    iDlg->setLabelText ("API key : ");
+    iDlg->setWindowTitle ("Plugin Configuration");
+    iDlg->setMinimumWidth (400);
 
     /* move ahead only if OK was pressed. */
-    if (ok) {
+    if (iDlg->exec() == QInputDialog::Accepted) {
+        QString    apiKeyInput = iDlg->textValue();
+        QByteArray baApiKey    = apiKeyInput.toLatin1();
+        CString    apiKey      = baApiKey.constData();
+
+        REAI_LOG_TRACE ("Config changed");
+        REAI_LOG_TRACE ("host = https://api.reveng.ai");
+        REAI_LOG_TRACE ("api key = %s", apiKey);
+
         if (reai_plugin_save_config ("https://api.reveng.ai", apiKey)) {
             DISPLAY_INFO ("Config saved successfully to \"%s\".", reai_config_get_default_path());
 
@@ -518,6 +518,8 @@ void ReaiCutterPlugin::on_Setup() {
         } else {
             DISPLAY_ERROR ("Failed to save config.");
         }
+    } else {
+        REAI_LOG_TRACE ("Config NOT changed");
     }
 }
 

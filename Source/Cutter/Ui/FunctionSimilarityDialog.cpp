@@ -28,6 +28,8 @@
 /* reai */
 #include <Reai/Util/Vec.h>
 
+// TODO: provide a way to rename functions from this dialog as well
+
 FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (parent) {
     setMinimumSize (540, 360);
 
@@ -73,7 +75,7 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     n = new QLabel (this);
     n->setText ("Function name : ");
     searchBarInput = new QLineEdit (this);
-    searchBarInput->setPlaceholderText ("start typing for suggestions...");
+    searchBarInput->setPlaceholderText ("Start typing for suggestions...");
     l->addWidget (n, 0, 0);
     l->addWidget (searchBarInput, 0, 1);
 

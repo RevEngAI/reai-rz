@@ -56,32 +56,46 @@ FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) 
         }
     }
 
+    QGridLayout* l = new QGridLayout (this);
+    QLabel*      n = nullptr;
+
+    mainLayout->addLayout (l);
+
     /* create search bar and add and cancel buttons to add/cancel adding a
      * new name map */
-    {
-        QHBoxLayout* searchBarLayout = new QHBoxLayout;
-        mainLayout->addLayout (searchBarLayout);
 
-        searchBar = new QLineEdit (this);
-        searchBar->setPlaceholderText ("Type to search...");
-        searchBarLayout->addWidget (searchBar);
+    n = new QLabel (this);
+    n->setText ("Current name : ");
+    searchBar = new QLineEdit (this);
+    searchBar->setPlaceholderText ("Start typing to get suggestions...");
+    l->addWidget (n, 0, 0);
+    l->addWidget (searchBar, 0, 1);
 
-        fnNameCompleter = new QCompleter (oldFnNamesList);
-        fnNameCompleter->setCaseSensitivity (Qt::CaseInsensitive);
-        searchBar->setCompleter (fnNameCompleter);
+    fnNameCompleter = new QCompleter (oldFnNamesList);
+    fnNameCompleter->setCaseSensitivity (Qt::CaseInsensitive);
+    searchBar->setCompleter (fnNameCompleter);
 
-        newFnName = new QLineEdit (this);
-        newFnName->setPlaceholderText ("New function name");
-        searchBarLayout->addWidget (newFnName);
+    n = new QLabel (this);
+    n->setText ("New name : ");
+    newFnName = new QLineEdit (this);
+    newFnName->setPlaceholderText ("New function name");
+    l->addWidget (n, 1, 0);
+    l->addWidget (newFnName, 1, 1);
 
-        QPushButton* addButton = new QPushButton ("Add To Rename", this);
-        searchBarLayout->addWidget (addButton);
-        connect (addButton, &QPushButton::pressed, this, &FunctionRenameDialog::on_AddToRename);
+    QPushButton* addBtn = new QPushButton ("Add to rename", this);
+    connect (addBtn, &QPushButton::pressed, this, &FunctionRenameDialog::on_AddToRename);
 
-        QPushButton* finishButton = new QPushButton ("Finish", this);
-        searchBarLayout->addWidget (finishButton);
-        connect (finishButton, &QPushButton::pressed, this, &FunctionRenameDialog::on_Finish);
-    }
+    QPushButton* finishBtn = new QPushButton ("Rename all", this);
+    connect (finishBtn, &QPushButton::pressed, this, &FunctionRenameDialog::on_Finish);
+
+    QPushButton* cancelBtn = new QPushButton ("Cancel", this);
+    connect (cancelBtn, &QPushButton::pressed, this, &FunctionRenameDialog::close);
+
+    QDialogButtonBox* btnBox = new QDialogButtonBox (this);
+    mainLayout->addWidget (btnBox);
+    btnBox->addButton (addBtn, QDialogButtonBox::ActionRole);
+    btnBox->addButton (finishBtn, QDialogButtonBox::AcceptRole);
+    btnBox->addButton (cancelBtn, QDialogButtonBox::RejectRole);
 
     /* create grid layout with scroll area where new name mappings will
      * be displayed like a table */
