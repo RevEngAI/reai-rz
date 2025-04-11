@@ -157,7 +157,7 @@ void CollectionSearchDialog::on_TableCellDoubleClick (int row, int column) {
         QString link         = QString ("%1/collections/%2").arg (host).arg (collectionId);
         QDesktopServices::openUrl (link);
     } else {
-        selectedCollectionIds << table->itemAt (row, 1)->text();
+        selectedCollectionIds << table->item (row, 1)->text();
     }
 }
 
