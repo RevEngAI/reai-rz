@@ -35,6 +35,11 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     setLayout (mainLayout);
     setWindowTitle ("Function Similarity Search");
 
+    QGridLayout* l = new QGridLayout (this);
+    QLabel*      n = nullptr;
+
+    mainLayout->addLayout (l);
+
     /* get function names from binary */
     QStringList fnNamesList;
     {
@@ -65,92 +70,92 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
 
     /* create search bar and add and cancel buttons to add/cancel adding a
      * new name map */
-    {
-        QHBoxLayout* searchBarLayout = new QHBoxLayout;
-        mainLayout->addLayout (searchBarLayout);
+    n = new QLabel (this);
+    n->setText ("Function name : ");
+    searchBarInput = new QLineEdit (this);
+    searchBarInput->setPlaceholderText ("start typing for suggestions...");
+    l->addWidget (n, 0, 0);
+    l->addWidget (searchBarInput, 0, 1);
 
-        searchBarInput = new QLineEdit (this);
-        searchBarInput->setPlaceholderText ("Type to search...");
-        searchBarLayout->addWidget (searchBarInput);
+    fnNameCompleter = new QCompleter (fnNamesList);
+    fnNameCompleter->setCaseSensitivity (Qt::CaseInsensitive);
+    searchBarInput->setCompleter (fnNameCompleter);
 
-        fnNameCompleter = new QCompleter (fnNamesList);
-        fnNameCompleter->setCaseSensitivity (Qt::CaseInsensitive);
-        searchBarInput->setCompleter (fnNameCompleter);
-
-        maxResultCountInput = new QSpinBox (this);
-        maxResultCountInput->setValue (10);
-        maxResultCountInput->setMinimum (1);
-        maxResultCountInput->setPrefix ("Max ");
-        maxResultCountInput->setSuffix (" results");
-        searchBarLayout->addWidget (maxResultCountInput);
-
-        QPushButton* searchButton = new QPushButton ("Search", this);
-        searchBarLayout->addWidget (searchButton);
-        connect (
-            searchButton,
-            &QPushButton::pressed,
-            this,
-            &FunctionSimilarityDialog::on_FindSimilarNames
-        );
-    }
+    n = new QLabel (this);
+    n->setText ("Max result count : ");
+    maxResultCountInput = new QSpinBox (this);
+    maxResultCountInput->setValue (10);
+    maxResultCountInput->setMinimum (1);
+    l->addWidget (n, 1, 0);
+    l->addWidget (maxResultCountInput, 1, 1);
 
     /* textbox for taking in collection ids in csv format */
-    QHBoxLayout* collectionsLayout = new QHBoxLayout;
-    mainLayout->addLayout (collectionsLayout);
-    {
-        collectionIdsInput = new QLineEdit (this);
-        collectionIdsInput->setPlaceholderText ("Comma separated list of collection IDs");
-
-        QPushButton* collectionIdsSearchBtn = new QPushButton ("Search Collections");
-        connect (
-            collectionIdsSearchBtn,
-            &QPushButton::pressed,
-            this,
-            &FunctionSimilarityDialog::on_SearchCollections
-        );
-
-        collectionsLayout->addWidget (collectionIdsInput);
-        collectionsLayout->addWidget (collectionIdsSearchBtn);
-    }
+    n = new QLabel (this);
+    n->setText ("Collection IDs : ");
+    collectionIdsInput = new QLineEdit (this);
+    collectionIdsInput->setPlaceholderText ("Comma separated list of collection IDs");
+    l->addWidget (n, 2, 0);
+    l->addWidget (collectionIdsInput, 2, 1);
 
     /* textbox for taking in binary ids in csv format */
-    QHBoxLayout* binariesLayout = new QHBoxLayout;
-    mainLayout->addLayout (binariesLayout);
-    {
-        binaryIdsInput = new QLineEdit (this);
-        binaryIdsInput->setPlaceholderText ("Comma separated list of binary IDs");
+    n = new QLabel (this);
+    n->setText ("Binary IDs : ");
+    binaryIdsInput = new QLineEdit (this);
+    binaryIdsInput->setPlaceholderText ("Comma separated list of binary IDs");
+    l->addWidget (n, 3, 0);
+    l->addWidget (binaryIdsInput, 3, 1);
 
-        QPushButton* binaryIdsSearchBtn = new QPushButton ("Search Binaries");
-        connect (
-            binaryIdsSearchBtn,
-            &QPushButton::pressed,
-            this,
-            &FunctionSimilarityDialog::on_SearchBinaries
-        );
-
-        binariesLayout->addWidget (binaryIdsInput);
-        binariesLayout->addWidget (binaryIdsSearchBtn);
-    }
 
     /* Create slider to select similarity level */
-    {
-        similaritySlider = new QSlider (Qt::Horizontal);
-        similaritySlider->setMinimum (1);
-        similaritySlider->setMaximum (100);
-        similaritySlider->setValue (90);
-        mainLayout->addWidget (similaritySlider);
+    similaritySlider = new QSlider (Qt::Horizontal);
+    similaritySlider->setMinimum (1);
+    similaritySlider->setMaximum (100);
+    similaritySlider->setValue (90);
 
-        QLabel* similarityLabel = new QLabel ("90% min similarity");
-        mainLayout->addWidget (similarityLabel);
-        connect (similaritySlider, &QSlider::valueChanged, [similarityLabel] (int value) {
-            similarityLabel->setText (QString ("%1 % min similarity").arg (value));
-        });
+    QLabel* similarityLabel = new QLabel ("90% min similarity");
+    connect (similaritySlider, &QSlider::valueChanged, [similarityLabel] (int value) {
+        similarityLabel->setText (QString ("%1 % min similarity").arg (value));
+    });
+    l->addWidget (similarityLabel, 4, 0);
+    l->addWidget (similaritySlider, 4, 1);
 
-        enableDebugFilterCheckBox =
-            new QCheckBox ("Restrict suggestions to debug symbols only?", this);
-        mainLayout->addWidget (enableDebugFilterCheckBox);
-        enableDebugFilterCheckBox->setCheckState (Qt::CheckState::Checked);
-    }
+    enableDebugFilterCheckBox = new QCheckBox ("Restrict suggestions to debug symbols only?", this);
+    mainLayout->addWidget (enableDebugFilterCheckBox);
+    enableDebugFilterCheckBox->setCheckState (Qt::CheckState::Checked);
+
+    QPushButton* binaryIdsSearchBtn = new QPushButton ("Select Binaries");
+    connect (
+        binaryIdsSearchBtn,
+        &QPushButton::pressed,
+        this,
+        &FunctionSimilarityDialog::on_SearchBinaries
+    );
+
+    QPushButton* collectionIdsSearchBtn = new QPushButton ("Select Collections");
+    connect (
+        collectionIdsSearchBtn,
+        &QPushButton::pressed,
+        this,
+        &FunctionSimilarityDialog::on_SearchCollections
+    );
+
+    QPushButton* searchBtn = new QPushButton ("Search", this);
+    connect (
+        searchBtn,
+        &QPushButton::pressed,
+        this,
+        &FunctionSimilarityDialog::on_FindSimilarNames
+    );
+
+    QPushButton* cancelBtn = new QPushButton ("Cancel", this);
+    connect (cancelBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::close);
+
+    QDialogButtonBox* btnBox = new QDialogButtonBox (this);
+    btnBox->addButton (collectionIdsSearchBtn, QDialogButtonBox::ActionRole);
+    btnBox->addButton (binaryIdsSearchBtn, QDialogButtonBox::ActionRole);
+    btnBox->addButton (searchBtn, QDialogButtonBox::AcceptRole);
+    btnBox->addButton (cancelBtn, QDialogButtonBox::RejectRole);
+    mainLayout->addWidget (btnBox);
 }
 
 void FunctionSimilarityDialog::on_FindSimilarNames() {

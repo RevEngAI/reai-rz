@@ -523,7 +523,7 @@ void ReaiCutterPlugin::on_Setup() {
 
 void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
     FunctionSimilarityDialog *searchDlg = new FunctionSimilarityDialog ((QWidget *)this->parent());
-    searchDlg->show();
+    searchDlg->exec();
 }
 
 void ReaiCutterPlugin::on_CollectionSearch() {
