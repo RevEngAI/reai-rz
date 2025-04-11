@@ -34,26 +34,39 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     setLayout (mainLayout);
     setWindowTitle ("Collection Search");
 
+    QGridLayout* l = new QGridLayout (this);
+    QLabel*      n = nullptr;
+
+    mainLayout->addLayout (l);
+
+    n = new QLabel (this);
+    n->setText ("Binary name : ");
     partialBinaryNameInput = new QLineEdit (this);
     partialBinaryNameInput->setPlaceholderText ("binary name");
-    mainLayout->addWidget (partialBinaryNameInput);
+    partialBinaryNameInput->setToolTip ("Partial binary name to search for");
+    l->addWidget (n, 0, 0);
+    l->addWidget (partialBinaryNameInput, 0, 1);
 
+    n = new QLabel (this);
+    n->setText ("Binary SHA-256 hash : ");
     partialBinarySha256Input = new QLineEdit (this);
     partialBinarySha256Input->setPlaceholderText ("binary sha256");
-    mainLayout->addWidget (partialBinarySha256Input);
+    partialBinarySha256Input->setToolTip ("Partial binary SHA-256 hash to search for");
+    l->addWidget (n, 1, 0);
+    l->addWidget (partialBinarySha256Input, 1, 1);
 
+    n = new QLabel (this);
+    n->setText ("Model name (optional) : ");
     modelNameInput = new QComboBox (this);
-    modelNameInput->setPlaceholderText ("Model name");
+    modelNameInput->setPlaceholderText ("any model");
+    partialBinarySha256Input->setToolTip ("Model used to perform analysis");
     REAI_VEC_FOREACH (reai_ai_models(), ai_model, { modelNameInput->addItem (*ai_model); });
-    mainLayout->addWidget (modelNameInput);
+    l->addWidget (n, 2, 0);
+    l->addWidget (modelNameInput, 2, 1);
 
-    QHBoxLayout* btnLayout = new QHBoxLayout (this);
-    mainLayout->addLayout (btnLayout);
-
-    QPushButton* okBtn     = new QPushButton ("Ok");
-    QPushButton* cancelBtn = new QPushButton ("Cancel");
-    btnLayout->addWidget (cancelBtn);
-    btnLayout->addWidget (okBtn);
+    QDialogButtonBox* btnBox =
+        new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    mainLayout->addWidget (btnBox);
 
     headerLabels << "name";
     headerLabels << "binary id";
@@ -70,8 +83,13 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     table->setHorizontalHeaderLabels (headerLabels);
     mainLayout->addWidget (table);
 
-    connect (okBtn, &QPushButton::clicked, this, &BinarySearchDialog::on_PerformBinarySearch);
-    connect (cancelBtn, &QPushButton::clicked, this, &QDialog::close);
+    connect (
+        btnBox,
+        &QDialogButtonBox::accepted,
+        this,
+        &BinarySearchDialog::on_PerformBinarySearch
+    );
+    connect (btnBox, &QDialogButtonBox::rejected, this, &QDialog::close);
     connect (
         table,
         &QTableWidget::cellDoubleClicked,

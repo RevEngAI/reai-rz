@@ -34,30 +34,47 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     setLayout (mainLayout);
     setWindowTitle ("Collection Search");
 
+    QGridLayout* l = new QGridLayout (this);
+    QLabel*      n = nullptr;
+
+    mainLayout->addLayout (l);
+
+    n = new QLabel (this);
+    n->setText ("Collection name : ");
     partialCollectionNameInput = new QLineEdit (this);
     partialCollectionNameInput->setPlaceholderText ("collection name");
-    mainLayout->addWidget (partialCollectionNameInput);
+    partialCollectionNameInput->setToolTip ("Partial collection name to search for");
+    l->addWidget (n, 0, 0);
+    l->addWidget (partialCollectionNameInput, 0, 1);
 
+    n = new QLabel (this);
+    n->setText ("Binary name : ");
     partialBinaryNameInput = new QLineEdit (this);
     partialBinaryNameInput->setPlaceholderText ("binary name");
-    mainLayout->addWidget (partialBinaryNameInput);
+    partialCollectionNameInput->setToolTip ("Partial binary name the collection must contain");
+    l->addWidget (n, 1, 0);
+    l->addWidget (partialBinaryNameInput, 1, 1);
 
+    n = new QLabel (this);
+    n->setText ("Binary SHA-265 hash : ");
     partialBinarySha256Input = new QLineEdit (this);
     partialBinarySha256Input->setPlaceholderText ("binary sha256");
-    mainLayout->addWidget (partialBinarySha256Input);
+    partialBinarySha256Input->setToolTip ("Partial binary SHA256 hash the collection must contain");
+    l->addWidget (n, 2, 0);
+    l->addWidget (partialBinarySha256Input, 2, 1);
 
+    n = new QLabel (this);
+    n->setText ("Model name (optional) : ");
     modelNameInput = new QComboBox (this);
-    modelNameInput->setPlaceholderText ("Model name");
+    modelNameInput->setPlaceholderText ("any model");
+    modelNameInput->setToolTip ("Model used to analyze the binaries in collection");
     REAI_VEC_FOREACH (reai_ai_models(), ai_model, { modelNameInput->addItem (*ai_model); });
-    mainLayout->addWidget (modelNameInput);
+    l->addWidget (n, 3, 0);
+    l->addWidget (modelNameInput, 3, 1);
 
-    QHBoxLayout* btnLayout = new QHBoxLayout (this);
-    mainLayout->addLayout (btnLayout);
-
-    QPushButton* okBtn     = new QPushButton ("Ok");
-    QPushButton* cancelBtn = new QPushButton ("Cancel");
-    btnLayout->addWidget (cancelBtn);
-    btnLayout->addWidget (okBtn);
+    QDialogButtonBox* btnBox =
+        new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    mainLayout->addWidget (btnBox);
 
     headerLabels << "name";
     headerLabels << "id";
@@ -74,12 +91,12 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     mainLayout->addWidget (table);
 
     connect (
-        okBtn,
-        &QPushButton::clicked,
+        btnBox,
+        &QDialogButtonBox::accepted,
         this,
         &CollectionSearchDialog::on_PerformCollectionSearch
     );
-    connect (cancelBtn, &QPushButton::clicked, this, &QDialog::close);
+    connect (btnBox, &QDialogButtonBox::rejected, this, &QDialog::close);
     connect (
         table,
         &QTableWidget::cellDoubleClicked,
