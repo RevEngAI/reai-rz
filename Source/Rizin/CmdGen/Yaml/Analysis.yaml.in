@@ -4,6 +4,21 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Analysis.yaml 
 commands:
+  - name: REal
+    summary: Get RevEngAI analysis logs
+    subcommands:
+      - name: REal
+        summary: Get RevEngAI analysis logs using analysis id
+        cname: get_analysis_logs_using_analysis_id
+        args:
+          - name: analysis_id
+            type: RZ_CMD_ARG_TYPE_NUM
+      - name: REalb
+        summary: Get RevEngAI analysis logs using binary id
+        cname: get_analysis_logs_using_binary_id
+        args:
+          - name: binary_id 
+            type: RZ_CMD_ARG_TYPE_NUM
   - name: REac
     cname: create_analysis_private
     summary: Create a PRIVATE RevEngAI analysis for currently opened binary

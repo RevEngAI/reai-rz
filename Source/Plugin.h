@@ -125,6 +125,8 @@ extern "C" {
         CString tags_csv
     );
 
+    Bool reai_plugin_get_analysis_logs (RzCore* core, Uint64 id, Bool is_analysis_id);
+
 #include "Override.h"
 
 // wrapper macros to make sure first call to any one of these

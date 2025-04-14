@@ -1217,6 +1217,35 @@ RZ_IPI RzCmdStatus rz_binary_link_handler (RzCore* core, int argc, const char** 
     return RZ_CMD_STATUS_OK;
 }
 
+/**
+ * REal
+ * */
+RZ_IPI RzCmdStatus
+    rz_get_analysis_logs_using_analysis_id_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    ReaiAnalysisId analysis_id = rz_num_get (core->num, argv[1]);
+    if (!reai_plugin_get_analysis_logs (core, analysis_id, true /* provided is an analysis id */)) {
+        DISPLAY_ERROR ("Failed to fetch and display analysis logs");
+        return RZ_CMD_STATUS_ERROR;
+    }
+    return RZ_CMD_STATUS_OK;
+}
+
+/**
+ * REalb
+ * */
+RZ_IPI RzCmdStatus
+    rz_get_analysis_logs_using_binary_id_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    ReaiAnalysisId binary_id = rz_num_get (core->num, argv[1]);
+    if (!reai_plugin_get_analysis_logs (core, binary_id, false /* provided is a binary id */)) {
+        DISPLAY_ERROR ("Failed to fetch and display analysis logs");
+        return RZ_CMD_STATUS_ERROR;
+    }
+    return RZ_CMD_STATUS_OK;
+}
 
 
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
