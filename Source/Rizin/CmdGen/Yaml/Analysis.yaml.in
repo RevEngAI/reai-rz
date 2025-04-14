@@ -8,38 +8,42 @@ commands:
     cname: create_analysis_private
     summary: Create a PRIVATE RevEngAI analysis for currently opened binary
     args:
+      - name: ai_model
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
       - name: prog_name
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
       - name: cmd_line_args
         type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-      - name: ai_model
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
+        optional: true 
     details:
       - name: Examples
         entries:
-          - text: REac ffmpeg "-i input.mp4 -c:v gif output.gif" binnet-0.5-x86-linux
+          - text: REac binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
             comment: "Create analysis for ffmpeg program with given command line arguments."
+          - text: REac binnet-0.5-x86-linux NFSMostWantedTrainer.exe
+            comment: "Without any command line arguments."
   - name: REacp
     cname: create_analysis_public
     summary: Create a PUBLIC RevEngAI analysis for currently opened binary
     args:
+      - name: ai_model
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
       - name: prog_name
         type: RZ_CMD_ARG_TYPE_STRING
         optional: false
       - name: cmd_line_args
         type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-      - name: ai_model
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
+        optional: true 
     details:
       - name: Examples
         entries:
-          - text: REacp ffmpeg "-i input.mp4 -c:v gif output.gif" binnet-0.5-x86-linux
+          - text: REacp binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
             comment: "Create analysis for ffmpeg program with given command line arguments."
+          - text: REacp binnet-0.5-x86-linux NFSMostWantedTrainer.exe
+            comment: "Without any command line arguments."
   - name: REau
     cname: ann_auto_analyze
     summary: Auto analyze binary functions using ANN and perform batch rename.

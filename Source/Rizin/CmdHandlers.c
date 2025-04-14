@@ -116,9 +116,13 @@ RZ_IPI RzCmdStatus rz_create_analysis_private_handler (RzCore* core, int argc, c
         rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
-    CString prog_name    = argv[1];
-    CString cmdline_args = argv[2];
-    CString ai_model     = argv[3];
+    CString ai_model  = argv[1];
+    CString prog_name = argv[2];
+
+    CString cmdline_args = NULL;
+    if (argc == 4) {
+        cmdline_args = argv[3];
+    }
 
     if (reai_plugin_create_analysis_for_opened_binary_file (
             core,
@@ -148,9 +152,13 @@ RZ_IPI RzCmdStatus rz_create_analysis_public_handler (RzCore* core, int argc, co
         rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
-    CString prog_name    = argv[1];
-    CString cmdline_args = argv[2];
-    CString ai_model     = argv[3];
+    CString ai_model  = argv[1];
+    CString prog_name = argv[2];
+
+    CString cmdline_args = NULL;
+    if (argc == 4) {
+        cmdline_args = argv[3];
+    }
 
     if (reai_plugin_create_analysis_for_opened_binary_file (
             core,
