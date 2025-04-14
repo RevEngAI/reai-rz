@@ -7,8 +7,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Not linking curl and sqlite explicitly fails build (linker error)
 # TODO: create a FindCreait.cmake file to address all these libraries in one variable ${CREAIT_LINK_LIBRARIES}
-
-set(CREAIT_LIBRARIES curl reai cjson toml)
+find_package(CURL REQUIRED)
+set(CREAIT_LIBRARIES ${CURL_LIBRRIES} reai cjson toml)
 message("CREAIT_LIBRARIES = ${CREAIT_LIBRARIES}")
 
 add_subdirectory(Rizin)
