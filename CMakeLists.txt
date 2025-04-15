@@ -10,7 +10,7 @@
 # Those regions of code will be marked as such, both in build system files and in actual
 # plugin code.
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 4.0)
 project(reai-rz VERSION 0 LANGUAGES C CXX)
 
 include(FetchContent)
