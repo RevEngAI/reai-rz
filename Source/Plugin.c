@@ -701,7 +701,14 @@ Bool reai_plugin_create_analysis_for_opened_binary_file (
         sha256,
         prog_name,
         cmdline_args, // cmdline args
-        binfile->size
+        binfile->size,
+        false,        // dynamic_execution,
+        true,         // skip_scraping,
+        true,         // skip_cves,
+        true,         // skip_sbom,
+        true,         // skip_capabilities,
+        false,        // ignore_cache,
+        false         // do_advanced_analysis
     );
 
     if (!bin_id) {
