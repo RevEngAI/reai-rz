@@ -21,6 +21,7 @@
 #include <QPushButton>
 #include <QTableWidget>
 #include <QStringListModel>
+#include <QDialogButtonBox>
 #include <QHeaderView>
 
 FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) {
