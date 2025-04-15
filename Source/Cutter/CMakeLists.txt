@@ -14,6 +14,14 @@ find_package(CURL REQUIRED)
 pkg_check_modules(CJSON REQUIRED libcjson)
 pkg_check_modules(TOML REQUIRED libtoml)
 
+if(CUTTER_USE_QT6)
+  find_package(Qt6 COMPONENTS Widgets REQUIRED)
+  set(QT_LIBRARIES ${Qt6_LIBRARIES})
+else()
+  find_package(Qt5 COMPONENTS Widgets REQUIRED)
+  set(QT_LIBRARIES ${Qt5_LIBRARIES})
+endif()
+
 # main plugin library and sources
 set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c" "Ui/Table.cpp"
                            "Ui/FunctionRenameDialog.cpp" "Ui/FunctionSimilarityDialog.cpp"
@@ -27,6 +35,7 @@ target_link_libraries(
   Rizin::Core
   reai
   ${CURL_LIBRARIES}
+  ${QT_LIBRARIES}
   ${CJSON_LIBRARIES}
   ${TOML_LIBRARIES}
 )

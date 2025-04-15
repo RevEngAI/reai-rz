@@ -17,6 +17,7 @@ include(FetchContent)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(BUILD_CUTTER_PLUGIN "Whether to cutter plugin as well" OFF)
+option(CUTTER_USE_QT6 "Use Qt6 instead of Qt5" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
