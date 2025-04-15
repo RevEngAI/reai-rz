@@ -4,42 +4,7 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Analysis.yaml 
 commands:
-  - name: REal
-    summary: Get RevEngAI analysis logs
-    subcommands:
-      - name: REal
-        summary: Get RevEngAI analysis logs using analysis id
-        cname: get_analysis_logs_using_analysis_id
-        args:
-          - name: analysis_id
-            type: RZ_CMD_ARG_TYPE_NUM
-      - name: REalb
-        summary: Get RevEngAI analysis logs using binary id
-        cname: get_analysis_logs_using_binary_id
-        args:
-          - name: binary_id 
-            type: RZ_CMD_ARG_TYPE_NUM
-  - name: REac
-    cname: create_analysis_private
-    summary: Create a PRIVATE RevEngAI analysis for currently opened binary
-    args:
-      - name: ai_model
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-      - name: prog_name
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: false
-      - name: cmd_line_args
-        type: RZ_CMD_ARG_TYPE_STRING
-        optional: true 
-    details:
-      - name: Examples
-        entries:
-          - text: REac binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
-            comment: "Create analysis for ffmpeg program with given command line arguments."
-          - text: REac binnet-0.5-x86-linux NFSMostWantedTrainer.exe
-            comment: "Without any command line arguments."
-  - name: REacp
+  - name: REa
     cname: create_analysis_public
     summary: Create a PUBLIC RevEngAI analysis for currently opened binary
     args:
@@ -59,6 +24,48 @@ commands:
             comment: "Create analysis for ffmpeg program with given command line arguments."
           - text: REacp binnet-0.5-x86-linux NFSMostWantedTrainer.exe
             comment: "Without any command line arguments."
+  - name: REap
+    cname: create_analysis_private
+    summary: Create a PRIVATE RevEngAI analysis for currently opened binary
+    args:
+      - name: ai_model
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: prog_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: cmd_line_args
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: true 
+    details:
+      - name: Examples
+        entries:
+          - text: REac binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
+            comment: "Create analysis for ffmpeg program with given command line arguments."
+          - text: REac binnet-0.5-x86-linux NFSMostWantedTrainer.exe
+            comment: "Without any command line arguments."
+  - name: REao
+    summary: Provide link to show more analysis information on RevEngAI portal
+    cname: analysis_link
+    args:
+      - name: binary_id
+        type: RZ_CMD_ARG_TYPE_NUM
+        optional: true
+  - name: REal
+    summary: Get RevEngAI analysis logs
+    subcommands:
+      - name: REal
+        summary: Get RevEngAI analysis logs using analysis id
+        cname: get_analysis_logs_using_analysis_id
+        args:
+          - name: analysis_id
+            type: RZ_CMD_ARG_TYPE_NUM
+      - name: REalb
+        summary: Get RevEngAI analysis logs using binary id
+        cname: get_analysis_logs_using_binary_id
+        args:
+          - name: binary_id 
+            type: RZ_CMD_ARG_TYPE_NUM
   - name: REau
     cname: ann_auto_analyze
     summary: Auto analyze binary functions using ANN and perform batch rename.
@@ -87,9 +94,9 @@ commands:
             comment: "Apply auto analysis to this binary with 90% min similarity"
           - text: "REau 85"
             comment: "Min 85% similairty"
-  - name: REap
+  - name: REae
     cname: apply_existing_analysis 
-    summary: Apply already existing RevEng.AI analysis to this binary.
+    summary: Apply existing RevEng.AI analysis to this binary.
     args:
       - name: bin_id
         type: RZ_CMD_ARG_TYPE_NUM

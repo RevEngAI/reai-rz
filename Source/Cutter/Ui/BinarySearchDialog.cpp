@@ -60,7 +60,13 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     modelNameInput = new QComboBox (this);
     modelNameInput->setPlaceholderText ("any model");
     partialBinarySha256Input->setToolTip ("Model used to perform analysis");
-    REAI_VEC_FOREACH (reai_ai_models(), ai_model, { modelNameInput->addItem (*ai_model); });
+
+    CString* beg = reai_ai_models()->items;
+    CString* end = reai_ai_models()->items + reai_ai_models()->count;
+    for (CString* ai_model = beg; ai_model < end; ai_model++) {
+        modelNameInput->addItem (*ai_model);
+    }
+
     l->addWidget (n, 2, 0);
     l->addWidget (modelNameInput, 2, 1);
 
@@ -133,7 +139,10 @@ void BinarySearchDialog::on_PerformBinarySearch() {
     }
 
     table->clearContents();
-    REAI_VEC_FOREACH (results, csr, {
+
+    ReaiBinarySearchResult* beg = results->items;
+    ReaiBinarySearchResult* end = results->items + results->count;
+    for (ReaiBinarySearchResult* csr = beg; csr < end; csr++) {
         QStringList row;
         row << csr->binary_name;
         row << QString::number (csr->binary_id);
@@ -144,7 +153,7 @@ void BinarySearchDialog::on_PerformBinarySearch() {
         row << csr->sha_256_hash;
 
         addNewRowToResultsTable (table, row);
-    });
+    }
 
     mainLayout->addWidget (table);
 

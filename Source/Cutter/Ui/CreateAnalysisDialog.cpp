@@ -38,7 +38,14 @@ CreateAnalysisDialog::CreateAnalysisDialog (QWidget* parent) : QDialog (parent) 
 
     aiModelInput = new QComboBox (this);
     aiModelInput->setPlaceholderText ("AI Model");
-    REAI_VEC_FOREACH (reai_ai_models(), ai_model, { aiModelInput->addItem (*ai_model); });
+
+    // NOTE: for some reason MSVC does not accept the REAI_VEC_FOREACH macro here
+    CString* beg = reai_ai_models()->items;
+    CString* end = reai_ai_models()->items + reai_ai_models()->count;
+    for (CString* ai_model = beg; ai_model < end; ai_model++) {
+        aiModelInput->addItem (*ai_model);
+    }
+
     mainLayout->addWidget (aiModelInput);
 
     isAnalysisPrivateCheckBox = new QCheckBox ("Create private analysis?", this);

@@ -3,13 +3,6 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Binaries.yaml 
 commands:
-  - name: REbl
-    summary: Provide link to show more binary information on RevEngAI portal
-    cname: binary_link
-    args:
-      - name: binary_id
-        type: RZ_CMD_ARG_TYPE_NUM
-        optional: true
   - name: REbs
     summary: Commands for performing binary search in RevEngAI
     subcommands:

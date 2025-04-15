@@ -1182,7 +1182,7 @@ RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const cha
 /**
  * REbl
  * */
-RZ_IPI RzCmdStatus rz_binary_link_handler (RzCore* core, int argc, const char** argv) {
+RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
 
     ReaiBinaryId bid = 0;
@@ -1244,6 +1244,11 @@ RZ_IPI RzCmdStatus
         DISPLAY_ERROR ("Failed to fetch and display analysis logs");
         return RZ_CMD_STATUS_ERROR;
     }
+    return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus rz_fake_analysis_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (core && argc && argv);
     return RZ_CMD_STATUS_OK;
 }
 

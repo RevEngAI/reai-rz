@@ -442,15 +442,15 @@ void ReaiCutterPlugin::on_RenameFns() {
 
         /* NOTE: It is assumed here that once name is appended into new name map, RevEng.AI will surely rename all functions.
          * This means if anyone breaks this assumption, things can go bad. */
-ReaiFnInfo fi = { 
-    .id = fn_id,
-    .name = newNameCstr,
-    .vaddr = 0, // vaddr not required for renaming
-    .size = 0   // size not required for renaming
-};
+        ReaiFnInfo fi = {
+            .id    = fn_id,
+            .name  = newNameCstr,
+            .vaddr = 0, // vaddr not required for renaming
+            .size  = 0  // size not required for renaming
+        };
 
         /* add new name to new name map */
-        if (reai_fn_info_vec_append ( new_name_map, &fi )) {
+        if (reai_fn_info_vec_append (new_name_map, &fi)) {
             Core()->renameFunction (rz_fn->addr, newNameCstr);
         } else {
             DISPLAY_ERROR (

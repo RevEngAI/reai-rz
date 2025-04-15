@@ -68,7 +68,13 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     modelNameInput = new QComboBox (this);
     modelNameInput->setPlaceholderText ("any model");
     modelNameInput->setToolTip ("Model used to analyze the binaries in collection");
-    REAI_VEC_FOREACH (reai_ai_models(), ai_model, { modelNameInput->addItem (*ai_model); });
+
+    CString* beg = reai_ai_models()->items;
+    CString* end = reai_ai_models()->items + reai_ai_models()->count;
+    for (CString* ai_model = beg; ai_model < end; ai_model++) {
+        modelNameInput->addItem (*ai_model);
+    }
+
     l->addWidget (n, 3, 0);
     l->addWidget (modelNameInput, 3, 1);
 
@@ -145,7 +151,10 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
     }
 
     table->clearContents();
-    REAI_VEC_FOREACH (results, csr, {
+
+    ReaiCollectionSearchResult* beg = results->items;
+    ReaiCollectionSearchResult* end = results->items + results->count;
+    for (ReaiCollectionSearchResult* csr = beg; csr < end; csr++) {
         QStringList row;
         row << csr->collection_name;
         row << QString::number (csr->collection_id);
@@ -155,7 +164,7 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
         row << csr->owned_by;
 
         addNewRowToResultsTable (table, row);
-    });
+    }
 
     reai_collection_search_result_vec_destroy (results);
 }
