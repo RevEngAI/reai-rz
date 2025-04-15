@@ -17,6 +17,8 @@
 #include <QPushButton>
 #include <QHeaderView>
 #include <QDesktopServices>
+#include <QDialogButtonBox>
+#include <QUrl>
 #include <QLabel>
 
 /* cutter */
@@ -181,7 +183,7 @@ void CollectionSearchDialog::on_TableCellDoubleClick (int row, int column) {
         // fetch collection id and open url
         QString collectionId = table->item (row, 1)->text();
         QString link         = QString ("%1/collections/%2").arg (host).arg (collectionId);
-        QDesktopServices::openUrl (link);
+        QDesktopServices::openUrl (QUrl (link));
     } else {
         selectedCollectionIds << table->item (row, 1)->text();
     }

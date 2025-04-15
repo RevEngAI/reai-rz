@@ -17,6 +17,8 @@
 #include <QPushButton>
 #include <QHeaderView>
 #include <QDesktopServices>
+#include <QDialogButtonBox>
+#include <QUrl>
 #include <QLabel>
 
 /* cutter */
@@ -174,7 +176,7 @@ void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {
         QString analysisId = table->item (row, 2)->text();
         QString link =
             QString ("%1/analyses/%2?analysis-id=%3").arg (host).arg (binaryId).arg (analysisId);
-        QDesktopServices::openUrl (link);
+        QDesktopServices::openUrl (QUrl (link));
     } else {
         selectedBinaryIds << table->item (row, 1)->text();
     }

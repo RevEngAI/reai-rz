@@ -14,6 +14,7 @@ cmake_minimum_required(VERSION 3.5)
 project(reai-rz VERSION 0 LANGUAGES C CXX)
 
 include(FetchContent)
+find_package(PkgConfig REQUIRED)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(BUILD_CUTTER_PLUGIN "Whether to cutter plugin as well" OFF)
@@ -26,7 +27,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # ----------------------------------------
 
 # Minimal required version
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

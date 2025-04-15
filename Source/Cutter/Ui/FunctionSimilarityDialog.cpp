@@ -19,6 +19,7 @@
 #include <QPushButton>
 #include <QHeaderView>
 #include <QCompleter>
+#include <QDialogButtonBox>
 #include <QLabel>
 
 /* cutter */
