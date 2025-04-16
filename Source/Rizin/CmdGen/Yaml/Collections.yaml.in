@@ -3,7 +3,7 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Collections.yaml 
 commands:
-  - name: REcl
+  - name: REco
     summary: Provide a RevEngAI link to view more information about collection in browser.
     cname: collection_link 
     args:

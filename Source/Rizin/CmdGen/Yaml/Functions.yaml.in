@@ -4,6 +4,12 @@
 ---
 name: @SUBCOMMANDS_FILES_BASE@/Functions.yaml 
 commands:
+  - name: REfo
+    summary: Provide a RevEngAI link to view more information about function in browser.
+    cname: function_link 
+    args:
+      - name: function_id
+        type: RZ_CMD_ARG_TYPE_NUM
   - name: REfl
     cname: get_basic_function_info
     summary: Get & show basic function info for selected binary.

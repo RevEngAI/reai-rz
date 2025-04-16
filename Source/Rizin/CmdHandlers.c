@@ -29,6 +29,7 @@
 #include <rz_util/rz_file.h>
 #include <rz_util/rz_num.h>
 #include <rz_util/rz_path.h>
+#include <rz_util/rz_sys.h>
 #include <rz_util/rz_table.h>
 #include <rz_vector.h>
 
@@ -1156,7 +1157,7 @@ RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, c
 }
 
 /**
- * REcl
+ * REco
  * */
 RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -1174,13 +1175,33 @@ RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const cha
     // TODO: should we also get basic collection information and display it here?
     DISPLAY_INFO ("%s/collections/%llu", host, cid);
 
+    CString syscmd = NULL;
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    syscmd = "start";
+#elif __APPLE__
+    syscmd = "open";
+#elif __linux__
+    syscmd = "xdg-open";
+#else
+    syscmd = NULL;
+#    warn "Unsupported OS. Won't open links from command line."
+#endif
+
+    if (syscmd) {
+        CString cmd = rz_str_newf ("%s %s/collections/%llu", syscmd, host, cid);
+        rz_sys_system (cmd);
+        FREE (cmd);
+    }
+
+    FREE (host);
+
     FREE (host);
 
     return RZ_CMD_STATUS_OK;
 }
 
 /**
- * REbl
+ * REao
  * */
 RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
@@ -1194,6 +1215,13 @@ RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char*
         }
     } else {
         bid = reai_binary_id();
+        if (!bid) {
+            APPEND_ERROR ("No existing analysis applied. Don't know what analysis to open.");
+            DISPLAY_ERROR (
+                "Please either apply an existing analysis or provide me a binary ID to open an "
+                "analysis page"
+            );
+        }
     }
 
     // generate portal link
@@ -1211,6 +1239,73 @@ RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char*
         bid,
         reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
     );
+
+    CString syscmd = NULL;
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    syscmd = "start";
+#elif __APPLE__
+    syscmd = "open";
+#elif __linux__
+    syscmd = "xdg-open";
+#else
+    syscmd = NULL;
+#    warn "Unsupported OS. Won't open links from command line."
+#endif
+
+    if (syscmd) {
+        CString cmd = rz_str_newf (
+            "%s %s/analyses/%llu?analysis-id=%llu",
+            syscmd,
+            host,
+            bid,
+            reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
+        );
+        rz_sys_system (cmd);
+        FREE (cmd);
+    }
+
+    FREE (host);
+
+    return RZ_CMD_STATUS_OK;
+}
+
+/**
+ * REfo
+ * */
+RZ_IPI RzCmdStatus rz_function_link_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (argc);
+
+    ReaiFunctionId fid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+
+    // generate portal link
+    char* host = strdup (reai_plugin()->reai_config->host);
+    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
+    if (!host) {
+        DISPLAY_ERROR ("Failed to generate portal link");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    // TODO: should we also get basic function information and display it here?
+    DISPLAY_INFO ("%s/functions/%llu", host, fid);
+
+    CString syscmd = NULL;
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    syscmd = "start";
+#elif __APPLE__
+    syscmd = "open";
+#elif __linux__
+    syscmd = "xdg-open";
+#else
+    syscmd = NULL;
+#    warn "Unsupported OS. Won't open links from command line."
+#endif
+
+    if (syscmd) {
+        CString cmd = rz_str_newf ("%s %s/function/%llu", syscmd, host, fid);
+        rz_sys_system (cmd);
+        FREE (cmd);
+    }
+
 
     FREE (host);
 
@@ -1244,11 +1339,6 @@ RZ_IPI RzCmdStatus
         DISPLAY_ERROR ("Failed to fetch and display analysis logs");
         return RZ_CMD_STATUS_ERROR;
     }
-    return RZ_CMD_STATUS_OK;
-}
-
-RZ_IPI RzCmdStatus rz_fake_analysis_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (core && argc && argv);
     return RZ_CMD_STATUS_OK;
 }
 

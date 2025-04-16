@@ -51,6 +51,13 @@ commands:
       - name: binary_id
         type: RZ_CMD_ARG_TYPE_NUM
         optional: true
+    details:
+      - name: Examples
+        entries:
+          - text: REao 429220 
+            comment: Provide link to open analysis in RevEngAI portal
+          - text: REao
+            comment: Can be executed without providing binary ID as well. This will open currently applied analysis.
   - name: REal
     summary: Get RevEngAI analysis logs
     subcommands:
