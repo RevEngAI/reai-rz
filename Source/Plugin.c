@@ -1488,7 +1488,7 @@ ReaiAiDecompilationStatus reai_plugin_check_decompiler_status_running_at (RzCore
         return false;
     }
 
-    return reai_poll_ai_decompilation (reai(), reai_response(), fn_id);
+    return reai_poll_ai_decompilation (reai(), reai_response(), fn_id, false /* ai summary */);
 }
 
 /**
@@ -1503,7 +1503,7 @@ ReaiAiDecompilationStatus reai_plugin_check_decompiler_status_running_at (RzCore
  * \return AI Decompilation code on success.
  * \return A string containing "(empty)" otherwise.
  * */
-CString reai_plugin_get_decompiled_code_at (RzCore *core, ut64 addr) {
+CString reai_plugin_get_decompiled_code_at (RzCore *core, ut64 addr, Bool summarize) {
     if (!core) {
         APPEND_ERROR ("Invalid arguments");
         return NULL;
@@ -1515,7 +1515,8 @@ CString reai_plugin_get_decompiled_code_at (RzCore *core, ut64 addr) {
         return NULL;
     }
 
-    ReaiAiDecompilationStatus status = reai_poll_ai_decompilation (reai(), reai_response(), fn_id);
+    ReaiAiDecompilationStatus status =
+        reai_poll_ai_decompilation (reai(), reai_response(), fn_id, summarize);
     if (status == REAI_AI_DECOMPILATION_STATUS_SUCCESS) {
         CString decomp = reai_response()->poll_ai_decompilation.data.decompilation;
         decomp =

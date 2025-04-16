@@ -301,7 +301,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, c
     ReaiBinaryId binary_id = reai_binary_id();
     if (!binary_id) {
         DISPLAY_ERROR (
-            "Please apply existing RevEngAI analysis (using REap command) or create a new one.\n"
+            "Please apply existing RevEngAI analysis (using REae command) or create a new one.\n"
             "Cannot get function info from RevEng.AI without an existing analysis."
         );
         return RZ_CMD_STATUS_ERROR;
@@ -716,10 +716,23 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                 break;
             case REAI_AI_DECOMPILATION_STATUS_SUCCESS : {
                 DISPLAY_INFO ("AI decompilation complete ;-)\n");
-                CString code = reai_plugin_get_decompiled_code_at (core, rzfn->addr);
+
+                // Get code and summary
+                CString code =
+                    reai_plugin_get_decompiled_code_at (core, rzfn->addr, true /* summarize */);
+                CString summary = reai_response()->poll_ai_decompilation.data.summary;
+
+                if (summary) {
+                    rz_cons_println (summary);
+                } else {
+                    REAI_LOG_ERROR ("Summary failed");
+                }
+
                 if (code) {
                     rz_cons_println (code);
                     FREE (code);
+                } else {
+                    REAI_LOG_ERROR ("Decompilation failed");
                 }
                 return RZ_CMD_STATUS_OK;
             }

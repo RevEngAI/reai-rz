@@ -7,6 +7,8 @@
 
 #include <Cutter/Decompiler.hpp>
 #include <Plugin.h>
+#include <rz_util/rz_annotated_code.h>
+#include <rz_util/rz_str.h>
 
 ReaiDec::ReaiDec (QObject *parent) : Decompiler ("reaidec", "ReaiDec", parent) {}
 
@@ -45,15 +47,30 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
         REAI_LOG_TRACE ("still polling...");
     }
 
-    // get decompiled code after finished
-    RzCoreLocked     core (Core());
-    CString          decomp = reai_plugin_get_decompiled_code_at (core, self->addr);
-    RzAnnotatedCode *code   = NULL;
-    if (decomp) {
-        code = rz_annotated_code_new ((char *)decomp);
+    // get decompiled code and AI summary after finished
+    RzCoreLocked core (Core());
+    CString decomp  = reai_plugin_get_decompiled_code_at (core, self->addr, true /* summarize */);
+    CString summary = reai_response()->poll_ai_decompilation.data.summary;
+
+    char *final_str = NULL;
+
+    // append AI summary first
+    if (summary) {
+        final_str = rz_str_append (final_str, summary);
     } else {
-        code = rz_annotated_code_new (strdup ("decompilation failed"));
+        final_str = rz_str_append (final_str, "AI summary failed");
     }
+    rz_str_appendch (final_str, '\n');
+    rz_str_appendch (final_str, '\n');
+
+    // append decompilation
+    if (decomp) {
+        final_str = rz_str_append (final_str, decomp);
+    } else {
+        final_str = rz_str_append (final_str, "AI decompilation failed");
+    }
+
+    RzAnnotatedCode *code = rz_annotated_code_new (final_str);
 
     // signal decompilation finished
     self->is_finished = true;

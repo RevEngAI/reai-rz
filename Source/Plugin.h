@@ -98,7 +98,7 @@ extern "C" {
     Bool reai_plugin_decompile_at (RzCore* core, ut64 addr);
     ReaiAiDecompilationStatus
             reai_plugin_check_decompiler_status_running_at (RzCore* core, ut64 addr);
-    CString reai_plugin_get_decompiled_code_at (RzCore* core, ut64 addr);
+    CString reai_plugin_get_decompiled_code_at (RzCore* core, ut64 addr, Bool summarize);
 
     Bool reai_plugin_collection_search (
         RzCore* core,
