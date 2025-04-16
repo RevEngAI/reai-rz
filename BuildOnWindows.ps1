@@ -8,13 +8,7 @@
 # Set-ExecutionPolicy Bypass -Scope Process -Force; iex ".\\BuildOnWindows.ps1"
 #
 # Dependencies
-# - Visual Studio Compiler Toolchain
-
-param (
-	[string]$buildType = "Release"
-)
-
-Write-Host Build" type is $buildType"
+# - MSVC Compiler Toolchain
 
 # Escape backslashes becuase Windows is idiot af
 $CWD = $PWD.Path -replace '\\', '\\'
@@ -41,15 +35,37 @@ md "$InstallPath"
 
 
 # Set environment variable for this powershell session
-$env:Path = $env:Path + "$InstallPath;$InstallPath\\bin;$InstallPath\\lib;$DepsPath\\aria2c;"
+$env:Path = $env:Path + "$InstallPath;$InstallPath\\bin;$InstallPath\\lib;$DownPath\\aria2c;$DownPath\\7zip"
 $ReaiPathEnvVars = $env:Path
+
+# x64 Architecture Builds
+cmd /c 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
 
 # Download aria2c for faster download of dependencies
 # Invoke-WebRequest performs single threaded downloads and that too at slow speed
 Invoke-WebRequest -Uri "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip" -OutFile "$DownPath\\aria2c.zip"
-Expand-Archive -LiteralPath "$DownPath\\aria2c.zip" -DestinationPath "$DepsPath\\aria2c"
-Move-Item "$DepsPath\\aria2c\\aria2-1.37.0-win-64bit-build1\\*" -Destination "$DepsPath\\aria2c" -Force
-Remove-Item -LiteralPath "$DepsPath\\aria2c\\aria2-1.37.0-win-64bit-build1" -Force -Recurse
+Expand-Archive -LiteralPath "$DownPath\\aria2c.zip" -DestinationPath "$DownPath\\aria2c"
+Move-Item "$DownPath\\aria2c\\aria2-1.37.0-win-64bit-build1\\*" -Destination "$DownPath\\aria2c" -Force
+Remove-Item -LiteralPath "$DownPath\\aria2c\\aria2-1.37.0-win-64bit-build1" -Force -Recurse
+
+# Download 7z for faster decompression time. Windows is lightyears behind in their tech.
+Write-Host "Checking if 7z is already installed..."
+# Check if command is available in the system PATH
+$is7zAvailable = Get-Command 7za -ErrorAction SilentlyContinue
+if ($is7zAvailable) {
+	Write-Host "7z is already installed. Skipping..."
+} else {
+	# Download dependency
+	Write-Host "7z is not installed. Fetching..."
+	aria2c "https://7-zip.org/a/7zr.exe" -j8 -d "$DownPath"
+	aria2c "https://7-zip.org/a/7z2409-extra.7z" -j8 -d "$DownPath"
+	Write-Host "7z is not installed. Fetching... DONE"
+	
+	# Installing dependency
+	Write-Host "Installing 7z..."
+	& "$DownPath\\7zr.exe" x "$DownPath\\7z2409-extra.7z" -o"$DownPath\\7zip"
+	Write-Host "Installing 7z... DONE"
+}
 
 # Make available a preinstalled dependency for direct use
 function Make-Available () {
@@ -74,7 +90,7 @@ function Make-Available () {
 		
 		# Installing dependency
 		Write-Host "Installing $pkgCmdName..."
-		Expand-Archive -LiteralPath "$DownPath\\$pkgName" -DestinationPath "$DepsPath\\$pkgCmdName"
+		7za x "$DownPath\\$pkgName" -o"$DepsPath\\$pkgCmdName"
 		Copy-Item "$DepsPath\\$pkgCmdName\\$pkgSubfolderName\\*" -Destination "$InstallPath\\" -Force -Recurse
 		Remove-Item -LiteralPath "$DepsPath\\$pkgCmdName" -Force -Recurse
 		Write-Host "Installing $pkgCmdName... DONE"
@@ -131,9 +147,6 @@ Make-Available -pkgCmdName "ninja" `
 
 Write-Host "All system dependencies are satisfied."	
 Write-Host "Now fetching plugin dependencies, and then building and installing these..."
-
-
-
 	
 # Setup a list of files to be downloaded
 $DepsList = @"
@@ -154,12 +167,12 @@ aria2c -i "$BuildDir\\DependenciesList.txt" -j8 -d "$DownPath"
 
 # These dependencies need to be built on the host machine, unlike installing the pre-compiled binaries above
 $pkgs = @(
-	# Final Destination         Downloaded archive name         Subfolder name where actually extracted
-    @{name = "curl";    path = "$DownPath\\curl-8.13.0.zip";    subfolderName="curl-8.13.0"},
-	@{name = "reai-rz"; path = "$DownPath\\reai-rz-master.zip"; subfolderName="reai-rz-master"},
-    @{name = "tomlc99"; path = "$DownPath\\tomlc99-1.zip";      subfolderName="tomlc99-1"},
-    @{name = "creait";  path = "$DownPath\\creait-master.zip";  subfolderName="creait-master"},
-    @{name = "cjson";   path = "$DownPath\\cJSON-1.7.18.zip";   subfolderName="cJSON-1.7.18"}
+	# Final Destination         Downloaded archive name                Subfolder name where actually extracted
+    @{name = "curl";    path = "$DownPath\\curl-8.13.0.zip";           subfolderName="curl-8.13.0"},
+	@{name = "reai-rz"; path = "$DownPath\\reai-rz-master.zip";        subfolderName="reai-rz-master"},
+    @{name = "tomlc99"; path = "$DownPath\\tomlc99-1.zip";             subfolderName="tomlc99-1"},
+    @{name = "creait";  path = "$DownPath\\creait-master.zip";         subfolderName="creait-master"},
+    @{name = "cjson";   path = "$DownPath\\cJSON-1.7.18.zip";          subfolderName="cJSON-1.7.18"}
 )
 # Unpack a dependency to be built later on
 # These temporarily go into dependencies directory
@@ -167,8 +180,8 @@ function Unpack-Dependency {
       param ([string]$packageName, [string]$packagePath, [string]$subfolderName)
       $packageInstallDir = "$DepsPath\\$packageName"  # -------------------------------------------------------> Path where package is expanded
       Write-Host "Installing dependency $packagePath to $packageInstallDir..."
-      Expand-Archive -LiteralPath "$packagePath" -DestinationPath "$packageInstallDir" # ----------------------> Expand archive to this path
-      Copy-Item "$packageInstallDir\\$subfolderName\\*" -Destination "$packageInstallDir\\" -Force -Recurse # -> Copy contents of subfolder to expanded path
+      7za x "$packagePath" -o"$packageInstallDir" # -----------------------------------------------------------> Expand archive to this path
+	  Copy-Item "$packageInstallDir\\$subfolderName\\*" -Destination "$packageInstallDir\\" -Force -Recurse # -> Copy contents of subfolder to expanded path
 	  Remove-Item -LiteralPath "$packageInstallDir\\$subfolderName" -Force -Recurse # -------------------------> Remove subfolder where archive was originally extracted
 }
 
@@ -176,9 +189,6 @@ foreach ($pkg in $pkgs) {
     Write-Host "Extracting $($pkg.name)"        
     Unpack-Dependency -packageName $pkg.name -packagePath $pkg.path -subfolderName $pkg.subfolderName
 }
-
-# x64 Architecture Builds
-cmd /c 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
 
 # Build and install libCURL
 Write-Host Build" & INSTALL libCURL..."
@@ -193,7 +203,8 @@ cmake -S "$DepsPath\\curl" -A x64 `
 	-D CURL_USE_LIBPSL=OFF `
 	-D CMAKE_PREFIX_PATH="$InstallPath" `
 	-D CMAKE_INSTALL_PREFIX="$InstallPath" `
-	-D BUILD_SHARED_LIBS=OFF
+	-D BUILD_SHARED_LIBS=OFF `
+	-D CURL_USE_SCHANNEL=ON
 cmake --build "$DepsPath\\curl\\Build" --config Release
 cmake --install "$DepsPath\\curl\\Build" --prefix "$InstallPath" --config Release
 Write-Host Build" & INSTALL libCURL... DONE"
@@ -251,7 +262,8 @@ cmake -S "$DepsPath\\reai-rz" -A x64 `
 	-D BUILD_CUTTER_PLUGIN=ON `
 	-D CUTTER_USE_QT6=OFF `
 	-D CMAKE_C_FLAGS="/TC" `
-	-D CMAKE_CXX_FLAGS="/TC"
+	-D CMAKE_CXX_FLAGS="/TC" `
+	-D CMAKE_POLICY_VERSION_MINIMUM="3.5"
 cmake --build "$DepsPath\\reai-rz\\Build" --config Release
 cmake --install "$DepsPath\\reai-rz\\Build" --prefix "$InstallPath" --config Release
 Write-Host Build" & INSTALL reai-rz... DONE"
