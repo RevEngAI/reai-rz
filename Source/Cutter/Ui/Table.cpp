@@ -127,6 +127,7 @@ struct ReaiPluginTable : public QTableWidget {
 
         headerLabels << name;
         setHorizontalHeaderLabels (headerLabels);
+        horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     }
 
     /**
