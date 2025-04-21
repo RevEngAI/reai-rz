@@ -39,7 +39,7 @@ class CollectionSearchDialog : public QDialog {
    private:
     QVBoxLayout*  mainLayout;
     QLineEdit *   partialCollectionNameInput, *partialBinaryNameInput, *partialBinarySha256Input;
-    QComboBox*    modelNameInput;
+    QComboBox*    modelNameSelector;
     QStringList   headerLabels;
     QTableWidget* table;
 

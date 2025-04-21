@@ -545,7 +545,7 @@ Bool reai_plugin_save_config (CString host, CString api_key) {
     return true;
 }
 
-CStrVec *csv_to_cstr_vec (CString csv) {
+CStrVec *reai_plugin_csv_to_cstr_vec (CString csv) {
     CStrVec *v = NULL;
     if (csv && strlen (csv)) {
         RzList *list = rz_str_split_duplist (csv, ",", true);
@@ -563,7 +563,7 @@ CStrVec *csv_to_cstr_vec (CString csv) {
     return v;
 }
 
-U64Vec *csv_to_u64_vec (CString csv) {
+U64Vec *reai_plugin_csv_to_u64_vec (CString csv) {
     U64Vec *v = NULL;
     if (csv && strlen (csv)) {
         RzList *list = rz_str_split_duplist (csv, ",", true);
@@ -1277,8 +1277,8 @@ Bool reai_plugin_search_and_show_similar_functions (
         return false;
     }
 
-    U64Vec *collection_ids = csv_to_u64_vec (collection_ids_csv);
-    U64Vec *binary_ids     = csv_to_u64_vec (binary_ids_csv);
+    U64Vec *collection_ids = reai_plugin_csv_to_u64_vec (collection_ids_csv);
+    U64Vec *binary_ids     = reai_plugin_csv_to_u64_vec (binary_ids_csv);
 
     Float32           maxDistance = 1.f - (min_similarity / 100.f);
     ReaiSimilarFnVec *fnMatches   = reai_get_similar_functions (
@@ -1546,7 +1546,7 @@ Bool reai_plugin_collection_search (
         return false;
     }
 
-    CStrVec *tags = csv_to_cstr_vec (tags_csv);
+    CStrVec *tags = reai_plugin_csv_to_cstr_vec (tags_csv);
 
     ReaiCollectionSearchResultVec *results = reai_collection_search (
         reai(),
@@ -1718,7 +1718,7 @@ Bool reai_plugin_binary_search (
         return false;
     }
 
-    CStrVec *tags = csv_to_cstr_vec (tags_csv);
+    CStrVec *tags = reai_plugin_csv_to_cstr_vec (tags_csv);
 
     ReaiBinarySearchResultVec *results = reai_binary_search (
         reai(),

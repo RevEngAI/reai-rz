@@ -1,12 +1,12 @@
 /**
- * @file      : BinarySearchDialog.hpp
+ * @file      : RecentAnalysisDialog.hpp
  * @author    : Siddharth Mishra
  * @date      : 8th Apr 2025
  * @copyright : Copyright (c) 2025 RevEngAI. All Rights Reserved.
  * */
 
-#ifndef REAI_PLUGIN_CUTTER_UI_BINARY_SEARCH_DIALOG_HPP
-#define REAI_PLUGIN_CUTTER_UI_BINARY_SEARCH_DIALOG_HPP
+#ifndef REAI_PLUGIN_CUTTER_UI_RECENT_ANALYSIS_DIALOG_HPP
+#define REAI_PLUGIN_CUTTER_UI_RECENT_ANALYSIS_DIALOG_HPP
 
 /* qt */
 #include <QDialog>
@@ -15,6 +15,7 @@
 #include <QVBoxLayout>
 #include <QTableWidget>
 #include <QComboBox>
+#include <QCheckBox>
 
 /* rizin */
 #include <rz_core.h>
@@ -26,30 +27,24 @@
 #include <Table.h>
 
 
-class BinarySearchDialog : public QDialog {
+class RecentAnalysisDialog : public QDialog {
     Q_OBJECT;
 
    public:
-    BinarySearchDialog (QWidget* parent, bool openPageOnDoubleClick);
-
-    const QStringList& getSelectedBinaryIds() const {
-        return selectedBinaryIds;
-    }
+    RecentAnalysisDialog (QWidget* parent);
 
    private:
     QVBoxLayout*  mainLayout;
-    QLineEdit *   partialBinaryNameInput, *partialBinarySha256Input;
-    QComboBox*    modelNameSelector;
+    QLineEdit *   usernamesInput, *searchTermInput;
+    QComboBox *   modelNameSelector, *workspaceSelector, *orderBySelector, *statusSelector;
+    QCheckBox*    isOrderedInAsc;
     QStringList   headerLabels;
     QTableWidget* table;
 
-    QStringList selectedBinaryIds;
-    bool        openPageOnDoubleClick;
-
-    void on_PerformBinarySearch();
+    void on_GetRecentAnalysis();
     void on_TableCellDoubleClick (int row, int column);
 
     void addNewRowToResultsTable (QTableWidget* t, const QStringList& row);
 };
 
-#endif // REAI_PLUGIN_CUTTER_UI_BINARY_SEARCH_DIALOG_HPP
+#endif // REAI_PLUGIN_CUTTER_UI_RECENT_ANALYSIS_DIALOG_HPP

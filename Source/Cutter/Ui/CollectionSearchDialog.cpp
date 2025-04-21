@@ -53,7 +53,7 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     n->setText ("Binary name : ");
     partialBinaryNameInput = new QLineEdit (this);
     partialBinaryNameInput->setPlaceholderText ("binary name");
-    partialCollectionNameInput->setToolTip ("Partial binary name the collection must contain");
+    partialBinaryNameInput->setToolTip ("Partial binary name the collection must contain");
     l->addWidget (n, 1, 0);
     l->addWidget (partialBinaryNameInput, 1, 1);
 
@@ -67,18 +67,18 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
 
     n = new QLabel (this);
     n->setText ("Model name (optional) : ");
-    modelNameInput = new QComboBox (this);
-    modelNameInput->setPlaceholderText ("any model");
-    modelNameInput->setToolTip ("Model used to analyze the binaries in collection");
+    modelNameSelector = new QComboBox (this);
+    modelNameSelector->setPlaceholderText ("any model");
+    modelNameSelector->setToolTip ("Model used to analyze the binaries in collection");
 
     CString* beg = reai_ai_models()->items;
     CString* end = reai_ai_models()->items + reai_ai_models()->count;
     for (CString* ai_model = beg; ai_model < end; ai_model++) {
-        modelNameInput->addItem (*ai_model);
+        modelNameSelector->addItem (*ai_model);
     }
 
     l->addWidget (n, 3, 0);
-    l->addWidget (modelNameInput, 3, 1);
+    l->addWidget (modelNameSelector, 3, 1);
 
     QDialogButtonBox* btnBox =
         new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -96,6 +96,7 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     table->setColumnCount (6);
     table->setHorizontalHeaderLabels (headerLabels);
+    table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
 
     connect (
@@ -129,8 +130,8 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
     CString        partialBinarySha256CStr    = partialBinarySha256ByteArr.constData();
 
     CString modelNameCStr = NULL;
-    if (modelNameInput->currentIndex() != -1) {
-        const QString& modelName        = modelNameInput->currentText();
+    if (modelNameSelector->currentIndex() != -1) {
+        const QString& modelName        = modelNameSelector->currentText();
         QByteArray     modelNameByteArr = modelName.toLatin1();
         modelNameCStr                   = modelNameByteArr.constData();
     }

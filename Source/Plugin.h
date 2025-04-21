@@ -47,6 +47,9 @@ extern "C" {
     Bool        reai_plugin_init (RzCore* core);
     Bool        reai_plugin_deinit();
 
+    U64Vec*  reai_plugin_csv_to_u64_vec (CString csv);
+    CStrVec* reai_plugin_csv_to_cstr_vec (CString csv);
+
     Bool reai_plugin_add_bg_work (RzThreadFunction fn, void* user_data);
 
     ReaiFnInfoVec* reai_plugin_get_function_boundaries (RzCore* core);

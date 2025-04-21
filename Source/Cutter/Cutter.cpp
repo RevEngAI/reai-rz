@@ -38,6 +38,7 @@
 #include <Cutter/Ui/CollectionSearchDialog.hpp>
 #include <Cutter/Ui/AutoAnalysisDialog.hpp>
 #include <Cutter/Ui/CreateAnalysisDialog.hpp>
+#include <Cutter/Ui/RecentAnalysisDialog.hpp>
 #include <Plugin.h>
 #include <Cutter/Cutter.hpp>
 #include <Cutter/Decompiler.hpp>
@@ -263,7 +264,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     actFunctionSimilaritySearch = reaiMenu->addAction ("Function Similarity Search");
     actCollectionSearch         = reaiMenu->addAction ("Collection Search");
     actBinarySearch             = reaiMenu->addAction ("Binary Search");
-    actBinAnalysisHistory       = reaiMenu->addAction ("Binary Analysis History");
+    actRecentAnalysis           = reaiMenu->addAction ("Recent Analysis");
     actSetup                    = reaiMenu->addAction ("Plugin Config Setup");
 
     connect (actCreateAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_CreateAnalysis);
@@ -287,12 +288,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         &ReaiCutterPlugin::on_CollectionSearch
     );
     connect (actBinarySearch, &QAction::triggered, this, &ReaiCutterPlugin::on_BinarySearch);
-    connect (
-        actBinAnalysisHistory,
-        &QAction::triggered,
-        this,
-        &ReaiCutterPlugin::on_BinAnalysisHistory
-    );
+    connect (actRecentAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_RecentAnalysis);
 
     connect (actRenameFns, &QAction::triggered, this, &ReaiCutterPlugin::on_RenameFns);
     connect (actSetup, &QAction::triggered, this, &ReaiCutterPlugin::on_Setup);
@@ -479,12 +475,13 @@ void ReaiCutterPlugin::on_RenameFns() {
     mainWindow->refreshAll();
 }
 
-void ReaiCutterPlugin::on_BinAnalysisHistory() {
+void ReaiCutterPlugin::on_RecentAnalysis() {
     if (!reai_plugin_check_config_exists()) {
         on_Setup();
     }
 
-    DISPLAY_INFO ("Method unimplemented. Coming soon...");
+    RecentAnalysisDialog *dlg = new RecentAnalysisDialog ((QWidget *)this->parent());
+    dlg->exec();
 }
 
 void ReaiCutterPlugin::on_Setup() {

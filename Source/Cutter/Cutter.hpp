@@ -49,7 +49,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actFunctionSimilaritySearch = nullptr;
     QAction *actCollectionSearch         = nullptr;
     QAction *actBinarySearch             = nullptr;
-    QAction *actBinAnalysisHistory       = nullptr;
+    QAction *actRecentAnalysis           = nullptr;
     QAction *actSetup                    = nullptr;
 
     ReaiBinaryId customAnalysisId = 0;
@@ -85,7 +85,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     void on_FunctionSimilaritySearch();
     void on_CollectionSearch();
     void on_BinarySearch();
-    void on_BinAnalysisHistory();
+    void on_RecentAnalysis();
     void on_Setup();
 };
 

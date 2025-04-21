@@ -26,7 +26,8 @@ endif()
 set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c" "Ui/Table.cpp"
                            "Ui/FunctionRenameDialog.cpp" "Ui/FunctionSimilarityDialog.cpp"
                            "Ui/AutoAnalysisDialog.cpp" "Ui/CreateAnalysisDialog.cpp"
-                           "Ui/BinarySearchDialog.cpp" "Ui/CollectionSearchDialog.cpp")
+                           "Ui/BinarySearchDialog.cpp" "Ui/CollectionSearchDialog.cpp"
+                           "Ui/RecentAnalysisDialog.cpp")
 add_library(reai_cutter STATIC MODULE ${ReaiCutterPluginSource})
 target_link_libraries(
   reai_cutter

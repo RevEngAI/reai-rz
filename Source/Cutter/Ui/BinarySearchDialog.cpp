@@ -59,18 +59,18 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
 
     n = new QLabel (this);
     n->setText ("Model name (optional) : ");
-    modelNameInput = new QComboBox (this);
-    modelNameInput->setPlaceholderText ("any model");
-    partialBinarySha256Input->setToolTip ("Model used to perform analysis");
+    modelNameSelector = new QComboBox (this);
+    modelNameSelector->setPlaceholderText ("any model");
+    modelNameSelector->setToolTip ("Model used to perform analysis");
 
     CString* beg = reai_ai_models()->items;
     CString* end = reai_ai_models()->items + reai_ai_models()->count;
     for (CString* ai_model = beg; ai_model < end; ai_model++) {
-        modelNameInput->addItem (*ai_model);
+        modelNameSelector->addItem (*ai_model);
     }
 
     l->addWidget (n, 2, 0);
-    l->addWidget (modelNameInput, 2, 1);
+    l->addWidget (modelNameSelector, 2, 1);
 
     QDialogButtonBox* btnBox =
         new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -89,6 +89,7 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     table->setColumnCount (7);
     table->setHorizontalHeaderLabels (headerLabels);
+    table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
 
     connect (
@@ -118,8 +119,8 @@ void BinarySearchDialog::on_PerformBinarySearch() {
     CString        partialBinarySha256CStr    = partialBinarySha256ByteArr.constData();
 
     CString modelNameCStr = NULL;
-    if (modelNameInput->currentIndex() != -1) {
-        const QString& modelName        = modelNameInput->currentText();
+    if (modelNameSelector->currentIndex() != -1) {
+        const QString& modelName        = modelNameSelector->currentText();
         QByteArray     modelNameByteArr = modelName.toLatin1();
         modelNameCStr                   = modelNameByteArr.constData();
     }
