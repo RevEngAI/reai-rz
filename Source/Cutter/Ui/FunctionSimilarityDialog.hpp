@@ -33,16 +33,22 @@ class FunctionSimilarityDialog : public QDialog {
     FunctionSimilarityDialog (QWidget* parent);
 
    private:
-    QVBoxLayout* mainLayout;
-    QLineEdit *  searchBarInput, *collectionIdsInput, *binaryIdsInput;
-    QSpinBox*    maxResultCountInput;
-    QSlider*     similaritySlider;
-    QCheckBox*   enableDebugFilterCheckBox;
-    QCompleter*  fnNameCompleter;
+    QVBoxLayout*  mainLayout;
+    QLineEdit *   searchBarInput, *collectionIdsInput, *binaryIdsInput;
+    QSpinBox*     maxResultCountInput;
+    QSlider*      similaritySlider;
+    QCheckBox*    enableDebugFilterCheckBox;
+    QCompleter*   fnNameCompleter;
+    QStringList   headerLabels;
+    QTableWidget* table;
 
     void on_FindSimilarNames();
     void on_SearchCollections();
     void on_SearchBinaries();
+
+    void on_TableCellDoubleClick (int row, int column);
+
+    void addNewRowToResultsTable (QTableWidget* t, const QStringList& row);
 };
 
 #endif // REAI_PLUGIN_CUTTER_UI_FUNCTION_SIMILARITY_DIALOG_HPP

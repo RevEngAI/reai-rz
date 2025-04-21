@@ -69,6 +69,7 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
     } else {
         final_str = rz_str_append (final_str, "AI decompilation failed");
     }
+    REAI_LOG_TRACE ("Final decompilation output displayed : %s", final_str);
 
     RzAnnotatedCode *code = rz_annotated_code_new (final_str);
 

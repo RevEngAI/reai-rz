@@ -23,6 +23,8 @@
 /* plugin */
 #include <Plugin.h>
 
+// TODO: some shortcuts like (Ctrl+A, Ctr+E) to apple existing analysis would be really nice
+
 /**
  * @b RevEngAI Cutter Plugin class.
  *
