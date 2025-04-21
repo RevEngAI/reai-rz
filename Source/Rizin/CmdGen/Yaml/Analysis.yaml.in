@@ -20,9 +20,9 @@ commands:
     details:
       - name: Examples
         entries:
-          - text: REacp binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
+          - text: REa binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
             comment: "Create analysis for ffmpeg program with given command line arguments."
-          - text: REacp binnet-0.5-x86-linux NFSMostWantedTrainer.exe
+          - text: REa binnet-0.5-x86-linux NFSMostWantedTrainer.exe
             comment: "Without any command line arguments."
   - name: REap
     cname: create_analysis_private
@@ -40,10 +40,14 @@ commands:
     details:
       - name: Examples
         entries:
-          - text: REac binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
+          - text: REap binnet-0.5-x86-linux ffmpeg "-i input.mp4 -c:v gif output.gif"
             comment: "Create analysis for ffmpeg program with given command line arguments."
-          - text: REac binnet-0.5-x86-linux NFSMostWantedTrainer.exe
+          - text: REap binnet-0.5-x86-linux NFSMostWantedTrainer.exe
             comment: "Without any command line arguments."
+  - name: REar
+    cname: get_recent_analyses
+    summary: Get most recent analyses
+    args: []
   - name: REao
     summary: Provide link to show more analysis information on RevEngAI portal
     cname: analysis_link
@@ -97,10 +101,10 @@ commands:
     details:
       - name: Examples
         entries:
-          - text: "REau"
-            comment: "Apply auto analysis to this binary with 90% min similarity"
-          - text: "REau 85"
-            comment: "Min 85% similairty"
+          - text: "REaud"
+            comment: "Apply auto analysis to this binary with 90% min similarity using only debug symbols"
+          - text: "REaud 85"
+            comment: "Min 85% similairty with debug symbols"
   - name: REae
     cname: apply_existing_analysis 
     summary: Apply existing RevEng.AI analysis to this binary.
@@ -114,7 +118,7 @@ commands:
     details:
       - name: Examples 
         entries:
-          - text: "REap 18700"
+          - text: "REae 18700"
             comment: "Apply analysis corresponding to bianry id 18700"
-          - text: "REap 18700 0x2000"
+          - text: "REae 18700 0x2000"
             comment: "Instead of using default base address, use 0x2000 as base address"

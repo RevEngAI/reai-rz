@@ -31,7 +31,7 @@ commands:
             optional: false
           - name: model_name
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
       - name: REbsh
         cname: binary_search_by_sha256
         summary: Search for binaries using partial sha256 hash only.
@@ -41,4 +41,4 @@ commands:
             optional: false
           - name: model_name
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true

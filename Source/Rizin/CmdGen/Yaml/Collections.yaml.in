@@ -20,7 +20,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -44,7 +44,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -68,7 +68,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -92,7 +92,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -116,7 +116,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -143,7 +143,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -167,7 +167,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -191,7 +191,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -215,7 +215,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -239,7 +239,7 @@ commands:
             type: RZ_CMD_ARG_TYPE_STRING
           - name: filter_flags
             type: RZ_CMD_ARG_TYPE_STRING
-            default_value: ""
+            optional: true
         details:
           - name: Examples
             entries:
@@ -264,19 +264,19 @@ commands:
       args:
         - name: partial_collection_name
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
         - name: partial_binary_name 
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
         - name: partial_binary_sha256
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
         - name: model_name 
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
         - name: tags 
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
       details:
         - name: Examples
           entries:
@@ -296,10 +296,10 @@ commands:
       args:
         - name: partial_collection_name
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
         - name: model_name 
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
       details:
         - name: Examples
           entries:
@@ -315,10 +315,10 @@ commands:
       args:
         - name: partial_binary_name
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
         - name: model_name 
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
       details:
         - name: Examples
           entries:
@@ -334,10 +334,10 @@ commands:
       args:
         - name: partial_binary_sha256
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
         - name: model_name 
           type: RZ_CMD_ARG_TYPE_STRING
-          default_value: ""
+          optional: true
       details:
         - name: Examples
           entries:

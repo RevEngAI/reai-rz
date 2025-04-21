@@ -44,10 +44,10 @@ commands:
         default_value: 20
       - name: collection_ids
         type: RZ_CMD_ARG_TYPE_STRING
-        default_value: ""
+        optional: true
       - name: binary_ids
         type: RZ_CMD_ARG_TYPE_STRING
-        default_value: ""
+        optional: true
     details:
       - name: Function Name
         entries:
@@ -76,4 +76,4 @@ commands:
         default_value: 20
       - name: collections
         type: RZ_CMD_ARG_TYPE_STRING
-        default_value: ""
+        optional: true

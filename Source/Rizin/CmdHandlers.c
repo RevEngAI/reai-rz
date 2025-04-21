@@ -872,7 +872,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+            true // ascending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -899,7 +899,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+            true // ascending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -926,7 +926,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+            true // ascending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -953,7 +953,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+            true // ascending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -980,7 +980,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_ASC
+            true // ascending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -1007,7 +1007,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+            false // descending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -1034,7 +1034,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+            false // descending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -1061,7 +1061,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+            false // descending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -1088,7 +1088,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+            false // descending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -1115,7 +1115,7 @@ RZ_IPI RzCmdStatus
             search_term,
             filter_flags,
             REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-            REAI_COLLECTION_BASIC_INFO_ORDER_IN_DESC
+            false // descending ordering
         )) {
         return RZ_CMD_STATUS_OK;
     }
@@ -1286,6 +1286,7 @@ RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char*
  * REfo
  * */
 RZ_IPI RzCmdStatus rz_function_link_handler (RzCore* core, int argc, const char** argv) {
+    REAI_LOG_TRACE ("[CMD] function link");
     UNUSED (argc);
 
     ReaiFunctionId fid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
@@ -1330,10 +1331,28 @@ RZ_IPI RzCmdStatus rz_function_link_handler (RzCore* core, int argc, const char*
  * */
 RZ_IPI RzCmdStatus
     rz_get_analysis_logs_using_analysis_id_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] Get Analysis Logs");
 
-    ReaiAnalysisId analysis_id = rz_num_get (core->num, argv[1]);
-    if (!reai_plugin_get_analysis_logs (core, analysis_id, true /* provided is an analysis id */)) {
+    ReaiAnalysisId id             = 0;
+    Bool           is_analysis_id = true;
+    if (argc == 2) {
+        id = rz_num_get (core->num, argv[1]);
+    } else {
+        id = reai_binary_id();
+
+        if (!id) {
+            DISPLAY_ERROR (
+                "You haven't provided any analysis id.\n"
+                "Did you forget to apply an existing analysis or to create a new one?\n"
+                "Cannot fetch analysis logs, not enough information provided.\n"
+            );
+            return RZ_CMD_STATUS_WRONG_ARGS;
+        }
+
+        is_analysis_id = false;
+    }
+
+    if (!reai_plugin_get_analysis_logs (core, id, is_analysis_id)) {
         DISPLAY_ERROR ("Failed to fetch and display analysis logs");
         return RZ_CMD_STATUS_ERROR;
     }
@@ -1345,9 +1364,22 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_get_analysis_logs_using_binary_id_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    ReaiAnalysisId binary_id = 0;
+    if (argc == 2) {
+        binary_id = rz_num_get (core->num, argv[1]);
+    } else {
+        binary_id = reai_binary_id();
 
-    ReaiAnalysisId binary_id = rz_num_get (core->num, argv[1]);
+        if (!binary_id) {
+            DISPLAY_ERROR (
+                "You haven't provided any binary id.\n"
+                "Did you forget to apply an existing analysis or to create a new one?\n"
+                "Cannot fetch analysis logs\n"
+            );
+            return RZ_CMD_STATUS_WRONG_ARGS;
+        }
+    }
+
     if (!reai_plugin_get_analysis_logs (core, binary_id, false /* provided is a binary id */)) {
         DISPLAY_ERROR ("Failed to fetch and display analysis logs");
         return RZ_CMD_STATUS_ERROR;
@@ -1355,57 +1387,87 @@ RZ_IPI RzCmdStatus
     return RZ_CMD_STATUS_OK;
 }
 
+/**
+ * "REar"
+ * */
+RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const char** argv) {
+    UNUSED (core && argc && argv);
 
+    ReaiAnalysisInfoVec* results = reai_get_recent_analyses (
+        reai(),
+        reai_response(),
+        NULL /* search term */,
+        REAI_WORKSPACE_PUBLIC,
+        REAI_ANALYSIS_STATUS_ALL,
+        NULL, /* model name */
+        REAI_DYN_EXEC_STATUS_ALL,
+        NULL, /* usernames */
+        25,   /* 25 most recent analyses */
+        0,
+        REAI_RECENT_ANALYSIS_ORDER_BY_CREATED,
+        false
+    );
+    if (!results) {
+        DISPLAY_ERROR ("Failed to get most recent analysis. Are you a new user?");
+        return RZ_CMD_STATUS_ERROR;
+    }
+
+    ReaiPluginTable* t = reai_plugin_table_create();
+    reai_plugin_table_set_title (t, "Most Recent Analyses");
+    reai_plugin_table_set_columnsf (
+        t,
+        "nnssss",
+        "analysis_id",
+        "binary_id",
+        "status",
+        "creation",
+        "binary_name",
+        "dyn_exec_status"
+    );
+
+    REAI_VEC_FOREACH (results, r, {
+        reai_plugin_table_add_rowf (
+            t,
+            "nnssss",
+            r->analysis_id,
+            r->binary_id,
+            r->status,
+            r->creation,
+            r->binary_name,
+            r->dynamic_execution_status
+        );
+    });
+
+    reai_plugin_table_show (t);
+    reai_plugin_table_destroy (t);
+
+    return RZ_CMD_STATUS_OK;
+}
+
+
+// clang-format off
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (core && argc && argv);
 
     rz_cons_println (
         "\n"
-        "                             \n"
-        "                             \n"
-        "                             \n"
-        "                             \n"
-        "                             \n"
-        "                             \n"
-        "                             \n"
-        "                             \n"
-        ":::::::::::        :::::::::::                                                            "
-        "      \n"
-        "::    ::::::      ::::    ::::             %%%%%%%%%%%%%                                  "
-        "      %%%%%%%%%%%%%%%                            \n"
-        "::    :::::::    :::::    ::::            %%%%%%%%%%%%%%%                                 "
-        "      %%%%%%%%%%%%%%%                                %%%%%@   \n"
-        "::::::::::::::::::::::::::::::           %%%%%%%    %%%%%                                 "
-        "      %%%%%                                          %%%%%%  \n"
-        ":::::::::   ::::   :::::::::::           %%%%%%     %%%%%     @%%%%%%%%%%    %%%%%@    "
-        "%%%%%    %%%%%             %%%%% %%%%%%%%      @%%%%%%%%%%%    \n"
-        " :::::::    ::::    :::::::::            %%%%%%     %%%%%    %%%%%%%%%%%%%%  %%%%%%    "
-        "%%%%%%   %%%%%%%%%%%%%%    %%%%%%%%%%%%%%%    %%%%%%%%%%%%%%  \n"
-        "     ::::::::::::::::::::                %%%%%%%%%%%%%%%   %%%%%     @%%%%%  %%%%%%    "
-        "%%%%%    %%%%%%%%%%%%%%    %%%%%%    %%%%%%  %%%%%@    %%%%%@\n"
-        "       ::::::::::::::::                    %%%%%%%%%%%%%  @%%%%%%%%%%%%%%%%   %%%%%@  "
-        "%%%%%     %%%%%%%%%%%%%%    %%%%%     %%%%%%  %%%%%%    %%%%%%               @@@@    "
-        "@@@@@@@@\n"
-        "     ::::   ::::    :::::                  @%%%%%@ %%%%%  %%%%%%%%%%%%%%%%%   %%%%%% "
-        "%%%%%%     %%%%%             %%%%%     %%%%%%   %%%%%%%%%%%%%@               @@@@@@     "
-        "@@@  \n"
-        " ::::::::   ::::    :::::::::              %%%%%%@ %%%%%   %%%%%               "
-        "%%%%%%%%%%%      %%%%%             %%%%%     %%%%%%     %%%%%%%%%%                @@@@ "
-        "@@@    @@@ \n"
-        "::::::::::::::::::::::::::::::          %%%%%%%%   %%%%%   %%%%%%@   %%%%%      %%%%%%%%% "
-        "      %%%%%%%%%%%%%%%   %%%%%     %%%%%%   %%%%                        @@@@@@@@    @@@\n"
-        "::    ::::::::::::::::    ::::          %%%%%%%    %%%%%    @%%%%%%%%%%%%%       %%%%%%%% "
-        "      %%%%%%%%%%%%%%%   %%%%%     %%%%%%   %%%%%%%%%%%%%%%    @@@@    @@@@  @@@@ "
-        "@@@@@@@@\n"
-        "::    :::::::    :::::    ::::          %%%%%      %%%%%       %%%%%%%%%         %%%%%%%  "
-        "      %%%%%%%%%%%%%%    %%%%%     %%%%%@   %%%%%%%%%%%%%%%%    @@@    @@@   @@@@ "
-        "@@@@@@@@\n"
-        ":.::::::::::      ::::::::::::                                                            "
-        "                                          %%%%        %%%%%                             \n"
-        ":::::::::::        :::::::::::                                                            "
-        "                                          %%%%%%%%%%%%%%%%%                             \n"
-        "                                                                                          "
-        "                                           %%%%%%%%%%%%%%                               \n"
+        "\n"
+        ":::::::::::        :::::::::::\n"
+        "::    ::::::      ::::    ::::             %%%%%%%%%%%%%                                        %%%%%%%%%%%%%%%\n"
+        "::    :::::::    :::::    ::::            %%%%%%%%%%%%%%%                                       %%%%%%%%%%%%%%%                                %%%%%@\n"
+        "::::::::::::::::::::::::::::::           %%%%%%%    %%%%%                                       %%%%%                                          %%%%%%\n"
+        ":::::::::   ::::   :::::::::::           %%%%%%     %%%%%     @%%%%%%%%%%    %%%%%@    %%%%%    %%%%%             %%%%% %%%%%%%%      @%%%%%%%%%%%\n"
+        " :::::::    ::::    :::::::::            %%%%%%     %%%%%    %%%%%%%%%%%%%%  %%%%%%    %%%%%%   %%%%%%%%%%%%%%    %%%%%%%%%%%%%%%    %%%%%%%%%%%%%%\n"
+        "     ::::::::::::::::::::                %%%%%%%%%%%%%%%   %%%%%     @%%%%%  %%%%%%    %%%%%    %%%%%%%%%%%%%%    %%%%%%    %%%%%%  %%%%%@    %%%%%@\n"
+        "       ::::::::::::::::                    %%%%%%%%%%%%%  @%%%%%%%%%%%%%%%%   %%%%%@   %%%%%    %%%%%%%%%%%%%%    %%%%%     %%%%%%  %%%%%%    %%%%%%               @@@@    @@@@@@@@\n"
+        "     ::::   ::::    :::::                  @%%%%%@ %%%%%  %%%%%%%%%%%%%%%%%   %%%%%% %%%%%%     %%%%%             %%%%%     %%%%%%   %%%%%%%%%%%%%@               @@@@@@     @@@\n"
+        " ::::::::   ::::    :::::::::              %%%%%%@ %%%%%   %%%%%               %%%%%%%%%%%      %%%%%             %%%%%     %%%%%%     %%%%%%%%%%                @@@@ @@@    @@@\n"
+        "::::::::::::::::::::::::::::::          %%%%%%%%   %%%%%   %%%%%%@   %%%%%      %%%%%%%%%       %%%%%%%%%%%%%%%   %%%%%     %%%%%%   %%%%                        @@@@@@@@    @@@\n"
+        "::    ::::::::::::::::    ::::          %%%%%%%    %%%%%    @%%%%%%%%%%%%%       %%%%%%%%       %%%%%%%%%%%%%%%   %%%%%     %%%%%%   %%%%%%%%%%%%%%%    @@@@    @@@@  @@@@ @@@@@@@@\n"
+        "::    :::::::    :::::    ::::          %%%%%      %%%%%       %%%%%%%%%         %%%%%%%        %%%%%%%%%%%%%%    %%%%%     %%%%%@   %%%%%%%%%%%%%%%%    @@@    @@@   @@@@ @@@@@@@@\n"
+        ":.::::::::::      ::::::::::::                                                                                                      %%%%        %%%%%\n"
+        ":::::::::::        :::::::::::                                                                                                      %%%%%%%%%%%%%%%%%\n"
+        "                                                                                                                                     %%%%%%%%%%%%%%\n"
         "\n"
     );
     return RZ_CMD_STATUS_OK;
