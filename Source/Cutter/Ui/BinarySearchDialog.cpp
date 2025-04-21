@@ -133,9 +133,7 @@ void BinarySearchDialog::on_PerformBinarySearch() {
         modelNameCStr
     );
 
-    if (results) {
-        results = reai_binary_search_result_vec_clone_create (results);
-    } else {
+    if (!results) {
         DISPLAY_ERROR ("Failed to get collection search results");
         return;
     }
@@ -158,8 +156,6 @@ void BinarySearchDialog::on_PerformBinarySearch() {
     }
 
     mainLayout->addWidget (table);
-
-    reai_binary_search_result_vec_destroy (results);
 }
 
 void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {

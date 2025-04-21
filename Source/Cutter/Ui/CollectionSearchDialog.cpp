@@ -145,9 +145,7 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
         modelNameCStr
     );
 
-    if (results) {
-        results = reai_collection_search_result_vec_clone_create (results);
-    } else {
+    if (!results) {
         DISPLAY_ERROR ("Failed to get collection search results");
         return;
     }
@@ -167,8 +165,6 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
 
         addNewRowToResultsTable (table, row);
     }
-
-    reai_collection_search_result_vec_destroy (results);
 }
 
 void CollectionSearchDialog::on_TableCellDoubleClick (int row, int column) {
