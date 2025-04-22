@@ -32,7 +32,19 @@ class FunctionSimilarityDialog : public QDialog {
    public:
     FunctionSimilarityDialog (QWidget* parent);
 
+    // Take a name to name mapping vector and copy contents over
+    // from our local copy
+    void getNameMapping(std::vector<std::pair<QString, QString>>& nameMap) const {
+	nameMap = oldNameToNewNameMap;
+    }
+
+    bool doRename() const {
+	return oldNameToNewNameMap.size() != 0;
+    }
+
    private:
+    std::vector<std::pair<QString, QString>> oldNameToNewNameMap;
+
     QVBoxLayout*  mainLayout;
     QLineEdit *   searchBarInput, *collectionIdsInput, *binaryIdsInput;
     QSpinBox*     maxResultCountInput;

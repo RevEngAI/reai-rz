@@ -140,6 +140,7 @@ void BinarySearchDialog::on_PerformBinarySearch() {
     }
 
     table->clearContents();
+    table->setRowCount (0);
 
     ReaiBinarySearchResult* beg = results->items;
     ReaiBinarySearchResult* end = results->items + results->count;

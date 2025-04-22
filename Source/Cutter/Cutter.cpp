@@ -381,21 +381,7 @@ void ReaiCutterPlugin::on_AutoAnalyzeBin() {
     mainWindow->refreshAll();
 }
 
-void ReaiCutterPlugin::on_RenameFns() {
-    if (!reai_plugin_check_config_exists()) {
-        on_Setup();
-    }
-
-    FunctionRenameDialog *renameDialog = new FunctionRenameDialog ((QWidget *)parent());
-    renameDialog->exec();
-
-    if (!renameDialog->isFinished()) {
-        return;
-    }
-
-    std::vector<std::pair<QString, QString>> nameMap;
-    renameDialog->getNameMapping (nameMap);
-
+void ReaiCutterPlugin::renameFunctions(std::vector<std::pair<QString, QString>> nameMap) {
     RzCoreLocked core (Core());
 
     ReaiFnInfoVec *new_name_map = reai_fn_info_vec_create();
@@ -419,7 +405,7 @@ void ReaiCutterPlugin::on_RenameFns() {
         ReaiFunctionId      fn_id = reai_plugin_get_function_id_for_rizin_function (core, rz_fn);
 
         if (!fn_id) {
-            DISPLAY_ERROR (
+            APPEND_ERROR(
                 "Failed to get a function id for function \"%s\". Cannot perform rename for this "
                 "function.",
                 oldNameCstr
@@ -445,19 +431,13 @@ void ReaiCutterPlugin::on_RenameFns() {
         fi.size  = 0; // size not required for renaming
 
         /* add new name to new name map */
-        if (reai_fn_info_vec_append (new_name_map, &fi)) {
-            Core()->renameFunction (rz_fn->addr, newNameCstr);
-        } else {
-            DISPLAY_ERROR (
-                "Failed to insert rename information into new name map. Cannot continue further."
-            );
-            reai_fn_info_vec_destroy (new_name_map);
-        }
+        reai_fn_info_vec_append (new_name_map, &fi);
+        Core()->renameFunction (rz_fn->addr, newNameCstr);
     }
 
     if (error_count == nameMap.size()) {
         DISPLAY_ERROR (
-            "None of the functions had any matches. Failed to get function IDs. Cannot rename."
+            "Failed to get function IDs for any of those functions you wanted to rename. Rename unsuccessful."
         );
         reai_fn_info_vec_destroy (new_name_map);
         return;
@@ -473,6 +453,25 @@ void ReaiCutterPlugin::on_RenameFns() {
     reai_fn_info_vec_destroy (new_name_map);
 
     mainWindow->refreshAll();
+}
+
+
+void ReaiCutterPlugin::on_RenameFns() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+
+    FunctionRenameDialog *renameDialog = new FunctionRenameDialog ((QWidget *)parent());
+    renameDialog->exec();
+
+    if (!renameDialog->isFinished()) {
+        return;
+    }
+
+    std::vector<std::pair<QString, QString>> nameMap;
+    renameDialog->getNameMapping (nameMap);
+
+    renameFunctions(nameMap);
 }
 
 void ReaiCutterPlugin::on_RecentAnalysis() {
@@ -516,16 +515,34 @@ void ReaiCutterPlugin::on_Setup() {
 }
 
 void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+
     FunctionSimilarityDialog *searchDlg = new FunctionSimilarityDialog ((QWidget *)this->parent());
     searchDlg->exec();
+
+    if(searchDlg->doRename()) {
+        std::vector<std::pair<QString, QString>> nameMap;
+        searchDlg->getNameMapping (nameMap);
+        renameFunctions(nameMap);
+    }
 }
 
 void ReaiCutterPlugin::on_CollectionSearch() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+
     CollectionSearchDialog *searchDlg =
         new CollectionSearchDialog ((QWidget *)this->parent(), true);
     searchDlg->exec();
 }
 void ReaiCutterPlugin::on_BinarySearch() {
+    if (!reai_plugin_check_config_exists()) {
+        on_Setup();
+    }
+
     BinarySearchDialog *searchDlg = new BinarySearchDialog ((QWidget *)this->parent(), true);
     searchDlg->exec();
 }

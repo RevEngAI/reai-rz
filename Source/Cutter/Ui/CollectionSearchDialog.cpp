@@ -152,6 +152,7 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
     }
 
     table->clearContents();
+    table->setRowCount (0);
 
     ReaiCollectionSearchResult* beg = results->items;
     ReaiCollectionSearchResult* end = results->items + results->count;

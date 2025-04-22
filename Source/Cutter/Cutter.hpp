@@ -60,6 +60,8 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
 
     MainWindow *mainWindow = NULL;
 
+    void renameFunctions(std::vector<std::pair<QString, QString>> nameMap);
+
    public:
     void setupPlugin() override;
     void setupInterface (MainWindow *mainWin) override;

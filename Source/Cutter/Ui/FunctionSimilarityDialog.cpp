@@ -153,13 +153,16 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     );
 
     QPushButton* cancelBtn = new QPushButton ("Cancel", this);
-    connect (cancelBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::close);
+    connect (cancelBtn, &QPushButton::pressed, this, [this](){
+	oldNameToNewNameMap.clear();
+	reject();
+    });
 
     QDialogButtonBox* btnBox = new QDialogButtonBox (this);
-    btnBox->addButton (collectionIdsSearchBtn, QDialogButtonBox::ActionRole);
+    btnBox->addButton (cancelBtn, QDialogButtonBox::RejectRole);
     btnBox->addButton (binaryIdsSearchBtn, QDialogButtonBox::ActionRole);
     btnBox->addButton (searchBtn, QDialogButtonBox::AcceptRole);
-    btnBox->addButton (cancelBtn, QDialogButtonBox::RejectRole);
+    btnBox->addButton (collectionIdsSearchBtn, QDialogButtonBox::ActionRole);
     mainLayout->addWidget (btnBox);
 
     headerLabels << "function name";
@@ -167,7 +170,7 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     headerLabels << "binary name";
     headerLabels << "binary id";
     headerLabels << "similarity";
-    headerLabels << " ";
+    headerLabels << "add to rename";
 
     table = new QTableWidget;
     table->setEditTriggers (QAbstractItemView::NoEditTriggers);
@@ -292,6 +295,9 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
         reai_u64_vec_destroy (binary_ids);
     }
 
+    table->clearContents();
+    table->setRowCount (0);
+
     if (fnMatches && fnMatches->count) {
         for (ReaiSimilarFn* fnMatch = fnMatches->items;
              fnMatch < fnMatches->items + fnMatches->count;
@@ -355,11 +361,15 @@ void FunctionSimilarityDialog::addNewRowToResultsTable (QTableWidget* t, const Q
 
     QPushButton* renameBtn = new QPushButton ("Rename");
     t->setCellWidget (tableRowCount, 5, renameBtn);
+
     connect (renameBtn, &QPushButton::clicked, this, [this, tableRowCount]() {
-        QMessageBox::information (
-            this,
-            "Title",
-            QString ("Renaming function at row %1").arg (tableRowCount)
-        );
+	// get target function name
+    	QString targetFunctionName = table->item (tableRowCount, 0)->text();
+
+	// get source function name
+    	const QString& sourceFunctionName = searchBarInput->text();
+
+	// add to rename map
+	oldNameToNewNameMap.push_back({sourceFunctionName, targetFunctionName});
     });
 }
