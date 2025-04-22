@@ -717,16 +717,9 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
             case REAI_AI_DECOMPILATION_STATUS_SUCCESS : {
                 DISPLAY_INFO ("AI decompilation complete ;-)\n");
 
-                // Get code and summary
+                // Returns code prepended with summary
                 CString code =
                     reai_plugin_get_decompiled_code_at (core, rzfn->addr, true /* summarize */);
-                CString summary = reai_response()->poll_ai_decompilation.data.summary;
-
-                if (summary) {
-                    rz_cons_println (summary);
-                } else {
-                    REAI_LOG_ERROR ("Summary failed");
-                }
 
                 if (code) {
                     rz_cons_println (code);

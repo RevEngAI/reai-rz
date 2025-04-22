@@ -49,29 +49,8 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
 
     // get decompiled code and AI summary after finished
     RzCoreLocked core (Core());
-    CString decomp  = reai_plugin_get_decompiled_code_at (core, self->addr, true /* summarize */);
-    CString summary = reai_response()->poll_ai_decompilation.data.summary;
-
-    char *final_str = NULL;
-
-    // append AI summary first
-    if (summary) {
-        final_str = rz_str_append (final_str, summary);
-    } else {
-        final_str = rz_str_append (final_str, "AI summary failed");
-    }
-    rz_str_appendch (final_str, '\n');
-    rz_str_appendch (final_str, '\n');
-
-    // append decompilation
-    if (decomp) {
-        final_str = rz_str_append (final_str, decomp);
-    } else {
-        final_str = rz_str_append (final_str, "AI decompilation failed");
-    }
-    REAI_LOG_TRACE ("Final decompilation output displayed : %s", final_str);
-
-    RzAnnotatedCode *code = rz_annotated_code_new (final_str);
+    CString decomp = reai_plugin_get_decompiled_code_at (core, self->addr, true /* summarize */);
+    RzAnnotatedCode *code = rz_annotated_code_new ((char *)decomp);
 
     // signal decompilation finished
     self->is_finished = true;
