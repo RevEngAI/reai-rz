@@ -21,6 +21,7 @@
 #include <QCompleter>
 #include <QDialogButtonBox>
 #include <QLabel>
+#include <QUrl>
 #include <QDesktopServices>
 
 /* cutter */
