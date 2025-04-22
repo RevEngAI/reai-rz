@@ -166,11 +166,12 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     headerLabels << "binary name";
     headerLabels << "binary id";
     headerLabels << "similarity";
+    headerLabels << " ";
 
     table = new QTableWidget;
     table->setEditTriggers (QAbstractItemView::NoEditTriggers);
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
-    table->setColumnCount (5);
+    table->setColumnCount (6);
     table->setHorizontalHeaderLabels (headerLabels);
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
@@ -327,7 +328,10 @@ void FunctionSimilarityDialog::on_SearchBinaries() {
 }
 
 void FunctionSimilarityDialog::on_TableCellDoubleClick (int row, int column) {
-    UNUSED (column);
+    // ignore last column
+    if (column == 5) {
+        return;
+    }
 
     // generate portal URL from host URL
     const char* hostCStr = reai_plugin()->reai_config->host;
@@ -343,7 +347,18 @@ void FunctionSimilarityDialog::on_TableCellDoubleClick (int row, int column) {
 void FunctionSimilarityDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {
     Size tableRowCount = t->rowCount();
     t->insertRow (tableRowCount);
-    for (Int32 i = 0; i < headerLabels.size(); i++) {
+
+    for (Int32 i = 0; i < headerLabels.size() - 1; i++) {
         t->setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
     }
+
+    QPushButton* renameBtn = new QPushButton ("Rename");
+    t->setCellWidget (tableRowCount, 5, renameBtn);
+    connect (renameBtn, &QPushButton::clicked, this, [this, tableRowCount]() {
+        QMessageBox::information (
+            this,
+            "Title",
+            QString ("Renaming function at row %1").arg (tableRowCount)
+        );
+    });
 }
