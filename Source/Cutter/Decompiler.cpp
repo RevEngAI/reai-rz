@@ -49,12 +49,88 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
 
     // get decompiled code and AI summary after finished
     RzCoreLocked core (Core());
-    CString decomp = reai_plugin_get_decompiled_code_at (core, self->addr, true /* summarize */);
-    RzAnnotatedCode *code = rz_annotated_code_new ((char *)decomp);
+    char        *decomp =
+        (char *)reai_plugin_get_decompiled_code_at (core, self->addr, true /* summarize */);
 
-    // signal decompilation finished
-    self->is_finished = true;
-    self->finished (code);
+    ReaiAiDecompFnMapVec *fn_map = reai_response()->poll_ai_decompilation.data.function_mapping;
+
+    if (fn_map && decomp) {
+        // Search and replace all tagged function names
+        for (Size i = 0; i < fn_map->count; i++) {
+            ReaiAiDecompFnMap *fn = fn_map->items + i;
+
+            // Check if function actually does exist
+            RzAnalysisFunction *afn = rz_analysis_get_function_byname (core->analysis, fn->name);
+            if (afn) {
+                // Create name for tagged function name
+                // I knowingly didn't store these names, because I know these can be generated like this on the fly
+                char fn_tagged_name[64] = {0};
+                snprintf (fn_tagged_name, sizeof (fn_tagged_name), "<DISASM_FUNCTION_%zu>", i);
+
+                // replace tagged names in form of <DISASM_FUNCTION_NN> with actual name
+                char *tmp = rz_str_replace (decomp, fn_tagged_name, fn->name, true);
+                if (tmp) {
+                    decomp = tmp;
+                }
+            }
+        }
+
+        // New annotated code
+        RzAnnotatedCode *code = rz_annotated_code_new ((char *)decomp);
+
+        // Create code annotations for all function names
+        char *decomp_end = decomp + strlen (decomp);
+        for (Size i = 0; i < fn_map->count; i++) {
+            ReaiAiDecompFnMap *fn = fn_map->items + i;
+
+            // Check if function actually does exist
+            RzAnalysisFunction *afn = rz_analysis_get_function_byname (core->analysis, fn->name);
+            if (afn) {
+                // Search for function and create annotation
+                char *name_beg = strstr (decomp, fn->name);
+                while (name_beg) {
+                    Size name_len = strlen (fn->name);
+                    REAI_LOG_TRACE ("Found string at offset %d", name_beg - decomp);
+
+                    RzCodeAnnotation a;
+                    a.type             = RZ_CODE_ANNOTATION_TYPE_FUNCTION_NAME;
+                    a.start            = name_beg - decomp;
+                    a.end              = a.start + name_len;
+                    a.reference.name   = strdup (fn->name);
+                    a.reference.offset = fn->addr;
+                    rz_annotated_code_add_annotation (code, &a);
+
+                    REAI_LOG_TRACE ("Annotating %s in (%zu, %zu)", fn->name, a.start, a.end);
+
+                    a.type                  = RZ_CODE_ANNOTATION_TYPE_SYNTAX_HIGHLIGHT;
+                    a.start                 = name_beg - decomp;
+                    a.end                   = a.start + name_len;
+                    a.syntax_highlight.type = RZ_SYNTAX_HIGHLIGHT_TYPE_FUNCTION_NAME;
+                    rz_annotated_code_add_annotation (code, &a);
+
+                    if (name_beg + name_len < decomp_end) {
+                        name_beg = strstr (name_beg + name_len, fn->name);
+                    } else {
+                        name_beg = NULL;
+                    }
+                }
+            } else {
+                REAI_LOG_ERROR (
+                    "Function with %s name does not exist. Provided in function mapping fo AI "
+                    "decomp.",
+                    fn->name
+                );
+            }
+        }
+
+        // signal decompilation finished
+        self->is_finished = true;
+        self->finished (code);
+    } else {
+        if (decomp) {
+            FREE (decomp);
+        }
+    }
 
     return self;
 }
