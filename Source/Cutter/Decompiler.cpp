@@ -72,6 +72,12 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
                 if (tmp) {
                     decomp = tmp;
                 }
+            } else {
+                REAI_LOG_ERROR (
+                    "Function with %s name does not exist. Provided in function mapping fo AI "
+                    "decomp.",
+                    fn->name
+                );
             }
         }
 
