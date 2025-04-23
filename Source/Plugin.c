@@ -6,7 +6,6 @@
  * */
 
 /* rizin */
-#include <Reai/Api/Request.h>
 #include <rz_analysis.h>
 #include <rz_asm.h>
 #include <rz_cmd.h>
@@ -17,7 +16,6 @@
 #include <rz_util/rz_annotated_code.h>
 
 /* revengai */
-#include <Reai/AnalysisInfo.h>
 #include <Reai/Api/Api.h>
 #include <Reai/Common.h>
 #include <Reai/Config.h>

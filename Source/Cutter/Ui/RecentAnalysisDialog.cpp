@@ -7,7 +7,6 @@
 
 /* plugin */
 #include <Plugin.h>
-#include <Reai/AnalysisInfo.h>
 #include <Reai/Api/Reai.h>
 #include <Cutter/Ui/RecentAnalysisDialog.hpp>
 
