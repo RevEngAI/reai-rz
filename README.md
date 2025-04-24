@@ -15,6 +15,7 @@ docker build --build-arg REVENG_APIKEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t r
 ```
 
 Then run rizin with the following command:
+
 ```bash
 docker run -v {file}:/home/revengai/ -it reai-rz {file}
 ```
@@ -23,7 +24,7 @@ Notes:
 
 - Make sure to put correct value for `REVENG_APIKEY` build arg. You can also change it after installing by
   directly editing the guest config file, or using the `REi` command inside the plugin. Your API key can be found under account settings in the Web Portal.
-- You can also use an offline installation or custom host by setting the `REVENG_HOST` variable. 
+- You can also use an offline installation or custom host by setting the `REVENG_HOST` variable.
 
 ### Manual
 
@@ -32,6 +33,9 @@ python packages instead of `pip`, then `pipx` will help get an easy installation
 `pipx` needs to be installed from package manager.
 
 #### Unix Based Systems (Linux, MacOSX)
+
+Please build and install [creait](https://github.com/revengai/creait) library first. It allows
+the plugins to communicate with RevEngAI servers.
 
 ```sh
 # Get plugin or download a release
