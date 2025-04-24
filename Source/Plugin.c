@@ -801,7 +801,7 @@ Bool reai_plugin_apply_existing_analysis (
     /* names of current functions */
     ReaiFnInfoVec *fn_infos = get_fn_infos (bin_id);
     if (!fn_infos) {
-        APPEND_ERROR ("Failed to get funciton info for opened binary.");
+        APPEND_ERROR ("Failed to get function info for opened binary.");
         return false;
     }
 
@@ -857,9 +857,10 @@ Bool reai_plugin_apply_existing_analysis (
             }
         } else { // If no Rizin funciton exists at given address
             REAI_LOG_ERROR (
-                "function not found (.name = \"%s\", .addr = 0x%llx)",
-                old_name,
-                fn_addr
+                "function not found (.name = \"%s\", .addr = 0x%llx (u64 : %llu)",
+                fn->name,
+                fn_addr, 
+		fn_addr
             );
         }
     });
