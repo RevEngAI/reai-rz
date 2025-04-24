@@ -859,8 +859,8 @@ Bool reai_plugin_apply_existing_analysis (
             REAI_LOG_ERROR (
                 "function not found (.name = \"%s\", .addr = 0x%llx (u64 : %llu)",
                 fn->name,
-                fn_addr, 
-		fn_addr
+                fn_addr,
+                fn_addr
             );
         }
     });
