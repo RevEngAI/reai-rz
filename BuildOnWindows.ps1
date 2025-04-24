@@ -13,10 +13,10 @@
 # Escape backslashes becuase Windows is idiot af
 $CWD = $PWD.Path -replace '\\', '\\'
 
-$BuildDir = "BuildFiles"
+$BuildDir = "Build\\WindowsBuild"
 $DownPath = "$CWD\\$BuildDir\\Artifacts"
 $DepsPath = "$CWD\\$BuildDir\\Dependencies"
-$InstallPath = "$CWD\\RevEngAI"
+$InstallPath = "$CWD\\Build\\WindowsInstall"
 
 # Remove install directory if already exists to avoid clashes
 if ((Test-Path "$InstallPath")) {
@@ -36,7 +36,6 @@ md "$InstallPath"
 
 # Set environment variable for this powershell session
 $env:Path = $env:Path + ";$InstallPath;$InstallPath\\bin;$InstallPath\\lib;$DownPath\\aria2c;$DownPath\\7zip"
-$ReaiPathEnvVars = $env:Path
 
 # x64 Architecture Builds
 cmd /c 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
@@ -234,16 +233,7 @@ cmake --install "$DepsPath\\reai-rz\\Build" --prefix "$InstallPath" --config Rel
 Write-Host Build" & INSTALL reai-rz... DONE"
 
 # Set environment variables permanently across machine for all users
-Write-Host "Updating environment variable for all users..."
-[Environment]::SetEnvironmentVariable("Path",  $ReaiPathEnvVars, [System.EnvironmentVariableTarget]::User)
-Write-Host "Updating environment variable for all users... DONE"
-
-# Removing artifacts
-Write-Host "Removing build files..."
-# Remove-Item -LiteralPath "$DepsPath" -Force -Recurse
-# Remove-Item -LiteralPath "$DownPath" -Force -Recurse
-# Remove-Item -LiteralPath "$BuildDir\\DependenciesList.txt" -Force -Recurse
-Write-Host "Removing build files... DONE"
-
 Write-Host "Installation complete! Enjoy using the plugins ;-)"
 Write-Host "Contact the developers through issues or discussions in https://github.com/revengai/reai-rz"
+
+Write-Host "`rUpdate your environment variable by adding these paths to your `$env:Path : `r$InstallPath;`r$InstallPath\\bin;`r$InstallPath\\lib;"
