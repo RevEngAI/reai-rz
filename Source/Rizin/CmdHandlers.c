@@ -727,8 +727,10 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                         ReaiAiDecompFnMap* fn = fn_map->items + i;
 
                         // Check if function actually does exist
-                        RzAnalysisFunction* afn =
-                            rz_analysis_get_function_byname (core->analysis, fn->name);
+                        RzAnalysisFunction* afn = rz_analysis_get_function_at (
+                            core->analysis,
+                            fn->addr + reai_plugin_get_opened_binary_file_baseaddr (core)
+                        );
                         if (afn) {
                             // Create name for tagged function name
                             // I knowingly didn't store these names, because I know these can be generated like this on the fly

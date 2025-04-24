@@ -90,7 +90,10 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
             ReaiAiDecompFnMap *fn = fn_map->items + i;
 
             // Check if function actually does exist
-            RzAnalysisFunction *afn = rz_analysis_get_function_byname (core->analysis, fn->name);
+            RzAnalysisFunction *afn = rz_analysis_get_function_at (
+                core->analysis,
+                fn->addr + reai_plugin_get_opened_binary_file_baseaddr (core)
+            );
             if (afn) {
                 // Search for function and create annotation
                 char *name_beg = strstr (decomp, fn->name);

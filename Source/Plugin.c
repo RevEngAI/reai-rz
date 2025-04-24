@@ -1162,10 +1162,8 @@ ReaiFunctionId
 
     for (ReaiFnInfo *fn_info = fn_infos->items; fn_info < fn_infos->items + fn_infos->count;
          fn_info++) {
-        Uint64 min_addr = rz_analysis_function_min_addr (rz_fn) - base_addr;
-        Uint64 max_addr = rz_analysis_function_max_addr (rz_fn) - base_addr;
-
-        if (min_addr <= fn_info->vaddr && fn_info->vaddr <= max_addr) {
+        // RevEngAI's function addresses are based off of 0, so to compare we first rebase those addresses to binary's base address
+        if (rz_fn->addr == fn_info->vaddr + base_addr) {
             REAI_LOG_TRACE (
                 "Found function ID for rizin function \"%s\" (\"%s\"): [%llu]",
                 rz_fn->name,
