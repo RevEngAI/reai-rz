@@ -5,7 +5,7 @@
 # Copyright : Copyright (c) 2025 RevEngAI
 #
 # To execute this script, in a powershell environment run
-# Set-ExecutionPolicy Bypass -Scope Process -Force; iex ".\\BuildOnWindows.ps1"
+# Set-ExecutionPolicy Bypass -Scope Process -Force; iex ".\\Scripts\\Build.ps1"
 #
 # Dependencies
 # - MSVC Compiler Toolchain
@@ -13,10 +13,11 @@
 # Escape backslashes becuase Windows is idiot af
 $CWD = $PWD.Path -replace '\\', '\\'
 
-$BuildDir = "Build\\WindowsBuild"
-$DownPath = "$CWD\\$BuildDir\\Artifacts"
-$DepsPath = "$CWD\\$BuildDir\\Dependencies"
-$InstallPath = "$CWD\\Build\\WindowsInstall"
+$BaseDir = "~\\.local\\RevEngAI\\Rizin"
+$BuildDir = "$BaseDir\\Build"
+$InstallPath = "$BaseDir\\Install"
+$DownPath = "$BuildDir\\Artifacts"
+$DepsPath = "$BuildDir\\Dependencies"
 
 # Remove install directory if already exists to avoid clashes
 if ((Test-Path "$InstallPath")) {
@@ -28,11 +29,11 @@ if ((Test-Path "$BuildDir")) {
     Remove-Item -LiteralPath "$BuildDir" -Force -Recurse
 }
 
+md "$BaseDir"
 md "$BuildDir"
+md "$InstallPath"
 md "$DownPath"
 md "$DepsPath"
-md "$InstallPath"
-
 
 # Set environment variable for this powershell session
 $env:Path = $env:Path + ";$InstallPath;$InstallPath\\bin;$InstallPath\\lib;$DownPath\\aria2c;$DownPath\\7zip"
@@ -123,11 +124,11 @@ https://github.com/RevEngAI/reai-rz/archive/refs/heads/master.zip
 "@
 
 # Dump URL List to a text file for aria2c to use
-$DepsList | Out-File -FilePath "$BuildDir\\DependenciesList.txt" -Encoding utf8 -Force
+$DepsList | Out-File -FilePath "$DownPath\\DependenciesList.txt" -Encoding utf8 -Force
 
 # Download artifacts
 # List of files to download with URLs and destination paths
-aria2c -i "$BuildDir\\DependenciesList.txt" -j8 -d "$DownPath"
+aria2c -i "$DownPath\\DependenciesList.txt" -j8 -d "$DownPath"
 
 # These dependencies need to be built on the host machine, unlike installing the pre-compiled binaries above
 $pkgs = @(
@@ -231,6 +232,9 @@ cmake -S "$DepsPath\\reai-rz" -A x64 `
 cmake --build "$DepsPath\\reai-rz\\Build" --config Release
 cmake --install "$DepsPath\\reai-rz\\Build" --prefix "$InstallPath" --config Release
 Write-Host Build" & INSTALL reai-rz... DONE"
+
+# Remove build artifacts
+Remove-Item -Recurse -Force "$BuildDir"
 
 # Set environment variables permanently across machine for all users
 Write-Host "Installation complete! Enjoy using the plugins ;-)"

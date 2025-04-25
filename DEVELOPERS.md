@@ -1,4 +1,3 @@
-
 # Developers Documentation
 
 # Developing Plugin In Windows
@@ -7,15 +6,15 @@
   future builds. You just run the script once and then later use parts of it to setup your development environment,
   everytime you want to build either `creait` or `reai-rz`
 - My current workflow is :
-    - Clone the `reai-rz` repo, or do a git pull to get latest changes.
-    - Change into `reai-rz` directory using `cd reai-rz`.
-    - Build the plugin using `BuildOnWindows.ps1` script
-    - Update development environment by executing the following in current shell (where you want to subsequent builds)
-    ```ps1
-	$InstallPath = "Build\\WindowsInstall"
-	$env:Path = $env:Path + ";$InstallPath;$InstallPath\\bin;$InstallPath\\lib"
-    ```
-	 - Go to cloned `reai-rz` repo, and then use the cmake configure, build and install commands from `BuildOnWindows.ps1` script to build the plugin with your latest changes
+  - Clone the `reai-rz` repo, or do a git pull to get latest changes.
+  - Change into `reai-rz` directory using `cd reai-rz`.
+  - Build the plugin using `BuildOnWindows.ps1` script
+  - Update development environment by executing the following in current shell (where you want to subsequent builds)
+  ```ps1
+  $InstallPath = "~\\.local\\RevEngAI\\Rizin\\Install"
+  $env:Path = $env:Path + ";$InstallPath;$InstallPath\\bin;$InstallPath\\lib"
+  ```
+  - Go to cloned `reai-rz` repo, and then use the cmake configure, build and install commands from `BuildOnWindows.ps1` script to build the plugin with your latest changes
   - Configure
   ```ps1
    # Build reai-rz
@@ -33,16 +32,16 @@
    -D CMAKE_POLICY_VERSION_MINIMUM="3.5"
   ```
   - Build
-   ```ps1
-   cmake --build Build --config Release
-   ```
+  ```ps1
+  cmake --build Build --config Release
+  ```
   - Clean
-   ```ps1
-   cmake --build Build --config Release --target clean
-   ```
+  ```ps1
+  cmake --build Build --config Release --target clean
+  ```
   - Install
-   ```ps1
-   cmake --install Build --prefix "$InstallPath" --config Release
-   ```
+  ```ps1
+  cmake --install Build --prefix "$InstallPath" --config Release
+  ```
 
 Make sure when you update `creait` code, you build and install it in the same way.
