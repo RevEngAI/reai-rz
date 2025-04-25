@@ -53,7 +53,7 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
         if (!reai_plugin_init (core)) {
             DISPLAY_ERROR (
                 "Failed to init plugin after creating a new config.\n"
-                "Please try restarting radare."
+                "Please try restarting rizin."
             );
             return RZ_CMD_STATUS_ERROR;
         }
@@ -662,7 +662,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
 
     if (!rzfn) {
         DISPLAY_ERROR (
-            "A function with given name does not exist in Radare.\n"
+            "A function with given name does not exist in Rizin.\n"
             "Cannot decompile :-("
         );
         return RZ_CMD_STATUS_ERROR;

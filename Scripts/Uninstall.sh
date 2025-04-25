@@ -16,8 +16,11 @@ sudo rm -rf "$InstallPath/lib/cmake/cJSON"
 
 # Remove plugin
 OS="$(uname)"
+EXTENSION=""
 if [[ "$OS" == "Darwin" ]]; then
-    sudo rm "$(r2 -H R2_USER_PLUGINS)/libreai_radare.dylib"
+    EXTENSION="dylib"
 elif [[ "$OS" == "Linux" ]]; then
-    sudo rm "$(r2 -H R2_USER_PLUGINS)/libreai_radare.so"
-else
+    EXTENSION="so"
+fi
+sudo rm "$(rizin -H RZ_USER_PLUGINS)/libreai_rizin.$EXTENSION"
+sudo rm "$(rizin -H RZ_LIB_PLUGINS)/libreai_rizin.$EXTENSION"
