@@ -1426,7 +1426,7 @@ RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const
         reai(),
         reai_response(),
         NULL /* search term */,
-        REAI_WORKSPACE_PUBLIC,
+        REAI_WORKSPACE_PERSONAL,
         REAI_ANALYSIS_STATUS_ALL,
         NULL, /* model name */
         REAI_DYN_EXEC_STATUS_ALL,
