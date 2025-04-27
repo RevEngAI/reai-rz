@@ -19,15 +19,15 @@ git clone https://github.com/brightprogrammer/tomlc99
 git clone https://github.com/DaveGamble/cJSON
 
 # Build and install cjson
-cmake -S "/tmp/cjson" \
-    -B "/tmp/cjson/Build" \
+cmake -S "/tmp/cJSON" \
+    -B "/tmp/cJSON/Build" \
     -G Ninja \
     -D ENABLE_CUSTOM_COMPILER_FLAGS=OFF \
     -D CMAKE_PREFIX_PATH="$InstallPath" \
     -D CMAKE_INSTALL_PREFIX="$InstallPath" \
     -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
-cmake --build "/tmp/cjson/Build" --config Release
-sudo cmake --install "/tmp/cjson/Build" --prefix "$InstallPath" --config Release
+cmake --build "/tmp/cJSON/Build" --config Release
+sudo cmake --install "/tmp/cJSON/Build" --prefix "$InstallPath" --config Release
 
 # Build and install tomlc99 
 cmake -S "/tmp/tomlc99" \
