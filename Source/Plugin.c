@@ -1142,20 +1142,13 @@ ReaiFunctionId
 
     ReaiFnInfoVec *fn_infos = NULL;
     /* avoid making multiple calls subsequent calls to same endpoint if possible */
-    if (reai_response()->type == REAI_RESPONSE_TYPE_BASIC_FUNCTION_INFO) {
-        REAI_LOG_TRACE ("Using previously fetched response of basic function info.");
 
-        fn_infos = reai_response()->basic_function_info.fn_infos;
-    } else {
-        REAI_LOG_TRACE ("Fetching basic function info again");
-
-        fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
-        if (!fn_infos) {
-            APPEND_ERROR (
-                "Failed to get function info list for opened binary file from RevEng.AI servers."
-            );
-            return 0;
-        }
+    fn_infos = reai_get_basic_function_info (reai(), reai_response(), bin_id);
+    if (!fn_infos) {
+        APPEND_ERROR (
+            "Failed to get function info list for opened binary file from RevEng.AI servers."
+        );
+        return 0;
     }
 
     Uint64 base_addr = reai_plugin_get_opened_binary_file_baseaddr (core);

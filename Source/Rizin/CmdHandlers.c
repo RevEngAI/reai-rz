@@ -367,16 +367,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, c
 
     rz_table_set_columnsf (table, "nsxx", "function_id", "name", "vaddr", "size");
     REAI_VEC_FOREACH (fn_infos, fn, {
-        // truncate string if exceeds a certain limit
-        char   trunc[4]  = {0};
-        size_t trunc_len = 48;
-        char*  n         = (char*)fn->name;
-        if (strlen (fn->name) > trunc_len) {
-            memcpy (trunc, n + trunc_len - 4, 4);
-            memcpy (n + trunc_len - 4, "...\0", 4);
-        }
         rz_table_add_rowf (table, "nsxx", fn->id, fn->name, fn->vaddr, fn->size);
-        memcpy (n + trunc_len - 4, trunc, 4);
     });
 
     CString table_str = rz_table_tofancystring (table);
