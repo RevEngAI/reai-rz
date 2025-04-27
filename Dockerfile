@@ -43,6 +43,28 @@ RUN wget https://github.com/rizinorg/rizin/archive/refs/tags/v0.7.3.tar.gz && \
 # Go back to where we start
 WORKDIR /home/ubuntu
 
+# Build and install cJSON dependency
+RUN git clone https://github.com/DaveGamble/cJSON.git 
+RUN cmake -S /home/ubuntu/cJSON \
+    -B /home/ubuntu/cJSON/build \
+    -G Ninja \
+    -D CMAKE_INSTALL_PREFIX=/usr/local \
+    -D BUILD_SHARED_LIBS=ON \
+    -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
+RUN ninja -C /home/ubuntu/cJSON/build
+RUN sudo ninja -C /home/ubuntu/cJSON/build install
+
+# Build and install tomlc99 dependency
+RUN git clone https://github.com/brightprogrammer/tomlc99
+RUN cmake -S /home/ubuntu/tomlc99 \
+    -B /home/ubuntu/tomlc99/build \
+    -G Ninja \
+    -D CMAKE_INSTALL_PREFIX=/usr/local \
+    -D BUILD_SHARED_LIBS=ON \
+    -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
+RUN ninja -C /home/ubuntu/tomlc99/build
+RUN sudo ninja -C /home/ubuntu/tomlc99/build install
+
 # Download, build and install latest plugin.
 # By default, this builds Rizin plugin only, leaving out the cutter plugin.
 RUN mkdir reai-rz
