@@ -56,6 +56,14 @@ else()
     message(FATAL_ERROR "Unsupported system type: ${CMAKE_SYSTEM_NAME}")
 endif()
 
+option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+
+if (ENABLE_ASAN)
+    message(STATUS "Address Sanitizer enabled")
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
+endif()
+
 # On Linux and macOS, set RPATH relative to the origin of the installed
 # executables (i.e. relative to the bin directory). This allows us to move the
 # installation directory into a different location after installation, which is

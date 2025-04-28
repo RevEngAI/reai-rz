@@ -40,12 +40,11 @@
  * Requires a restart of rizin plugin after issue.
  * */
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (core && argc);
     REAI_LOG_TRACE ("[CMD] config initialize");
 
     CString host = "https://api.reveng.ai"; // Hardcode API endpoint
     // NOTE(brightprogrammer): Developers should just change this in the config file.
-    CString api_key = argv[1];
+    CString api_key = argc > 1 ? argv[1] : NULL;
 
     /* attempt saving config */
     if (reai_plugin_save_config (host, api_key)) {
@@ -103,7 +102,6 @@ RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char**
  * "REac"
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_private_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc && argv);
     REAI_LOG_TRACE ("[CMD] create analysis");
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
@@ -111,8 +109,15 @@ RZ_IPI RzCmdStatus rz_create_analysis_private_handler (RzCore* core, int argc, c
         rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
-    CString ai_model  = argv[1];
-    CString prog_name = argv[2];
+    CString ai_model  = argc > 1 ? argv[1] : NULL;
+    CString prog_name = argc > 2 ? argv[2] : NULL;
+
+    if (!ai_model || !prog_name) {
+        DISPLAY_ERROR (
+            "Invalid arguments. I need an AI model and a program name to create a new analysis"
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     CString cmdline_args = NULL;
     if (argc == 4) {
@@ -139,7 +144,6 @@ RZ_IPI RzCmdStatus rz_create_analysis_private_handler (RzCore* core, int argc, c
  * "REacp"
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_public_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc && argv);
     REAI_LOG_TRACE ("[CMD] create analysis");
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
@@ -147,8 +151,15 @@ RZ_IPI RzCmdStatus rz_create_analysis_public_handler (RzCore* core, int argc, co
         rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
     }
 
-    CString ai_model  = argv[1];
-    CString prog_name = argv[2];
+    CString ai_model  = argc > 1 ? argv[1] : NULL;
+    CString prog_name = argc > 2 ? argv[2] : NULL;
+
+    if (!ai_model || !prog_name) {
+        DISPLAY_ERROR (
+            "Invalid arguments. I need an AI model and a program name to create a new analysis"
+        );
+        return RZ_CMD_STATUS_ERROR;
+    }
 
     CString cmdline_args = NULL;
     if (argc == 4) {
@@ -391,7 +402,6 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, c
  * @b Rename function with given function id to given new name.
  * */
 RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
     REAI_LOG_TRACE ("[CMD] rename function");
 
     /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
@@ -454,8 +464,8 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
         }
     }
 
-    CString old_name = argv[1];
-    CString new_name = argv[2];
+    CString old_name = argc > 1 ? argv[1] : NULL;
+    CString new_name = argc > 2 ? argv[2] : NULL;
 
     RzAnalysisFunction* fn = rz_analysis_get_function_byname (core->analysis, old_name);
     if (!fn) {
@@ -495,6 +505,7 @@ RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const cha
  * */
 RZ_IPI RzCmdStatus
     rz_function_similarity_search_handler (RzCore* core, int argc, const char** argv) {
+    REAI_LOG_TRACE ("[CMD] function similarity search");
     if (argc < 4) {
         REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
         return RZ_CMD_STATUS_WRONG_ARGS;
@@ -509,8 +520,8 @@ RZ_IPI RzCmdStatus
     CString function_name      = argv[1];
     Uint32  min_similarity     = (Uint32)rz_num_math (core->num, argv[2]);
     Uint32  max_results_count  = (Uint32)rz_num_math (core->num, argv[3]);
-    CString collection_ids_csv = argv[4];
-    CString binary_ids_csv     = argv[5];
+    CString collection_ids_csv = argc > 4 ? argv[4] : NULL;
+    CString binary_ids_csv     = argc > 5 ? argv[5] : NULL;
 
     // clamp value between 0 and 100
     min_similarity = min_similarity < 100 ? min_similarity : 100;
@@ -538,6 +549,7 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_function_similarity_search_debug_handler (RzCore* core, int argc, const char** argv) {
+    REAI_LOG_TRACE ("[CMD] function similarity search (DEBUG)");
     if (argc < 4) {
         REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
         return RZ_CMD_STATUS_WRONG_ARGS;
@@ -555,8 +567,8 @@ RZ_IPI RzCmdStatus
     CString function_name      = argv[1];
     Uint32  min_similarity     = (Uint32)rz_num_math (core->num, argv[2]);
     Uint32  max_results_count  = (Uint32)rz_num_math (core->num, argv[3]);
-    CString collection_ids_csv = argv[4];
-    CString binary_ids_csv     = argv[5];
+    CString collection_ids_csv = argc > 4 ? argv[4] : NULL;
+    CString binary_ids_csv     = argc > 5 ? argv[5] : NULL;
 
     // TODO: keep an LRU of binary and collection ids
     // No need to allow the user to reset the recently used collection and binary ids, just provide an
@@ -583,8 +595,8 @@ RZ_IPI RzCmdStatus
 
 
 RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    const char* fn_name = argv[1];
+    REAI_LOG_TRACE ("[CMD] AI decompile");
+    const char* fn_name = argc > 1 ? argv[1] : NULL;
     if (!fn_name) {
         return RZ_CMD_STATUS_INVALID;
     }
@@ -765,14 +777,17 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
     }
 }
 
+/**
+ * "REcs"
+ * */
 RZ_IPI RzCmdStatus rz_collection_search_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-
-    CString partial_collection_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString partial_binary_name     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
-    CString partial_binary_sha256   = argv[3] && strlen (argv[3]) ? argv[3] : NULL;
-    CString model_name              = argv[4] && strlen (argv[4]) ? argv[4] : NULL;
-    CString tags_csv                = argv[5] && strlen (argv[5]) ? argv[5] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection search");
+    CString partial_collection_name =
+        argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString partial_binary_name   = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    CString partial_binary_sha256 = argc > 3 ? argv[3] && strlen (argv[3]) ? argv[3] : NULL : NULL;
+    CString model_name            = argc > 4 ? argv[4] && strlen (argv[4]) ? argv[4] : NULL : NULL;
+    CString tags_csv              = argc > 5 ? argv[5] && strlen (argv[5]) ? argv[5] : NULL : NULL;
 
     if (reai_plugin_collection_search (
             core,
@@ -791,8 +806,8 @@ RZ_IPI RzCmdStatus
     rz_collection_search_by_binary_name_handler (RzCore* core, int argc, const char** argv) {
     UNUSED (argc);
 
-    CString partial_binary_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString model_name          = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    CString partial_binary_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString model_name          = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     if (reai_plugin_collection_search (core, NULL, partial_binary_name, NULL, model_name, NULL)) {
         return RZ_CMD_STATUS_OK;
@@ -802,10 +817,11 @@ RZ_IPI RzCmdStatus
 }
 RZ_IPI RzCmdStatus
     rz_collection_search_by_collection_name_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] collection search (by name)");
 
-    CString partial_collection_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString model_name              = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    CString partial_collection_name =
+        argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString model_name = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     if (reai_plugin_collection_search (
             core,
@@ -822,10 +838,10 @@ RZ_IPI RzCmdStatus
 }
 RZ_IPI RzCmdStatus
     rz_collection_search_by_hash_value_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] collection search (by hash value)");
 
-    CString partial_binary_sha256 = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString model_name            = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    CString partial_binary_sha256 = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString model_name            = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     if (reai_plugin_collection_search (core, NULL, NULL, partial_binary_sha256, model_name, NULL)) {
         return RZ_CMD_STATUS_OK;
@@ -877,9 +893,10 @@ static Bool str_to_filter_flags (CString filters, ReaiCollectionBasicInfoFilterF
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by TIME in ascending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -904,9 +921,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by OWNER in ascending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -931,9 +949,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by NAME in ascending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -958,9 +977,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by MODEL in ascending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -985,9 +1005,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by SIZE in ascending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -1012,9 +1033,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by TIME in descending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -1039,9 +1061,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by OWNER in descending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -1066,9 +1089,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by NAME in descending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -1093,9 +1117,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by MODEL in descending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -1120,9 +1145,10 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    CString search_term = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString filters     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    REAI_LOG_TRACE ("[CMD] collection basic info order by SIZE in descending");
+
+    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
     if (!str_to_filter_flags (filters, &filter_flags)) {
@@ -1146,12 +1172,12 @@ RZ_IPI RzCmdStatus
  * REbs
  * */
 RZ_IPI RzCmdStatus rz_binary_search_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] binary search");
 
-    CString partial_name   = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString partial_sha256 = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
-    CString model_name     = argv[3] && strlen (argv[3]) ? argv[3] : NULL;
-    CString tags_csv       = argv[4] && strlen (argv[4]) ? argv[4] : NULL;
+    CString partial_name   = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString partial_sha256 = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    CString model_name     = argc > 3 ? argv[3] && strlen (argv[3]) ? argv[3] : NULL : NULL;
+    CString tags_csv       = argc > 4 ? argv[4] && strlen (argv[4]) ? argv[4] : NULL : NULL;
 
     if (reai_plugin_binary_search (core, partial_name, partial_sha256, model_name, tags_csv)) {
         return RZ_CMD_STATUS_OK;
@@ -1163,10 +1189,10 @@ RZ_IPI RzCmdStatus rz_binary_search_handler (RzCore* core, int argc, const char*
  * REbsn
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_name_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] binary search (by NAME)");
 
-    CString partial_name = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString model_name   = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    CString partial_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString model_name   = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     if (reai_plugin_binary_search (core, partial_name, NULL, model_name, NULL)) {
         return RZ_CMD_STATUS_OK;
@@ -1178,10 +1204,10 @@ RZ_IPI RzCmdStatus rz_binary_search_by_name_handler (RzCore* core, int argc, con
  * REbsh
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] binary search (by SHA256)");
 
-    CString partial_sha256 = argv[1] && strlen (argv[1]) ? argv[1] : NULL;
-    CString model_name     = argv[2] && strlen (argv[2]) ? argv[2] : NULL;
+    CString partial_sha256 = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
+    CString model_name     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
 
     if (reai_plugin_binary_search (core, NULL, partial_sha256, model_name, NULL)) {
         return RZ_CMD_STATUS_OK;
@@ -1193,9 +1219,10 @@ RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, c
  * REco
  * */
 RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] collection link open");
 
-    ReaiCollectionId cid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+    ReaiCollectionId cid =
+        argc > 1 ? argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0 : 0;
 
     // generate portal link
     char* host = strdup (reai_plugin()->reai_config->host);
@@ -1237,7 +1264,7 @@ RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const cha
  * REao
  * */
 RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] analysis link open");
 
     ReaiBinaryId bid = 0;
     if (argc == 2) {
@@ -1306,10 +1333,10 @@ RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char*
  * REfo
  * */
 RZ_IPI RzCmdStatus rz_function_link_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] function link");
-    UNUSED (argc);
+    REAI_LOG_TRACE ("[CMD] function link open");
 
-    ReaiFunctionId fid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+    ReaiFunctionId fid =
+        argc > 1 ? argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0 : 0;
 
     // generate portal link
     char* host = strdup (reai_plugin()->reai_config->host);
@@ -1384,6 +1411,8 @@ RZ_IPI RzCmdStatus
  * */
 RZ_IPI RzCmdStatus
     rz_get_analysis_logs_using_binary_id_handler (RzCore* core, int argc, const char** argv) {
+    REAI_LOG_TRACE ("[CMD] get binary analysis logs");
+
     ReaiAnalysisId binary_id = 0;
     if (argc == 2) {
         binary_id = rz_num_get (core->num, argv[1]);
@@ -1411,6 +1440,7 @@ RZ_IPI RzCmdStatus
  * "REar"
  * */
 RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const char** argv) {
+    REAI_LOG_TRACE ("[CMD] recent analysis");
     UNUSED (core && argc && argv);
 
     ReaiAnalysisInfoVec* results = reai_get_recent_analyses (
