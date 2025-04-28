@@ -10,10 +10,7 @@
 # Dependencies
 # - MSVC Compiler Toolchain
 
-# Escape backslashes becuase Windows is idiot af
-$CWD = $PWD.Path -replace '\\', '\\'
-
-$BaseDir = "~\\.local\\RevEngAI\\Rizin"
+$BaseDir = "$HOME\\.local\\RevEngAI\\Rizin"
 $BuildDir = "$BaseDir\\Build"
 $InstallPath = "$BaseDir\\Install"
 $DownPath = "$BuildDir\\Artifacts"
