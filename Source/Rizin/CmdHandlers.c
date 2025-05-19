@@ -8,8 +8,7 @@
  * After adding a new command entry, implement corresponding handlers here and then compile.
  * */
 
-#include <Reai/Api/Api.h>
-#include <Reai/Common.h>
+#include <Reai/Api.h>
 #include <Reai/Config.h>
 #include <Reai/Log.h>
 #include <Reai/Types.h>
@@ -40,11 +39,11 @@
  * Requires a restart of rizin plugin after issue.
  * */
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] config initialize");
+    LOG_INFO ("[CMD] config initialize");
 
-    CString host = "https://api.reveng.ai"; // Hardcode API endpoint
     // NOTE(brightprogrammer): Developers should just change this in the config file.
-    CString api_key = argc > 1 ? argv[1] : NULL;
+    const char* host    = "https://api.reveng.ai"; // Hardcode API endpoint
+    const char* api_key = argc > 1 ? argv[1] : NULL;
 
     /* attempt saving config */
     if (reai_plugin_save_config (host, api_key)) {
