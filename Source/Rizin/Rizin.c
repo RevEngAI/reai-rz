@@ -18,8 +18,7 @@
 
 /* revengai */
 #include <Reai/Log.h>
-#include <Reai/Api/Api.h>
-#include <Reai/Common.h>
+#include <Reai/Api.h>
 #include <Reai/Config.h>
 #include <Reai/Types.h>
 
@@ -31,94 +30,51 @@
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
 
-CStrVec* dmsgs[REAI_LOG_LEVEL_MAX];
+Str* getMsg() {
+    static Str s = StrInit();
+    return &s;
+}
 
-/**
- * Display a message of given level in rizin shell.
- *
- * @param level
- * @param msg
- * */
-void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
+void rzDisplayMsg (LogLevel level, Str* msg) {
     if (!msg) {
-        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
+        LOG_ERROR ("Invalid arguments");
         return;
     }
 
-    reai_plugin_append_msg (level, msg);
-
-    /* append logs from each category */
-    for (int x = 0; x < REAI_LOG_LEVEL_MAX; x++) {
-        CStrVec* v = dmsgs[x];
-        for (size_t l = 0; l < v->count; l++) {
-            CString m = v->items[l];
-            reai_log_printf (level, "rizin.display", m);
-            rz_cons_println (m);
-            rz_cons_flush();
-            FREE (v->items[l]);
-        }
-        v->count = 0;
-    }
+    rzAppendMsg (level, msg);
+    rz_cons_println (getMsg()->data);
 }
 
-/**
- * Apend a message to a vector to be displayed all at once later on.
- *
- * @param level
- * @param msg
- * */
-void reai_plugin_append_msg (ReaiLogLevel level, CString msg) {
+void rzAppendMsg (LogLevel level, Str* msg) {
     if (!msg) {
-        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
+        LOG_ERROR ("Invalid arguments");
         return;
     }
 
-    reai_cstr_vec_append (dmsgs[level], &msg);
+    StrAppendf (
+        getMsg(),
+        "%s: %s\n",
+        level == LOG_LEVEL_INFO ? "INFO" : (level == LOG_LEVEL_ERROR ? "ERROR" : "FATAL"),
+        msg->data
+    );
 }
 
-/**
- * @brief Called by rizin when loading reai_plugin()-> This is the plugin entrypoint where we
- * register all the commands and corresponding handlers.
- *
- * To know about how commands work for this plugin, refer to `CmdGen/README.md`.
- * */
-RZ_IPI Bool rz_plugin_init (RzCore* core) {
+RZ_IPI bool rz_plugin_init (RzCore* core) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
         return false;
     }
 
-    for (int x = 0; x < REAI_LOG_LEVEL_MAX; x++) {
-        dmsgs[x] = reai_cstr_vec_create();
-    }
-
     rzshell_cmddescs_init (core);
-    if (!reai_plugin_init (core)) {
-        DISPLAY_ERROR ("Failed to initialize plugin.");
-    }
-
     return true;
 }
 
-/**
- * @b Will be called by rizin before unloading the reai_plugin()->
- * */
-RZ_IPI Bool rz_plugin_fini (RzCore* core) {
+RZ_IPI bool rz_plugin_fini (RzCore* core) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Failed to free plugin resources.");
         return false;
     }
 
-    reai_plugin_deinit();
-
-    for (int x = 0; x < REAI_LOG_LEVEL_MAX; x++) {
-        reai_cstr_vec_destroy (dmsgs[x]);
-        dmsgs[x] = NULL;
-    }
-
-
-    /* Remove command group from rzshell. The name of this comamnd group must match
-     * with the one specified in Root.yaml */
     RzCmd*     rcmd          = core->rcmd;
     RzCmdDesc* reai_cmd_desc = rz_cmd_get_desc (rcmd, "RE");
     return rz_cmd_desc_remove (rcmd, reai_cmd_desc);
@@ -130,7 +86,7 @@ RzCorePlugin core_plugin_reai = {
     .author  = "Siddharth Mishra",
     .desc    = "RevEng.AI Rizin Analysis Plugin",
     .license = "Copyright (c) 2024 RevEngAI. All Rights Reserved.",
-    .version = "v1+ai_decomp:feb6",
+    .version = "v2+ai_decomp:may21",
     .init    = (RzCorePluginCallback)rz_plugin_init,
     .fini    = (RzCorePluginCallback)rz_plugin_fini,
     // .analysis = (RzCorePluginCallback)reai_plugin_analysis,

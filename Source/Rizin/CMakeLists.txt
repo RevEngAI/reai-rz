@@ -7,7 +7,7 @@
 add_subdirectory(CmdGen)
 
 # main plugin library and sources
-set(ReaiRzPluginSources "Rizin.c" "../Plugin.c" "CmdHandlers.c" "Table.c")
+set(ReaiRzPluginSources "Rizin.c" "../Plugin.c" "CmdHandlers.c")
 
 # Libraries needs to be searched here to be linked properly
 # Because MSVC obviously

@@ -29,6 +29,119 @@
 #include <Plugin.h>
 #include <stdlib.h>
 
+typedef struct Plugin {
+    Config     config;
+    Connection connection;
+    BinaryId   binary_id;
+    ModelInfos models;
+} Plugin;
+
+void pluginDeinit (Plugin *p) {
+    if (!p) {
+        LOG_FATAL ("Invalid argument");
+    }
+
+    StrDeinit (&p->connection.api_key);
+    StrDeinit (&p->connection.host);
+    ConfigDeinit (&p->config);
+    VecDeinit (&p->models);
+    memset (p, 0, sizeof (Plugin));
+}
+
+#define pluginInit()                                                                                                   \
+    {                                                                                                                  \
+        .config     = (ConfigInit()),                                                                                  \
+        .connection = {.host = StrInit(), .api_key = StrInit()},                                                       \
+        .binary_id  = 0,                                                                                               \
+        .models     = VecInit()                                                                                        \
+}
+
+Plugin *getPlugin (bool reinit) {
+    static Plugin p         = pluginInit();
+    static bool   is_inited = false;
+
+    if (reinit) {
+        pluginDeinit (&p);
+        is_inited = false;
+    }
+
+    if (is_inited) {
+        return &p;
+    } else {
+        // Load config
+        p.config = ConfigRead (NULL);
+        if (!p.config.length) {
+            DISPLAY_ERROR ("Failed to load config. Plugin is in unusable state");
+            pluginDeinit (&p);
+            return NULL;
+        }
+
+        // Get connection parameters
+        Str *host    = ConfigGet (&p.config, "host");
+        Str *api_key = ConfigGet (&p.config, "api_key");
+        if (!host || !api_key) {
+            DISPLAY_ERROR ("Config does not specify 'host' and 'api_key' required entries.");
+            pluginDeinit (&p);
+            return NULL;
+        }
+        p.connection.api_key = StrInitFromStr (api_key);
+        p.connection.host    = StrInitFromStr (host);
+
+        // Get AI models, this way we also perform an implicit auth-check
+        p.models = GetAiModelInfos (p.connection);
+        if (!p.models.length) {
+            DISPLAY_ERROR ("Failed to get AI models. Please check host and API key in config.");
+            pluginDeinit (&p);
+            return NULL;
+        }
+
+        is_inited = true;
+        return &p;
+    }
+}
+
+void ReloadPluginData() {
+    getPlugin (true);
+}
+
+Config *GetConfig() {
+    if (getPlugin (false)) {
+        return &getPlugin (false)->config;
+    } else {
+        return NULL;
+    }
+}
+
+Connection GetConnection() {
+    if (getPlugin (false)) {
+        return getPlugin (false)->connection;
+    } else {
+        return (Connection) {0};
+    }
+}
+
+BinaryId GetBinaryId() {
+    if (getPlugin (false)) {
+        return getPlugin (false)->binary_id;
+    } else {
+        return 0;
+    }
+}
+
+void SetBinaryId (BinaryId binary_id) {
+    if (getPlugin (false)) {
+        getPlugin (false)->binary_id = binary_id;
+    }
+}
+
+ModelInfos GetModels() {
+    if (getPlugin (false)) {
+        return getPlugin (false)->models;
+    } else {
+        return (ModelInfos) {0};
+    }
+}
+
 SimilarFunction *getMostSimilarFunction (SimilarFunctions *functions, FunctionId origin_fn_id) {
     if (!functions) {
         LOG_FATAL ("Function matches are invalid. Cannot proceed.");
@@ -74,9 +187,48 @@ FunctionInfos getFunctionBoundaries (RzCore *core) {
 }
 
 // TODO:
-//  - rzApplyAnalysis
 //  - rzAutoRenameFunctions
-//  - rzAnnSymbols??
+
+
+void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
+    if (!core || !binary_id) {
+        LOG_FATAL ("Invalid arguments: invalid Rizin core or binary id.");
+    }
+
+    if (rzCanWorkWithAnalysis (binary_id, true)) {
+        FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), binary_id);
+        if (!functions.length) {
+            DISPLAY_ERROR ("Failed to get functions from RevEngAI analysis.");
+            return;
+        }
+
+        u64  base_addr = rzGetCurrentBinaryBaseAddr (core);
+        bool failed    = false;
+        VecForeachPtr (&functions, function, {
+            u64                 addr = function->symbol.value.addr + base_addr;
+            RzAnalysisFunction *fn   = rz_analysis_get_function_at (core->analysis, addr);
+            if (!fn) {
+                LOG_ERROR ("No Rizin function exists at address '0x%08llx'", addr);
+                failed = true;
+                continue;
+            }
+            rz_analysis_function_force_rename (fn, function->symbol.name.data);
+        });
+
+        SetBinaryId (binary_id);
+
+        if (!failed) {
+            DISPLAY_INFO ("All functions renamed successfully");
+        } else {
+            DISPLAY_INFO (
+                "Analyses applied, but some rename operations failed. Check logs.\n"
+                "Check renamed functions by `afl` command."
+            );
+        }
+
+        VecDeinit (&functions);
+    }
+}
 
 bool rzCanWorkWithAnalysis (BinaryId binary_id, bool display_messages) {
     if (!binary_id) {
@@ -241,111 +393,4 @@ u64 rzGetCurrentBinaryBaseAddr (RzCore *core) {
     }
     RzBinFile *binfile = getCurrentBinary (core);
     return binfile ? binfile->o->opts.baseaddr : 0;
-}
-
-typedef struct Plugin {
-    Config     config;
-    Connection connection;
-    BinaryId   binary_id;
-    ModelInfos models;
-} Plugin;
-
-void pluginDeinit (Plugin *p) {
-    if (!p) {
-        LOG_FATAL ("Invalid argument");
-    }
-
-    StrDeinit (&p->connection.api_key);
-    StrDeinit (&p->connection.host);
-    ConfigDeinit (&p->config);
-    VecDeinit (&p->models);
-    memset (p, 0, sizeof (Plugin));
-}
-
-#define pluginInit()                                                                                                   \
-    {                                                                                                                  \
-        .config     = (ConfigInit()),                                                                                  \
-        .connection = {.host = StrInit(), .api_key = StrInit()},                                                       \
-        .binary_id  = 0,                                                                                               \
-        .models     = VecInit()                                                                                        \
-        }
-
-Plugin *getPlugin (bool reinit) {
-    static Plugin p         = pluginInit();
-    static bool   is_inited = false;
-
-    if (reinit) {
-        pluginDeinit (&p);
-        is_inited = false;
-    }
-
-    if (is_inited) {
-        return &p;
-    } else {
-        // Load config
-        p.config = ConfigRead (NULL);
-        if (!p.config.length) {
-            DISPLAY_ERROR ("Failed to load config. Plugin is in unusable state");
-            pluginDeinit (&p);
-            return NULL;
-        }
-
-        // Get connection parameters
-        Str *host    = ConfigGet (&p.config, "host");
-        Str *api_key = ConfigGet (&p.config, "api_key");
-        if (!host || !api_key) {
-            DISPLAY_ERROR ("Config does not specify 'host' and 'api_key' required entries.");
-            pluginDeinit (&p);
-            return NULL;
-        }
-        p.connection.api_key = StrInitFromStr (api_key);
-        p.connection.host    = StrInitFromStr (host);
-
-        // Get AI models, this way we also perform an implicit auth-check
-        p.models = GetAiModelInfos (p.connection);
-        if (!p.models.length) {
-            DISPLAY_ERROR ("Failed to get AI models. Please check host and API key in config.");
-            pluginDeinit (&p);
-            return NULL;
-        }
-
-        is_inited = true;
-        return &p;
-    }
-}
-
-void ReloadPluginData() {
-    getPlugin (true);
-}
-
-Config *GetConfig() {
-    if (getPlugin (false)) {
-        return &getPlugin (false)->config;
-    } else {
-        return NULL;
-    }
-}
-
-Connection GetConnection() {
-    if (getPlugin (false)) {
-        return getPlugin (false)->connection;
-    } else {
-        return (Connection) {0};
-    }
-}
-
-BinaryId GetBinaryId() {
-    if (getPlugin (false)) {
-        return getPlugin (false)->binary_id;
-    } else {
-        return 0;
-    }
-}
-
-ModelInfos GetModels() {
-    if (getPlugin (false)) {
-        return getPlugin (false)->models;
-    } else {
-        return (ModelInfos) {0};
-    }
 }

@@ -86,11 +86,11 @@ commands:
         default_value: 90
     details:
       - name: Examples
-           entries:
-             - text: "REaa"
-               comment: "Apply auto analysis to this binary with 90% min similarity using only debug symbols"
-             - text: "REaa 85"
-               comment: "Min 85% similairty with debug symbols"
+        entries:
+          - text: "REaa"
+            comment: "Apply auto analysis to this binary with 90% min similarity using only debug symbols"
+          - text: "REaa 85"
+            comment: "Min 85% similairty with debug symbols"
   - name: REaaa
     cname: ann_auto_analyze_all
     summary: Auto analyze binary functions using ANN and perform batch rename. Restrict renamed symbols to debug names only.
