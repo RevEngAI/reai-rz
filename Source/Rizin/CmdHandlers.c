@@ -369,18 +369,25 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                 case STATUS_SUCCESS : {
                     DISPLAY_INFO ("AI decompilation complete ;-)\n");
 
-                    AiDecompilation dec = GetAiDecompilation (GetConnection(), fn_id, true);
+                    AiDecompilation aidec = GetAiDecompilation (GetConnection(), fn_id, true);
+                    Str*            smry  = &aidec.summary;
+                    Str*            dec   = &aidec.decompilation;
 
-                    // TODO: replace <tags> with their corresponding strings
+                    VecForeachIdx (&aidec.functions, function, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<DISASM_FUNCTION_%llu>", idx);
+                        StrReplace (dec, &dname, &function.name, -1);
+                        StrDeinit (&dname);
+                    });
 
-                    // if (code) {
-                    //     rz_cons_println (code);
-                    //     FREE (code);
-                    // } else {
-                    //     DISPLAY_ERROR ("Decompilation failed");
-                    // }
+                    VecForeachIdx (&aidec.strings, string, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<DISASM_STRING_%llu>", idx);
+                        StrReplace (dec, &dname, &string.string, -1);
+                        StrDeinit (&dname);
+                    });
 
-                    AiDecompilationDeinit (&dec);
+                    AiDecompilationDeinit (&aidec);
                     return RZ_CMD_STATUS_OK;
                 }
                 default :
