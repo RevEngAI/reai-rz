@@ -427,19 +427,9 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
     }
 }
 
-RzCmdStatus collectionSearch (Str name, Str bname, Str sha256, Str model_name, Str tags_csv) {
-    SearchCollectionRequest search = SearchCollectionRequestInit();
-
-    search.partial_collection_name = name;
-    search.partial_binary_name     = bname;
-    search.partial_binary_sha256   = sha256;
-    search.model_name              = model_name;
-    search.tags                    = StrSplit (&tags_csv, ",");
-
-    StrDeinit (&tags_csv);
-
-    CollectionInfos collections = SearchCollection (GetConnection(), &search);
-    SearchCollectionRequestDeinit (&search);
+RzCmdStatus collectionSearch (SearchCollectionRequest* search) {
+    CollectionInfos collections = SearchCollection (GetConnection(), search);
+    SearchCollectionRequestDeinit (search);
 
     if (collections.length) {
         RzTable* t = rz_table_new();
@@ -475,668 +465,415 @@ RzCmdStatus collectionSearch (Str name, Str bname, Str sha256, Str model_name, S
  * "REcs"
  * */
 RZ_IPI RzCmdStatus rz_collection_search_handler (RzCore* core, int argc, const char** argv) {
-    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
+    SearchCollectionRequest search = SearchCollectionRequestInit();
 
-    STR_ARG (name, 1);
-    STR_ARG (binary_name, 2);
-    STR_ARG (binary_sha256, 3);
-    STR_ARG (model_name, 4);
+    Str tags = StrInit();
+
+    STR_ARG (search.partial_collection_name, 1);
+    STR_ARG (search.partial_binary_name, 2);
+    STR_ARG (search.partial_binary_sha256, 3);
+    STR_ARG (search.model_name, 4);
     STR_ARG (tags, 5);
 
-    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
+    search.tags = StrSplit (&tags, ",");
+    StrDeinit (&tags);
+
+    return collectionSearch (&search);
 }
 
 RZ_IPI RzCmdStatus rz_collection_search_by_binary_name_handler (RzCore* core, int argc, const char** argv) {
-    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
+    SearchCollectionRequest search = SearchCollectionRequestInit();
 
-    STR_ARG (binary_name, 1);
-    STR_ARG (model_name, 2);
+    STR_ARG (search.partial_binary_name, 1);
+    STR_ARG (search.model_name, 2);
 
-    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
+    return collectionSearch (&search);
 }
+
 RZ_IPI RzCmdStatus rz_collection_search_by_collection_name_handler (RzCore* core, int argc, const char** argv) {
-    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
+    SearchCollectionRequest search = SearchCollectionRequestInit();
 
-    STR_ARG (name, 1);
-    STR_ARG (model_name, 2);
+    STR_ARG (search.partial_collection_name, 1);
+    STR_ARG (search.model_name, 2);
 
-    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
+    return collectionSearch (&search);
 }
+
 RZ_IPI RzCmdStatus rz_collection_search_by_hash_value_handler (RzCore* core, int argc, const char** argv) {
-    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
+    SearchCollectionRequest search = SearchCollectionRequestInit();
 
-    STR_ARG (binary_sha256, 1);
-    STR_ARG (model_name, 2);
+    STR_ARG (search.partial_binary_sha256, 1);
+    STR_ARG (search.model_name, 2);
 
-    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
+    return collectionSearch (&search);
 }
 
-static bool str_to_filter_flags (const char* filters, CollectionBasicInfoFilterFlags* flags) {
-    if (!flags) {
-        return false;
-    }
+RzCmdStatus collectionFilteredSearch (Str term, Str filters, OrderBy order_by, bool is_asc) {
+    SearchCollectionRequest search = SearchCollectionRequestInit();
 
-    if (!filters) {
-        return true;
-    }
+    search.partial_collection_name = term;
+    search.filter_public           = !!strchr (filters.data, 'p');
+    search.filter_official         = !!strchr (filters.data, 'o');
+    search.filter_user             = !!strchr (filters.data, 'u');
+    search.filter_team             = !!strchr (filters.data, 't');
+    StrDeinit (&filters);
 
-    while (*filters) {
-        switch (*filters) {
-            case 'o' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_OFFICIAL;
-                break;
-            case 'u' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_PUBLIC;
-                break;
-            case 't' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_TEAM;
-                break;
-            case 'p' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_PUBLIC;
-                break;
-            default :
-                APPEND_ERROR (
-                    "Invalid filter flag '%c'.\nAvailable flags are [o] - official, [u] - user, "
-                    "[t] - team, [p] - public only",
-                    *filters
-                );
-                return false;
-                break;
-        }
-        filters++;
-    }
+    search.order_by     = order_by;
+    search.order_in_asc = is_asc;
 
-    return true;
+    return collectionSearch (&search);
 }
 
 /**
  * REcat
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by TIME in ascending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_LAST_UPDATED, true);
 }
 
 /**
  * REcao
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by OWNER in ascending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_OWNER, true);
 }
 
 /**
  * REcan
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by NAME in ascending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_NAME, true);
 }
 
 /**
  * REcam
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by MODEL in ascending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_MODEL, true);
 }
 
 /**
  * REcas
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by SIZE in ascending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_SIZE, true);
 }
 
 /**
  * REcdt
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by TIME in descending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_LAST_UPDATED, false);
 }
 
 /**
  * REcdo
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by OWNER in descending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_OWNER, false);
 }
 
 /**
  * REcdn
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by NAME in descending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_NAME, false);
 }
 
 /**
  * REcdm
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by MODEL in descending");
-
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_MODEL, false);
 }
 
 /**
  * REcds
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection basic info order by SIZE in descending");
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_SIZE, false);
+}
 
-    const char* search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+RzCmdStatus searchBinary (SearchBinaryRequest* search) {
+    BinaryInfos binaries = SearchBinary (GetConnection(), search);
+    SearchBinaryRequestDeinit (search);
 
-    CollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
+    RzTable* t = rz_table_new();
+    rz_table_set_columnsf (t, "snnssss", "name", "binary_id", "analysis_id", "model", "owner", "created_at", "sha256");
 
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    VecForeachPtr (&binaries, binary, {
+        rz_table_add_rowf (
+            t,
+            "snnssss",
+            binary->binary_name.data,
+            binary->binary_id,
+            binary->analysis_id,
+            binary->model_name.data,
+            binary->owned_by.data,
+            binary->created_at.data,
+            binary->sha256.data
+        );
+    });
+
+    const char* s = rz_table_tofancystring (t);
+    rz_cons_println (s);
+    FREE (s);
+    rz_table_free (t);
+
+    VecDeinit (&binaries);
+
+    return RZ_CMD_STATUS_OK;
 }
 
 /**
  * REbs
  * */
 RZ_IPI RzCmdStatus rz_binary_search_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] binary search");
+    Str tags = StrInit();
 
-    const char* partial_name   = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* partial_sha256 = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-    const char* model_name     = argc > 3 ? argv[3] && strlen (argv[3]) ? argv[3] : NULL : NULL;
-    const char* tags_csv       = argc > 4 ? argv[4] && strlen (argv[4]) ? argv[4] : NULL : NULL;
+    SearchBinaryRequest search = SearchBinaryRequestInit();
+    STR_ARG (search.partial_name, 1);
+    STR_ARG (search.partial_sha256, 2);
+    STR_ARG (search.model_name, 3);
+    STR_ARG (tags, 4);
 
-    if (reai_plugin_binary_search (core, partial_name, partial_sha256, model_name, tags_csv)) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    search.tags = StrSplit (&tags, ",");
+
+    return searchBinary (&search);
 }
 
 /**
  * REbsn
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_name_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] binary search (by NAME)");
-
-    const char* partial_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* model_name   = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    if (reai_plugin_binary_search (core, partial_name, NULL, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    SearchBinaryRequest search = SearchBinaryRequestInit();
+    STR_ARG (search.partial_name, 1);
+    STR_ARG (search.model_name, 3);
+    return searchBinary (&search);
 }
 
 /**
  * REbsh
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] binary search (by SHA256)");
+    SearchBinaryRequest search = SearchBinaryRequestInit();
+    STR_ARG (search.partial_sha256, 1);
+    STR_ARG (search.model_name, 3);
+    return searchBinary (&search);
+}
 
-    const char* partial_sha256 = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* model_name     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+RzCmdStatus openLinkForId (const char* type, u64 id) {
+    Connection conn = GetConnection();
 
-    if (reai_plugin_binary_search (core, NULL, partial_sha256, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
+    Str host = StrDup (&conn.host);
+    StrReplaceZstr (&host, "api", "portal", 1);
+    StrAppendf (&host, "/%s/%llu", type, id);
+
+    rz_cons_println (host.data);
+
+    const char* syscmd = NULL;
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    syscmd = "start";
+#elif __APPLE__
+    syscmd = "open";
+#elif __linux__
+    syscmd = "xdg-open";
+#else
+    syscmd = NULL;
+#    warn "Unsupported OS. Won't open links from command line."
+#endif
+
+    if (syscmd) {
+        Str cmd = StrInit();
+        StrPrintf (&cmd, "%s %s", syscmd, host.data);
+        rz_sys_system (cmd.data);
+        StrDeinit (&cmd);
     }
-    return RZ_CMD_STATUS_ERROR;
+
+    StrDeinit (&host);
+
+    return RZ_CMD_STATUS_OK;
 }
 
 /**
  * REco
  * */
 RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection link open");
+    CollectionId cid = 0;
+    NUM_ARG (cid, 1);
 
-    CollectionId cid = argc > 1 ? argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0 : 0;
-
-    // generate portal link
-    char* host = strdup (reai_plugin()->reai_config->host);
-    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
-    if (!host) {
-        DISPLAY_ERROR ("Failed to generate portal link");
-        return RZ_CMD_STATUS_ERROR;
+    if (!cid) {
+        DISPLAY_ERROR ("Invalid collection ID provided.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    // TODO: should we also get basic collection information and display it here?
-    DISPLAY_INFO ("%s/collections/%llu", host, cid);
-
-    const char* syscmd = NULL;
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    syscmd = "start";
-#elif __APPLE__
-    syscmd = "open";
-#elif __linux__
-    syscmd = "xdg-open";
-#else
-    syscmd = NULL;
-#    warn "Unsupported OS. Won't open links from command line."
-#endif
-
-    if (syscmd) {
-        const char* cmd = rz_str_newf ("%s %s/collections/%llu", syscmd, host, cid);
-        rz_sys_system (cmd);
-        FREE (cmd);
-    }
-
-    FREE (host);
-
-    FREE (host);
-
-    return RZ_CMD_STATUS_OK;
+    return openLinkForId ("collection", cid);
 }
 
 /**
  * REao
  * */
 RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] analysis link open");
-
     BinaryId bid = 0;
-    if (argc == 2) {
-        bid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+    NUM_ARG (bid, 1);
+
+    if (!bid) {
+        bid = GetBinaryId();
         if (!bid) {
-            DISPLAY_ERROR ("Invalid binary ID provided.");
-            return RZ_CMD_STATUS_ERROR;
-        }
-    } else {
-        bid = reai_binary_id();
-        if (!bid) {
-            APPEND_ERROR ("No existing analysis applied. Don't know what analysis to open.");
             DISPLAY_ERROR (
-                "Please either apply an existing analysis or provide me a binary ID to open an "
-                "analysis page"
+                "No existing analysis attached to current session, and no binary id provided.\n"
+                "Please create a new analysis or apply an existing one, or provide a valid binary id"
             );
+            return RZ_CMD_STATUS_WRONG_ARGS;
         }
     }
 
-    // generate portal link
-    char* host = strdup (reai_plugin()->reai_config->host);
-    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
-    if (!host) {
-        DISPLAY_ERROR ("Failed to generate portal link");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    // TODO: should we also get basic binary information and display it here?
-    DISPLAY_INFO (
-        "%s/analyses/%llu?analysis-id=%llu",
-        host,
-        bid,
-        reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
-    );
-
-    const char* syscmd = NULL;
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    syscmd = "start";
-#elif __APPLE__
-    syscmd = "open";
-#elif __linux__
-    syscmd = "xdg-open";
-#else
-    syscmd = NULL;
-#    warn "Unsupported OS. Won't open links from command line."
-#endif
-
-    if (syscmd) {
-        const char* cmd = rz_str_newf (
-            "%s %s/analyses/%llu?analysis-id=%llu",
-            syscmd,
-            host,
-            bid,
-            reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
-        );
-        rz_sys_system (cmd);
-        FREE (cmd);
-    }
-
-    FREE (host);
-
-    return RZ_CMD_STATUS_OK;
+    return openLinkForId ("analyses", bid);
 }
 
 /**
  * REfo
  * */
 RZ_IPI RzCmdStatus rz_function_link_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] function link open");
+    FunctionId fid = 0;
+    NUM_ARG (fid, 1);
 
-    FunctionId fid = argc > 1 ? argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0 : 0;
-
-    // generate portal link
-    char* host = strdup (reai_plugin()->reai_config->host);
-    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
-    if (!host) {
-        DISPLAY_ERROR ("Failed to generate portal link");
-        return RZ_CMD_STATUS_ERROR;
+    if (!fid) {
+        DISPLAY_ERROR ("Invalid function ID provided.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    // TODO: should we also get basic function information and display it here?
-    DISPLAY_INFO ("%s/functions/%llu", host, fid);
-
-    const char* syscmd = NULL;
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    syscmd = "start";
-#elif __APPLE__
-    syscmd = "open";
-#elif __linux__
-    syscmd = "xdg-open";
-#else
-    syscmd = NULL;
-#    warn "Unsupported OS. Won't open links from command line."
-#endif
-
-    if (syscmd) {
-        const char* cmd = rz_str_newf ("%s %s/function/%llu", syscmd, host, fid);
-        rz_sys_system (cmd);
-        FREE (cmd);
-    }
-
-
-    FREE (host);
-
-    return RZ_CMD_STATUS_OK;
+    return openLinkForId ("collection", fid);
 }
 
 /**
  * REal
  * */
 RZ_IPI RzCmdStatus rz_get_analysis_logs_using_analysis_id_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] Get Analysis Logs");
+    AnalysisId analysis_id = 0;
+    NUM_ARG (analysis_id, 1);
 
-    AnalysisId id             = 0;
-    bool       is_analysis_id = true;
-    if (argc == 2) {
-        id = rz_num_get (core->num, argv[1]);
-    } else {
-        id = reai_binary_id();
-
-        if (!id) {
+    if (!analysis_id) {
+        if (!GetBinaryId()) {
             DISPLAY_ERROR (
-                "You haven't provided any analysis id.\n"
-                "Did you forget to apply an existing analysis or to create a new one?\n"
-                "Cannot fetch analysis logs, not enough information provided.\n"
+                "No RevEngAI analysis attached with current session.\n"
+                "Either provide an analysis id, apply an existing analysis or create a new analysis\n"
             );
             return RZ_CMD_STATUS_WRONG_ARGS;
         }
 
-        is_analysis_id = false;
+        analysis_id = AnalysisIdFromBinaryId (GetConnection(), GetBinaryId());
+        if (!analysis_id) {
+            DISPLAY_ERROR ("Failed to get analysis id from binary id attached to this session");
+            return RZ_CMD_STATUS_ERROR;
+        }
     }
 
-    if (!reai_plugin_get_analysis_logs (core, id, is_analysis_id)) {
-        DISPLAY_ERROR ("Failed to fetch and display analysis logs");
-        return RZ_CMD_STATUS_ERROR;
+    Str logs = GetAnalysisLogs (GetConnection(), analysis_id);
+    if (logs.length) {
+        rz_cons_println (logs.data);
+    } else {
+        DISPLAY_ERROR ("Failed to get analysis logs.");
     }
-    return RZ_CMD_STATUS_OK;
+    StrDeinit (&logs);
 }
 
 /**
  * REalb
  * */
 RZ_IPI RzCmdStatus rz_get_analysis_logs_using_binary_id_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] get binary analysis logs");
-
     AnalysisId binary_id = 0;
-    if (argc == 2) {
-        binary_id = rz_num_get (core->num, argv[1]);
-    } else {
-        binary_id = reai_binary_id();
+    NUM_ARG (binary_id, 1);
 
-        if (!binary_id) {
-            DISPLAY_ERROR (
-                "You haven't provided any binary id.\n"
-                "Did you forget to apply an existing analysis or to create a new one?\n"
-                "Cannot fetch analysis logs\n"
-            );
-            return RZ_CMD_STATUS_WRONG_ARGS;
-        }
+    if (!binary_id && !GetBinaryId()) {
+        DISPLAY_ERROR (
+            "No RevEngAI analysis attached with current session.\n"
+            "Either provide an analysis id, apply an existing analysis or create a new analysis\n"
+        );
+        return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    if (!reai_plugin_get_analysis_logs (core, binary_id, false /* provided is a binary id */)) {
-        DISPLAY_ERROR ("Failed to fetch and display analysis logs");
+    AnalysisId analysis_id = AnalysisIdFromBinaryId (GetConnection(), GetBinaryId());
+    if (!analysis_id) {
+        DISPLAY_ERROR ("Failed to get analysis id from binary id");
         return RZ_CMD_STATUS_ERROR;
     }
-    return RZ_CMD_STATUS_OK;
+
+    Str logs = GetAnalysisLogs (GetConnection(), analysis_id);
+    if (logs.length) {
+        rz_cons_println (logs.data);
+    } else {
+        DISPLAY_ERROR ("Failed to get analysis logs.");
+    }
+    StrDeinit (&logs);
 }
 
 /**
  * "REar"
  * */
 RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] recent analysis");
-    UNUSED (core && argc && argv);
+    RecentAnalysisRequest recents  = RecentAnalysisRequestInit();
+    AnalysisInfos         analyses = GetRecentAnalysis (GetConnection(), &recents);
+    RecentAnalysisRequestDeinit (&recents);
 
-    AnalysisInfoVec* results = reai_get_recent_analyses (
-        reai(),
-        reai_response(),
-        NULL /* search term */,
-        REAI_WORKSPACE_PERSONAL,
-        REAI_ANALYSIS_STATUS_ALL,
-        NULL, /* model name */
-        REAI_DYN_EXEC_STATUS_ALL,
-        NULL, /* usernames */
-        25,   /* 25 most recent analyses */
-        0,
-        REAI_RECENT_ANALYSIS_ORDER_BY_CREATED,
-        false
-    );
-    if (!results) {
+    if (!analyses.length) {
         DISPLAY_ERROR ("Failed to get most recent analysis. Are you a new user?");
         return RZ_CMD_STATUS_ERROR;
     }
 
-    PluginTable* t = reai_plugin_table_create();
-    reai_plugin_table_set_title (t, "Most Recent Analyses");
-    reai_plugin_table_set_columnsf (
-        t,
-        "nnssss",
-        "analysis_id",
-        "binary_id",
-        "status",
-        "creation",
-        "binary_name",
-        "scope"
-    );
+    RzTable* t = rz_table_new();
+    rz_table_set_columnsf (t, "nnssss", "analysis_id", "binary_id", "status", "creation", "binary_name", "scope");
 
-    REAI_VEC_FOREACH (results, r, {
-        reai_plugin_table_add_rowf (
+    VecForeachPtr (&analyses, analysis, {
+        Str status_str = StrInit();
+        StatusToStr (analysis->status, &status_str);
+        rz_table_add_rowf (
             t,
             "nnssss",
-            r->analysis_id,
-            r->binary_id,
-            reai_analysis_status_to_cstr (r->status),
-            r->creation,
-            r->binary_name,
-            r->is_public ? "PUBLIC" : "PRIVATE"
+            analysis->analysis_id,
+            analysis->binary_id,
+            status_str.data,
+            analysis->creation.data,
+            analysis->binary_name.data,
+            analysis->is_private ? "PRIVATE" : "PUBLIC"
         );
+        StrDeinit (&status_str);
     });
 
-    reai_plugin_table_show (t);
-    reai_plugin_table_destroy (t);
+    const char* s = rz_table_tofancystring (t);
+    rz_cons_println (s);
+    FREE (s);
+    rz_table_free (t);
 
     return RZ_CMD_STATUS_OK;
 }
