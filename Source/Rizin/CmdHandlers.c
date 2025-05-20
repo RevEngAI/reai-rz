@@ -330,10 +330,6 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
 
         Status status = GetAiDecompilationStatus (GetConnection(), fn_id);
         if ((status & STATUS_MASK) == STATUS_ERROR) {
-            DISPLAY_INFO (
-                "Looks like the decompilation process failed last time\n"
-                "I'll restart the decompilation process again..."
-            );
             if (!BeginAiDecompilation (GetConnection(), fn_id)) {
                 DISPLAY_ERROR ("Failed to start AI decompilation process.");
                 return RZ_CMD_STATUS_ERROR;
@@ -366,6 +362,11 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     }
                     break;
 
+                case STATUS_PENDING : {
+                    DISPLAY_INFO ("AI decompilation is queued and is pending. Should start soon!");
+                    break;
+                }
+
                 case STATUS_SUCCESS : {
                     DISPLAY_INFO ("AI decompilation complete ;-)\n");
 
@@ -373,92 +374,141 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     Str*            smry  = &aidec.summary;
                     Str*            dec   = &aidec.decompilation;
 
+                    Str code = StrInit();
+
+                    i32   l = smry->length;
+                    char* p = smry->data;
+                    while (l > 80) {
+                        char* p1 = strchr (p + 80, ' ');
+                        if (p1) {
+                            StrAppendf (&code, "// %.*s\n", (i32)(p1 - p), p);
+                            p1++;
+                            l -= (p1 - p);
+                            p  = p1;
+                        } else {
+                            break;
+                        }
+                    }
+                    StrAppendf (&code, "// %.*s\n\n", (i32)l, p);
+                    StrMerge (&code, dec);
+
                     VecForeachIdx (&aidec.functions, function, idx, {
                         Str dname = StrInit();
                         StrPrintf (&dname, "<DISASM_FUNCTION_%llu>", idx);
-                        StrReplace (dec, &dname, &function.name, -1);
+                        StrReplace (&code, &dname, &function.name, -1);
                         StrDeinit (&dname);
                     });
 
                     VecForeachIdx (&aidec.strings, string, idx, {
                         Str dname = StrInit();
                         StrPrintf (&dname, "<DISASM_STRING_%llu>", idx);
-                        StrReplace (dec, &dname, &string.string, -1);
+                        StrReplace (&code, &dname, &string.string, -1);
                         StrDeinit (&dname);
                     });
 
+                    // print decompiled code with summary
+                    rz_cons_println (code.data);
+
+                    StrDeinit (&code);
                     AiDecompilationDeinit (&aidec);
                     return RZ_CMD_STATUS_OK;
                 }
                 default :
-                    break;
+                    LOG_FATAL ("Unreachable code reached. Invalid decompilation status");
+                    return RZ_CMD_STATUS_ERROR;
             }
 
             DISPLAY_INFO ("Going to sleep for two seconds...");
             rz_sys_sleep (2);
         }
+    } else {
+        DISPLAY_ERROR ("Failed to get AI decompilation.");
+        return RZ_CMD_STATUS_ERROR;
     }
+}
+
+RzCmdStatus collectionSearch (Str name, Str bname, Str sha256, Str model_name, Str tags_csv) {
+    SearchCollectionRequest search = SearchCollectionRequestInit();
+
+    search.partial_collection_name = name;
+    search.partial_binary_name     = bname;
+    search.partial_binary_sha256   = sha256;
+    search.model_name              = model_name;
+    search.tags                    = StrSplit (&tags_csv, ",");
+
+    StrDeinit (&tags_csv);
+
+    CollectionInfos collections = SearchCollection (GetConnection(), &search);
+    SearchCollectionRequestDeinit (&search);
+
+    if (collections.length) {
+        RzTable* t = rz_table_new();
+        rz_table_set_columnsf (t, "snssss", "Name", "Id", "Scope", "Last Updated", "Model", "Owner");
+
+        VecForeachPtr (&collections, collection, {
+            rz_table_add_rowf (
+                t,
+                "snssss",
+                collection->name.data,
+                collection->id,
+                collection->is_private ? "PRIVATE" : "PUBLIC",
+                collection->last_updated_at.data,
+                collection->model_name.data,
+                collection->owned_by.data
+            );
+        });
+
+        const char* s = rz_table_tofancystring (t);
+        rz_cons_println (s);
+        FREE (s);
+        rz_table_free (t);
+    } else {
+        DISPLAY_ERROR ("Failed to get collection search results");
+    }
+
+    VecDeinit (&collections);
+
+    return RZ_CMD_STATUS_ERROR;
 }
 
 /**
  * "REcs"
  * */
 RZ_IPI RzCmdStatus rz_collection_search_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection search");
-    const char* partial_collection_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* partial_binary_name     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-    const char* partial_binary_sha256   = argc > 3 ? argv[3] && strlen (argv[3]) ? argv[3] : NULL : NULL;
-    const char* model_name              = argc > 4 ? argv[4] && strlen (argv[4]) ? argv[4] : NULL : NULL;
-    const char* tags_csv                = argc > 5 ? argv[5] && strlen (argv[5]) ? argv[5] : NULL : NULL;
+    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
 
-    if (reai_plugin_collection_search (
-            core,
-            partial_collection_name,
-            partial_binary_name,
-            partial_binary_sha256,
-            model_name,
-            tags_csv
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
+    STR_ARG (name, 1);
+    STR_ARG (binary_name, 2);
+    STR_ARG (binary_sha256, 3);
+    STR_ARG (model_name, 4);
+    STR_ARG (tags, 5);
 
-    return RZ_CMD_STATUS_ERROR;
+    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
 }
+
 RZ_IPI RzCmdStatus rz_collection_search_by_binary_name_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
 
-    const char* partial_binary_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* model_name          = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    STR_ARG (binary_name, 1);
+    STR_ARG (model_name, 2);
 
-    if (reai_plugin_collection_search (core, NULL, partial_binary_name, NULL, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
-    }
-
-    return RZ_CMD_STATUS_ERROR;
+    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
 }
 RZ_IPI RzCmdStatus rz_collection_search_by_collection_name_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection search (by name)");
+    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
 
-    const char* partial_collection_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* model_name              = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    STR_ARG (name, 1);
+    STR_ARG (model_name, 2);
 
-    if (reai_plugin_collection_search (core, partial_collection_name, NULL, NULL, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
-    }
-
-    return RZ_CMD_STATUS_ERROR;
+    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
 }
 RZ_IPI RzCmdStatus rz_collection_search_by_hash_value_handler (RzCore* core, int argc, const char** argv) {
-    LOG_INFO ("[CMD] collection search (by hash value)");
+    Str name = StrInit(), binary_name = StrInit(), binary_sha256 = StrInit(), model_name = StrInit(), tags = StrInit();
 
-    const char* partial_binary_sha256 = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    const char* model_name            = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    STR_ARG (binary_sha256, 1);
+    STR_ARG (model_name, 2);
 
-    if (reai_plugin_collection_search (core, NULL, NULL, partial_binary_sha256, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
-    }
-
-    return RZ_CMD_STATUS_ERROR;
+    return collectionSearch (name, binary_name, binary_sha256, model_name, tags);
 }
 
 static bool str_to_filter_flags (const char* filters, CollectionBasicInfoFilterFlags* flags) {
