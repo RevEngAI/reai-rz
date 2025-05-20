@@ -37,7 +37,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     Q_INTERFACES (CutterPlugin)
 
     /* to create separate menu for revengai plugin in cutter's main window's menu
-   * bar */
+     * bar */
     QMenu *reaiMenu = nullptr;
 
     /* action to enable/disable (show/hide) revengai plugin */
@@ -60,7 +60,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
 
     MainWindow *mainWindow = NULL;
 
-    void renameFunctions(std::vector<std::pair<QString, QString>> nameMap);
+    void renameFunctions (std::vector<std::pair<QString, QString>> nameMap);
 
    public:
     void setupPlugin() override;

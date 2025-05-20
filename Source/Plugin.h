@@ -27,26 +27,66 @@ extern "C" {
 #include <rz_bin.h>
 #include <rz_core.h>
 
-/* plugin */
-#include <Table.h>
+    ///
+    /// Reinit plugin by deiniting current internal state and reloading config
+    ///
+    void ReloadPluginData();
 
-    typedef struct Plugin {
-        Config     config;
-        Connection conn;
-        BinaryId   binary_id;
-        ModelInfos models;
-    } Plugin;
+    ///
+    /// Get loaded config.
+    /// Don't ever deinit returned `Config`.
+    ///
+    /// SUCCESS : Valid `Config` pointer.
+    /// FAILURE : `NULL`
+    ///
+    Config* GetConfig();
+
+    ///
+    /// Get connection information used by this plugin.
+    /// Don't ever deinit anything inside returned object.
+    ///
+    /// SUCCESS : Connection object filled with valid data.
+    /// FAILURE : Empty object.
+    ///
+    Connection GetConnection();
+
+    ///
+    /// Get current binary ID (if any set).
+    ///
+    /// SUCCESS : A non-zero binary if it's set by user, 0 otherwise.
+    /// FAILURE : 0.
+    ///
+    BinaryId GetBinaryId();
+
+    ///
+    /// Get all available AI models.
+    ///
+    /// SUCCESS : Vector of ModelInfo objects filled with valid data.
+    /// FAILURE : Empty vector otherwise.
+    ///
+    ModelInfos GetModels();
+
+    ///
+    /// Check whether or not we can work with analysis associated with given binary ID.
+    ///
+    /// binary_id[in] : Binary ID to check for.
+    /// display_messages[in] : Whether to display popup messages if analysis is not workable with.
+    ///
+    /// SUCCESS : `true`/`false` depending on whether we can continue working with analysis.
+    /// FAILURE : `false` with log messages
+    ///
+    bool rzCanWorkWithAnalysis (BinaryId binary_id, bool display_messages);
 
     ///
     /// Apply an existing analysis to currently opened binary.
     ///
-    /// p[in] : Plugin
+    /// p[in]         : RzCore
     /// binary_id[in] : Binary ID to fetch analysis for and apply.
     ///
     /// SUCCESS : true
     /// FAILURE : false
     ///
-    bool rzApplyExistingAnalysis (Plugin* p, BinaryId binary_id);
+    void rzApplyAnalysis (RzCore* core, BinaryId binary_id);
 
     ///
     /// Get similar functions for each function and perform an auto-rename
@@ -57,12 +97,7 @@ extern "C" {
     /// min_confidence[in]           : Minimum similarity threshold to cross before candidacy for a rename.
     /// debug_symbols_only[in]       : Suggests symbols extracted from debug information only.
     ///
-    void rzAutoRenameFunctions (
-        Plugin* p,
-        size    max_results_per_function,
-        f64     min_similarity,
-        bool    debug_symbols_only
-    );
+    void rzAutoRenameFunctions (size max_results_per_function, u32 min_similarity, bool debug_symbols_only);
 
     ///
     /// Search for function ID corresponding to given rizin function.
@@ -74,33 +109,54 @@ extern "C" {
     /// SUCCESS : Non-zero function ID.
     /// FAILURE : Zero.
     ///
-    FunctionId rzLookupFunctionId (Plugin* p, RzCore* core, RzAnalysisFunction* fn);
+    FunctionId rzLookupFunctionId (RzCore* core, RzAnalysisFunction* fn);
+    FunctionId rzLookupFunctionIdForFunctionWithName (RzCore* core, const char* name);
+    FunctionId rzLookupFunctionIdForFunctionAtAddr (RzCore* core, u64 addr);
 
-    void        rzDisplayMsg (LogLevel level, Str* msg);
-    void        rzAppendMsg (LogLevel level, Str* msg);
-    const char* rzGetCurrentBinaryPath (RzCore* core);
-    u64         rzGetCurrentBinaryBaseAddr (RzCore* core);
+    ///
+    /// Get path to opened binary file.
+    /// Deinit returned string after use.
+    ///
+    /// core[in] : RzCore
+    ///
+    /// SUCCESS : `Str` object containing absolute path of currently opened binary.
+    /// FAILURE : Empty `Str` object if no file opened.
+    ///
+    Str rzGetCurrentBinaryPath (RzCore* core);
 
-#define DISPLAY_MSG(level, ...)                                                                    \
-    do {                                                                                           \
-        Str msg = StrInit();                                                                       \
-        StrPrintf (&msg, __VA_ARGS__);                                                             \
-        rzDisplayMsg (level, &msg);                                                                \
-        StrDeinit (&msg);                                                                          \
+    ///
+    /// Get base address of opened binary.
+    ///
+    /// core[in] : RzCore
+    ///
+    /// SUCCESS : base address if binary file opened (can be 0)
+    /// FAILURE : 0
+    ///
+    u64 rzGetCurrentBinaryBaseAddr (RzCore* core);
+
+    void rzDisplayMsg (LogLevel level, Str* msg);
+    void rzAppendMsg (LogLevel level, Str* msg);
+
+#define DISPLAY_MSG(level, ...)                                                                                        \
+    do {                                                                                                               \
+        Str msg = StrInit();                                                                                           \
+        StrPrintf (&msg, __VA_ARGS__);                                                                                 \
+        rzDisplayMsg (level, &msg);                                                                                    \
+        StrDeinit (&msg);                                                                                              \
     } while (0)
 
-#define APPEND_MSG(level, ...)                                                                     \
-    do {                                                                                           \
-        Str msg = StrInit();                                                                       \
-        StrPrintf (&msg, __VA_ARGS__);                                                             \
-        rzAppendMsg (level, &msg);                                                                 \
-        StrDeinit (&msg);                                                                          \
+#define APPEND_MSG(level, ...)                                                                                         \
+    do {                                                                                                               \
+        Str msg = StrInit();                                                                                           \
+        StrPrintf (&msg, __VA_ARGS__);                                                                                 \
+        rzAppendMsg (level, &msg);                                                                                     \
+        StrDeinit (&msg);                                                                                              \
     } while (0)
 
 #define DISPLAY_INFO(...)  DISPLAY_MSG (LOG_LEVEL_INFO, __VA_ARGS__)
 #define DISPLAY_ERROR(...) DISPLAY_MSG (LOG_LEVEL_ERROR, __VA_ARGS__)
-#define DISPLAY_FATAL(...)                                                                         \
-    DISPLAY_MSG (LOG_LEVEL_FATAL, __VA_ARGS__);                                                    \
+#define DISPLAY_FATAL(...)                                                                                             \
+    DISPLAY_MSG (LOG_LEVEL_FATAL, __VA_ARGS__);                                                                        \
     abort()
 
 #define APPEND_INFO(...)  APPEND_MSG (LOG_LEVEL_INFO, __VA_ARGS__)

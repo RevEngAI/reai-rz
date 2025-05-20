@@ -30,52 +30,52 @@
  * */
 #ifdef RIZIN_TABLE_HACK
 
-#    define add_column_to_rowf(row, fmt, ap)                                                       \
-        do {                                                                                       \
-            const char* arg = NULL;                                                                \
-            switch (fmt) {                                                                         \
-                case 's' :                                                                         \
-                case 'z' :                                                                         \
-                    arg = va_arg (ap, CString);                                                    \
-                    rz_pvector_push (row, rz_str_dup (arg ? arg : ""));                            \
-                    break;                                                                         \
-                case 'b' :                                                                         \
-                    rz_pvector_push (row, rz_str_dup (rz_str_bool (va_arg (ap, int))));            \
-                    break;                                                                         \
-                case 'i' :                                                                         \
-                case 'd' :                                                                         \
-                    rz_pvector_push (row, rz_str_newf ("%d", va_arg (ap, int)));                   \
-                    break;                                                                         \
-                case 'n' :                                                                         \
-                    rz_pvector_push (row, rz_str_newf ("%" PFMT64d, va_arg (ap, ut64)));           \
-                    break;                                                                         \
-                case 'u' :                                                                         \
-                    rz_pvector_push (row, rz_num_units (NULL, 32, va_arg (ap, ut64)));             \
-                    break;                                                                         \
-                case 'f' :                                                                         \
-                    rz_pvector_push (row, rz_str_newf ("%8lf", va_arg (ap, double)));              \
-                    break;                                                                         \
-                case 'x' :                                                                         \
-                case 'X' : {                                                                       \
-                    ut64 n = va_arg (ap, ut64);                                                    \
-                    if (n == UT64_MAX) {                                                           \
-                        if (fmt == 'X') {                                                          \
-                            rz_pvector_push (row, rz_str_dup ("----------"));                      \
-                        } else {                                                                   \
-                            rz_pvector_push (row, rz_str_dup ("-1"));                              \
-                        }                                                                          \
-                    } else {                                                                       \
-                        if (fmt == 'X') {                                                          \
-                            rz_pvector_push (row, rz_str_newf ("0x%08" PFMT64x, n));               \
-                        } else {                                                                   \
-                            rz_pvector_push (row, rz_str_newf ("0x%" PFMT64x, n));                 \
-                        }                                                                          \
-                    }                                                                              \
-                } break;                                                                           \
-                default :                                                                          \
-                    eprintf ("Invalid format string char '%c', use 's' or 'n'\n", fmt);            \
-                    break;                                                                         \
-            }                                                                                      \
+#    define add_column_to_rowf(row, fmt, ap)                                                                           \
+        do {                                                                                                           \
+            const char* arg = NULL;                                                                                    \
+            switch (fmt) {                                                                                             \
+                case 's' :                                                                                             \
+                case 'z' :                                                                                             \
+                    arg = va_arg (ap, CString);                                                                        \
+                    rz_pvector_push (row, rz_str_dup (arg ? arg : ""));                                                \
+                    break;                                                                                             \
+                case 'b' :                                                                                             \
+                    rz_pvector_push (row, rz_str_dup (rz_str_bool (va_arg (ap, int))));                                \
+                    break;                                                                                             \
+                case 'i' :                                                                                             \
+                case 'd' :                                                                                             \
+                    rz_pvector_push (row, rz_str_newf ("%d", va_arg (ap, int)));                                       \
+                    break;                                                                                             \
+                case 'n' :                                                                                             \
+                    rz_pvector_push (row, rz_str_newf ("%" PFMT64d, va_arg (ap, ut64)));                               \
+                    break;                                                                                             \
+                case 'u' :                                                                                             \
+                    rz_pvector_push (row, rz_num_units (NULL, 32, va_arg (ap, ut64)));                                 \
+                    break;                                                                                             \
+                case 'f' :                                                                                             \
+                    rz_pvector_push (row, rz_str_newf ("%8lf", va_arg (ap, double)));                                  \
+                    break;                                                                                             \
+                case 'x' :                                                                                             \
+                case 'X' : {                                                                                           \
+                    ut64 n = va_arg (ap, ut64);                                                                        \
+                    if (n == UT64_MAX) {                                                                               \
+                        if (fmt == 'X') {                                                                              \
+                            rz_pvector_push (row, rz_str_dup ("----------"));                                          \
+                        } else {                                                                                       \
+                            rz_pvector_push (row, rz_str_dup ("-1"));                                                  \
+                        }                                                                                              \
+                    } else {                                                                                           \
+                        if (fmt == 'X') {                                                                              \
+                            rz_pvector_push (row, rz_str_newf ("0x%08" PFMT64x, n));                                   \
+                        } else {                                                                                       \
+                            rz_pvector_push (row, rz_str_newf ("0x%" PFMT64x, n));                                     \
+                        }                                                                                              \
+                    }                                                                                                  \
+                } break;                                                                                               \
+                default :                                                                                              \
+                    eprintf ("Invalid format string char '%c', use 's' or 'n'\n", fmt);                                \
+                    break;                                                                                             \
+            }                                                                                                          \
         } while (0)
 
 RZ_API void table_add_vrowf (RZ_NONNULL RzTable* t, const char* fmt, va_list ap) {

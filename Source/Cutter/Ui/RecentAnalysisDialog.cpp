@@ -115,8 +115,7 @@ RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) 
     l->addWidget (n, 6, 0);
     l->addWidget (isOrderedInAsc, 6, 1);
 
-    QDialogButtonBox* btnBox =
-        new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    QDialogButtonBox* btnBox = new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget (btnBox);
 
     headerLabels << "name";
@@ -135,19 +134,9 @@ RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) 
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
 
-    connect (
-        btnBox,
-        &QDialogButtonBox::accepted,
-        this,
-        &RecentAnalysisDialog::on_GetRecentAnalysis
-    );
+    connect (btnBox, &QDialogButtonBox::accepted, this, &RecentAnalysisDialog::on_GetRecentAnalysis);
     connect (btnBox, &QDialogButtonBox::rejected, this, &QDialog::close);
-    connect (
-        table,
-        &QTableWidget::cellDoubleClicked,
-        this,
-        &RecentAnalysisDialog::on_TableCellDoubleClick
-    );
+    connect (table, &QTableWidget::cellDoubleClicked, this, &RecentAnalysisDialog::on_TableCellDoubleClick);
 }
 
 void RecentAnalysisDialog::on_GetRecentAnalysis() {
@@ -262,8 +251,7 @@ void RecentAnalysisDialog::on_TableCellDoubleClick (int row, int column) {
     // fetch collection id and open url
     QString binaryId   = table->item (row, 1)->text();
     QString analysisId = table->item (row, 2)->text();
-    QString link =
-        QString ("%1/analyses/%2?analysis-id=%3").arg (host).arg (binaryId).arg (analysisId);
+    QString link       = QString ("%1/analyses/%2?analysis-id=%3").arg (host).arg (binaryId).arg (analysisId);
     QDesktopServices::openUrl (QUrl (link));
 }
 

@@ -72,8 +72,7 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     l->addWidget (n, 2, 0);
     l->addWidget (modelNameSelector, 2, 1);
 
-    QDialogButtonBox* btnBox =
-        new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    QDialogButtonBox* btnBox = new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget (btnBox);
 
     headerLabels << "name";
@@ -92,19 +91,9 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
 
-    connect (
-        btnBox,
-        &QDialogButtonBox::accepted,
-        this,
-        &BinarySearchDialog::on_PerformBinarySearch
-    );
+    connect (btnBox, &QDialogButtonBox::accepted, this, &BinarySearchDialog::on_PerformBinarySearch);
     connect (btnBox, &QDialogButtonBox::rejected, this, &QDialog::close);
-    connect (
-        table,
-        &QTableWidget::cellDoubleClicked,
-        this,
-        &BinarySearchDialog::on_TableCellDoubleClick
-    );
+    connect (table, &QTableWidget::cellDoubleClicked, this, &BinarySearchDialog::on_TableCellDoubleClick);
 }
 
 void BinarySearchDialog::on_PerformBinarySearch() {
@@ -172,8 +161,7 @@ void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {
         // fetch collection id and open url
         QString binaryId   = table->item (row, 1)->text();
         QString analysisId = table->item (row, 2)->text();
-        QString link =
-            QString ("%1/analyses/%2?analysis-id=%3").arg (host).arg (binaryId).arg (analysisId);
+        QString link       = QString ("%1/analyses/%2?analysis-id=%3").arg (host).arg (binaryId).arg (analysisId);
         QDesktopServices::openUrl (QUrl (link));
     } else {
         selectedBinaryIds << table->item (row, 1)->text();
