@@ -488,13 +488,14 @@ RzCmdStatus collectionSearch (SearchCollectionRequest* search) {
 
     if (collections.length) {
         RzTable* t = rz_table_new();
-        rz_table_set_columnsf (t, "snssss", "Name", "Id", "Scope", "Last Updated", "Model", "Owner");
+        rz_table_set_columnsf (t, "snnssss", "Name", "Size", "Id", "Scope", "Last Updated", "Model", "Owner");
 
         VecForeachPtr (&collections, collection, {
             rz_table_add_rowf (
                 t,
-                "snssss",
+                "snnssss",
                 collection->name.data,
+                collection->size,
                 collection->id,
                 collection->is_private ? "PRIVATE" : "PUBLIC",
                 collection->last_updated_at.data,
