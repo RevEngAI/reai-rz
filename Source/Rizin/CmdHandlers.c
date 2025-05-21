@@ -104,6 +104,7 @@ RzCmdStatus createAnalysis (RzCore* core, int argc, const char** argv, bool is_p
                 VecPushBack (&new_analysis.functions, fi);
             }
             bin_id = CreateNewAnalysis (GetConnection(), &new_analysis);
+            SetBinaryId (bin_id);
         }
         StrDeinit (&path);
     }

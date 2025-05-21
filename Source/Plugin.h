@@ -57,6 +57,7 @@ extern "C" {
     /// FAILURE : 0.
     ///
     BinaryId GetBinaryId();
+    void     SetBinaryId (BinaryId binary_id);
 
     ///
     /// Get all available AI models.
