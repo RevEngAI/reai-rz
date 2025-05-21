@@ -48,21 +48,17 @@ void pluginDeinit (Plugin *p) {
     memset (p, 0, sizeof (Plugin));
 }
 
-#define pluginInit()                                                                                                   \
-    {                                                                                                                  \
-        .config     = (ConfigInit()),                                                                                  \
-        .connection = {.host = StrInit(), .api_key = StrInit()},                                                       \
-        .binary_id  = 0,                                                                                               \
-        .models     = VecInit()                                                                                        \
-}
-
 Plugin *getPlugin (bool reinit) {
     static Plugin p;
     static bool   is_inited = false;
 
     if (reinit) {
         if(!is_inited) {
-            p = pluginInit();
+            p.config             = ConfigInit();
+            p.connection.host    = StrInit();
+            p.connection.api_key = StrInit();
+            p.binary_id          = 0;
+            p.models             = VecInitWithDeepCopy(NULL, ModelInfoDeinit);
         }
         pluginDeinit (&p);
         is_inited = false;
@@ -71,7 +67,12 @@ Plugin *getPlugin (bool reinit) {
     if (is_inited) {
         return &p;
     } else {
-        p = pluginInit();
+        p.config             = ConfigInit();
+        p.connection.host    = StrInit();
+        p.connection.api_key = StrInit();
+        p.binary_id          = 0;
+        p.models             = VecInitWithDeepCopy(NULL, ModelInfoDeinit);
+
         // Load config
         p.config = ConfigRead (NULL);
         if (!p.config.length) {
