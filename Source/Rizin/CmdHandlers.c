@@ -567,11 +567,14 @@ RzCmdStatus collectionFilteredSearch (Str term, Str filters, OrderBy order_by, b
     SearchCollectionRequest search = SearchCollectionRequestInit();
 
     search.partial_collection_name = term;
-    search.filter_public           = !!strchr (filters.data, 'p');
-    search.filter_official         = !!strchr (filters.data, 'o');
-    search.filter_user             = !!strchr (filters.data, 'u');
-    search.filter_team             = !!strchr (filters.data, 't');
-    StrDeinit (&filters);
+
+    if (filters.data) {
+        search.filter_public   = !!strchr (filters.data, 'p');
+        search.filter_official = !!strchr (filters.data, 'o');
+        search.filter_user     = !!strchr (filters.data, 'u');
+        search.filter_team     = !!strchr (filters.data, 't');
+        StrDeinit (&filters);
+    }
 
     search.order_by     = order_by;
     search.order_in_asc = is_asc;
