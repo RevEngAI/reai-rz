@@ -89,6 +89,20 @@ RzCmdStatus createAnalysis (RzCore* core, int argc, const char** argv, bool is_p
         if (!new_analysis.sha256.length) {
             APPEND_ERROR ("Failed to upload binary");
         } else {
+            new_analysis.base_addr = rzGetCurrentBinaryBaseAddr (core);
+            new_analysis.functions = VecInitWithDeepCopy_T (&new_analysis.functions, NULL, FunctionInfoDeinit);
+
+            RzListIter*         fn_iter = NULL;
+            RzAnalysisFunction* fn      = NULL;
+            rz_list_foreach (core->analysis->fcns, fn_iter, fn) {
+                FunctionInfo fi       = {0};
+                fi.symbol.is_addr     = true;
+                fi.symbol.is_external = false;
+                fi.symbol.value.addr  = fn->addr;
+                fi.symbol.name        = StrInitFromZstr (fn->name);
+                fi.size               = rz_analysis_function_size_from_entry (fn);
+                VecPushBack (&new_analysis.functions, fi);
+            }
             bin_id = CreateNewAnalysis (GetConnection(), &new_analysis);
         }
         StrDeinit (&path);

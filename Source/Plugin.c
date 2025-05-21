@@ -439,7 +439,7 @@ RzBinFile *getCurrentBinary (RzCore *core) {
 }
 
 Str rzGetCurrentBinaryPath (RzCore *core) {
-    if (core) {
+    if (!core) {
         LOG_FATAL ("Invalid arguments: Invalid Rizin core provided.");
     }
     RzBinFile *binfile = getCurrentBinary (core);
