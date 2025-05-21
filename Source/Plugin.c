@@ -58,7 +58,7 @@ Plugin *getPlugin (bool reinit) {
             p.connection.host    = StrInit();
             p.connection.api_key = StrInit();
             p.binary_id          = 0;
-            p.models             = VecInitWithDeepCopy(NULL, ModelInfoDeinit);
+            p.models             = VecInitWithDeepCopy_T(&p.models, NULL, ModelInfoDeinit);
         }
         pluginDeinit (&p);
         is_inited = false;
@@ -71,7 +71,7 @@ Plugin *getPlugin (bool reinit) {
         p.connection.host    = StrInit();
         p.connection.api_key = StrInit();
         p.binary_id          = 0;
-        p.models             = VecInitWithDeepCopy(NULL, ModelInfoDeinit);
+        p.models             = VecInitWithDeepCopy_T(&p.models, NULL, ModelInfoDeinit);
 
         // Load config
         p.config = ConfigRead (NULL);
