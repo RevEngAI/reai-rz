@@ -61,15 +61,10 @@ void AutoAnalysisDialog::on_PerformAutoAnalysis() {
     RzCoreLocked core (Core());
 
     Float32 required_similarity = similaritySlider->value() / 100.f;
-    Bool    debugFilter    = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
-    Uint32  maxResultCount = 10;
+    Bool    debugFilter         = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
+    Uint32  maxResultCount      = 10;
 
-    if (!reai_plugin_auto_analyze_opened_binary_file (
-            core,
-            maxResultCount,
-            required_similarity,
-            debugFilter
-        )) {
+    if (!reai_plugin_auto_analyze_opened_binary_file (core, maxResultCount, required_similarity, debugFilter)) {
         DISPLAY_ERROR ("Failed to perfom auto-analysis.");
     }
 }

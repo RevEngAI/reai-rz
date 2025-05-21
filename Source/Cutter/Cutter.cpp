@@ -98,24 +98,12 @@ void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
             break;
         }
         case REAI_LOG_LEVEL_WARN : {
-            QMessageBox::warning (
-                nullptr,
-                win_title[level],
-                rz_strbuf_get (&sbuf),
-                QMessageBox::Ok,
-                QMessageBox::Ok
-            );
+            QMessageBox::warning (nullptr, win_title[level], rz_strbuf_get (&sbuf), QMessageBox::Ok, QMessageBox::Ok);
             break;
         }
         case REAI_LOG_LEVEL_ERROR :
         case REAI_LOG_LEVEL_FATAL : {
-            QMessageBox::critical (
-                nullptr,
-                win_title[level],
-                rz_strbuf_get (&sbuf),
-                QMessageBox::Ok,
-                QMessageBox::Ok
-            );
+            QMessageBox::critical (nullptr, win_title[level], rz_strbuf_get (&sbuf), QMessageBox::Ok, QMessageBox::Ok);
             break;
         }
         default :
@@ -268,25 +256,10 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     actSetup                    = reaiMenu->addAction ("Plugin Config Setup");
 
     connect (actCreateAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_CreateAnalysis);
-    connect (
-        actApplyExistingAnalysis,
-        &QAction::triggered,
-        this,
-        &ReaiCutterPlugin::on_ApplyExistingAnalysis
-    );
+    connect (actApplyExistingAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_ApplyExistingAnalysis);
     connect (actAutoAnalyzeBin, &QAction::triggered, this, &ReaiCutterPlugin::on_AutoAnalyzeBin);
-    connect (
-        actFunctionSimilaritySearch,
-        &QAction::triggered,
-        this,
-        &ReaiCutterPlugin::on_FunctionSimilaritySearch
-    );
-    connect (
-        actCollectionSearch,
-        &QAction::triggered,
-        this,
-        &ReaiCutterPlugin::on_CollectionSearch
-    );
+    connect (actFunctionSimilaritySearch, &QAction::triggered, this, &ReaiCutterPlugin::on_FunctionSimilaritySearch);
+    connect (actCollectionSearch, &QAction::triggered, this, &ReaiCutterPlugin::on_CollectionSearch);
     connect (actBinarySearch, &QAction::triggered, this, &ReaiCutterPlugin::on_BinarySearch);
     connect (actRecentAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_RecentAnalysis);
 
@@ -360,9 +333,7 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
             DISPLAY_INFO ("Failed to apply existing analysis.");
         }
     } else {
-        DISPLAY_ERROR (
-            "Failed to get binary id to apply existing analysis. Cannot apply existing analysis."
-        );
+        DISPLAY_ERROR ("Failed to get binary id to apply existing analysis. Cannot apply existing analysis.");
     }
 
     mainWindow->refreshAll();
@@ -381,7 +352,7 @@ void ReaiCutterPlugin::on_AutoAnalyzeBin() {
     mainWindow->refreshAll();
 }
 
-void ReaiCutterPlugin::renameFunctions(std::vector<std::pair<QString, QString>> nameMap) {
+void ReaiCutterPlugin::renameFunctions (std::vector<std::pair<QString, QString>> nameMap) {
     RzCoreLocked core (Core());
 
     ReaiFnInfoVec *new_name_map = reai_fn_info_vec_create();
@@ -405,7 +376,7 @@ void ReaiCutterPlugin::renameFunctions(std::vector<std::pair<QString, QString>> 
         ReaiFunctionId      fn_id = reai_plugin_get_function_id_for_rizin_function (core, rz_fn);
 
         if (!fn_id) {
-            APPEND_ERROR(
+            APPEND_ERROR (
                 "Failed to get a function id for function \"%s\". Cannot perform rename for this "
                 "function.",
                 oldNameCstr
@@ -471,7 +442,7 @@ void ReaiCutterPlugin::on_RenameFns() {
     std::vector<std::pair<QString, QString>> nameMap;
     renameDialog->getNameMapping (nameMap);
 
-    renameFunctions(nameMap);
+    renameFunctions (nameMap);
 }
 
 void ReaiCutterPlugin::on_RecentAnalysis() {
@@ -522,10 +493,10 @@ void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
     FunctionSimilarityDialog *searchDlg = new FunctionSimilarityDialog ((QWidget *)this->parent());
     searchDlg->exec();
 
-    if(searchDlg->doRename()) {
+    if (searchDlg->doRename()) {
         std::vector<std::pair<QString, QString>> nameMap;
         searchDlg->getNameMapping (nameMap);
-        renameFunctions(nameMap);
+        renameFunctions (nameMap);
     }
 }
 
@@ -534,8 +505,7 @@ void ReaiCutterPlugin::on_CollectionSearch() {
         on_Setup();
     }
 
-    CollectionSearchDialog *searchDlg =
-        new CollectionSearchDialog ((QWidget *)this->parent(), true);
+    CollectionSearchDialog *searchDlg = new CollectionSearchDialog ((QWidget *)this->parent(), true);
     searchDlg->exec();
 }
 void ReaiCutterPlugin::on_BinarySearch() {

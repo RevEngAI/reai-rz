@@ -14,12 +14,12 @@ ReaiDec::ReaiDec (QObject *parent) : Decompiler ("reaidec", "ReaiDec", parent) {
 
 bool ReaiDec::isRunning() {
     /* HACK(brightprogrammer): If a binary ID is not set, this means the plugin
-   * might've just started, and user didn't get a chance to either create a new analysis
-   * or apply an existing one.
-   *
-   * In such a case, attempting to decompile will just create false positives. Rather
-   * we just inform Cutter that we're still decompiling something to stop it from calling
-   * the API endpoint for AI decompilation and filling up error buffers. */
+     * might've just started, and user didn't get a chance to either create a new analysis
+     * or apply an existing one.
+     *
+     * In such a case, attempting to decompile will just create false positives. Rather
+     * we just inform Cutter that we're still decompiling something to stop it from calling
+     * the API endpoint for AI decompilation and filling up error buffers. */
     if (!reai_binary_id()) {
         return true;
     }
@@ -49,8 +49,7 @@ void *ReaiDec::pollAndSignalFinished (ReaiDec *self) {
 
     // get decompiled code and AI summary after finished
     RzCoreLocked core (Core());
-    char        *decomp =
-        (char *)reai_plugin_get_decompiled_code_at (core, self->addr, true /* summarize */);
+    char        *decomp = (char *)reai_plugin_get_decompiled_code_at (core, self->addr, true /* summarize */);
 
     ReaiAiDecompFnMapVec *fn_map = reai_response()->poll_ai_decompilation.data.function_mapping;
 
@@ -157,15 +156,11 @@ void ReaiDec::decompileAt (RVA rva_addr) {
 
     addr = rva_addr;
     RzCoreLocked              core (Core());
-    ReaiAiDecompilationStatus status =
-        reai_plugin_check_decompiler_status_running_at (core, rva_addr);
+    ReaiAiDecompilationStatus status = reai_plugin_check_decompiler_status_running_at (core, rva_addr);
 
     if (status == REAI_AI_DECOMPILATION_STATUS_SUCCESS) {
         is_finished = true;
-        REAI_LOG_INFO (
-            "AI decompilation process already completed for function at given address (%zx).",
-            rva_addr
-        );
+        REAI_LOG_INFO ("AI decompilation process already completed for function at given address (%zx).", rva_addr);
 
         CString str           = reai_response()->poll_ai_decompilation.data.decompilation;
         str                   = str ? str : "(null)";
@@ -173,10 +168,7 @@ void ReaiDec::decompileAt (RVA rva_addr) {
         finished (code);
     } else if (status == REAI_AI_DECOMPILATION_STATUS_PENDING) {
         is_finished = false;
-        REAI_LOG_INFO (
-            "A decompilation process already exists for function at given address (%zx)",
-            rva_addr
-        );
+        REAI_LOG_INFO ("A decompilation process already exists for function at given address (%zx)", rva_addr);
         reai_plugin_add_bg_work ((RzThreadFunction)(ReaiDec::pollAndSignalFinished), this);
     } else {
         REAI_LOG_INFO ("START AI DECOMPILATION (%zx)", rva_addr);
@@ -187,8 +179,7 @@ void ReaiDec::decompileAt (RVA rva_addr) {
         } else {
             is_finished = true;
             REAI_LOG_ERROR ("Decompilation failed!");
-            RzAnnotatedCode *code =
-                rz_annotated_code_new (strdup ("failed to start decompilation."));
+            RzAnnotatedCode *code = rz_annotated_code_new (strdup ("failed to start decompilation."));
             finished (code);
         }
     }

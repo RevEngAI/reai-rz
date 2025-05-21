@@ -152,9 +152,7 @@ void FunctionRenameDialog::on_AddToRename() {
 
     /* both new and old names must be unique */
     if (!(checkNewNameIsUnique (newName) && checkOldNameIsUnique (oldName))) {
-        DISPLAY_ERROR (
-            "New name and old name must be unique one-to-one mapping. Cannot add this to rename."
-        );
+        DISPLAY_ERROR ("New name and old name must be unique one-to-one mapping. Cannot add this to rename.");
         return;
     }
 

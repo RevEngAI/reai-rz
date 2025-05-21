@@ -74,12 +74,7 @@ void CreateAnalysisDialog::on_CreateAnalysis() {
     QByteArray cmdLineArgs = cmdLineArgsInput->text().toLatin1();
 
     if (progName.isEmpty()) {
-        QMessageBox::warning (
-            this,
-            "Create Analysis",
-            "Program Name cannot be empty.",
-            QMessageBox::Ok
-        );
+        QMessageBox::warning (this, "Create Analysis", "Program Name cannot be empty.", QMessageBox::Ok);
         return;
     }
 

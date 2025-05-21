@@ -129,33 +129,18 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     enableDebugFilterCheckBox->setCheckState (Qt::CheckState::Checked);
 
     QPushButton* binaryIdsSearchBtn = new QPushButton ("Select Binaries");
-    connect (
-        binaryIdsSearchBtn,
-        &QPushButton::pressed,
-        this,
-        &FunctionSimilarityDialog::on_SearchBinaries
-    );
+    connect (binaryIdsSearchBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::on_SearchBinaries);
 
     QPushButton* collectionIdsSearchBtn = new QPushButton ("Select Collections");
-    connect (
-        collectionIdsSearchBtn,
-        &QPushButton::pressed,
-        this,
-        &FunctionSimilarityDialog::on_SearchCollections
-    );
+    connect (collectionIdsSearchBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::on_SearchCollections);
 
     QPushButton* searchBtn = new QPushButton ("Search", this);
-    connect (
-        searchBtn,
-        &QPushButton::pressed,
-        this,
-        &FunctionSimilarityDialog::on_FindSimilarNames
-    );
+    connect (searchBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::on_FindSimilarNames);
 
     QPushButton* cancelBtn = new QPushButton ("Cancel", this);
-    connect (cancelBtn, &QPushButton::pressed, this, [this](){
-	oldNameToNewNameMap.clear();
-	reject();
+    connect (cancelBtn, &QPushButton::pressed, this, [this]() {
+        oldNameToNewNameMap.clear();
+        reject();
     });
 
     QDialogButtonBox* btnBox = new QDialogButtonBox (this);
@@ -180,21 +165,14 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
 
-    connect (
-        table,
-        &QTableWidget::cellDoubleClicked,
-        this,
-        &FunctionSimilarityDialog::on_TableCellDoubleClick
-    );
+    connect (table, &QTableWidget::cellDoubleClicked, this, &FunctionSimilarityDialog::on_TableCellDoubleClick);
 }
 
 void FunctionSimilarityDialog::on_FindSimilarNames() {
     RzCoreLocked core (Core());
 
     if (!reai_binary_id()) {
-        DISPLAY_ERROR (
-            "No analysis created or applied. I need a RevEngAI analysis to get function info."
-        );
+        DISPLAY_ERROR ("No analysis created or applied. I need a RevEngAI analysis to get function info.");
         return;
     }
 
@@ -266,9 +244,7 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
 
     ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
     if (!fn_id) {
-        DISPLAY_ERROR (
-            "Failed to get function id of given function. Cannot get similar function names."
-        );
+        DISPLAY_ERROR ("Failed to get function id of given function. Cannot get similar function names.");
         return;
     }
 
@@ -299,9 +275,7 @@ void FunctionSimilarityDialog::on_FindSimilarNames() {
     table->setRowCount (0);
 
     if (fnMatches && fnMatches->count) {
-        for (ReaiSimilarFn* fnMatch = fnMatches->items;
-             fnMatch < fnMatches->items + fnMatches->count;
-             fnMatch++) {
+        for (ReaiSimilarFn* fnMatch = fnMatches->items; fnMatch < fnMatches->items + fnMatches->count; fnMatch++) {
             QStringList row;
 
             row << fnMatch->function_name << QString::number (fnMatch->function_id);
@@ -320,9 +294,7 @@ void FunctionSimilarityDialog::on_SearchCollections() {
         false /* store ids on double click instead of opening links */
     );
     csDlg->exec();
-    collectionIdsInput->setText (
-        collectionIdsInput->text() + csDlg->getSelectedCollectionIds().join (",")
-    );
+    collectionIdsInput->setText (collectionIdsInput->text() + csDlg->getSelectedCollectionIds().join (","));
 }
 
 void FunctionSimilarityDialog::on_SearchBinaries() {
@@ -363,13 +335,13 @@ void FunctionSimilarityDialog::addNewRowToResultsTable (QTableWidget* t, const Q
     t->setCellWidget (tableRowCount, 5, renameBtn);
 
     connect (renameBtn, &QPushButton::clicked, this, [this, tableRowCount]() {
-	// get target function name
-    	QString targetFunctionName = table->item (tableRowCount, 0)->text();
+        // get target function name
+        QString targetFunctionName = table->item (tableRowCount, 0)->text();
 
-	// get source function name
-    	const QString& sourceFunctionName = searchBarInput->text();
+        // get source function name
+        const QString& sourceFunctionName = searchBarInput->text();
 
-	// add to rename map
-	oldNameToNewNameMap.push_back({sourceFunctionName, targetFunctionName});
+        // add to rename map
+        oldNameToNewNameMap.push_back ({sourceFunctionName, targetFunctionName});
     });
 }

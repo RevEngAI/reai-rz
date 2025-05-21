@@ -80,8 +80,7 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     l->addWidget (n, 3, 0);
     l->addWidget (modelNameSelector, 3, 1);
 
-    QDialogButtonBox* btnBox =
-        new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    QDialogButtonBox* btnBox = new QDialogButtonBox (QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget (btnBox);
 
     headerLabels << "name";
@@ -99,19 +98,9 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
 
-    connect (
-        btnBox,
-        &QDialogButtonBox::accepted,
-        this,
-        &CollectionSearchDialog::on_PerformCollectionSearch
-    );
+    connect (btnBox, &QDialogButtonBox::accepted, this, &CollectionSearchDialog::on_PerformCollectionSearch);
     connect (btnBox, &QDialogButtonBox::rejected, this, &QDialog::close);
-    connect (
-        table,
-        &QTableWidget::cellDoubleClicked,
-        this,
-        &CollectionSearchDialog::on_TableCellDoubleClick
-    );
+    connect (table, &QTableWidget::cellDoubleClicked, this, &CollectionSearchDialog::on_TableCellDoubleClick);
 }
 
 void CollectionSearchDialog::on_PerformCollectionSearch() {
