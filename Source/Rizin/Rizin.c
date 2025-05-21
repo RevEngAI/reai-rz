@@ -32,7 +32,12 @@
 #include <Plugin.h>
 
 Str* getMsg() {
-    static Str s = StrInit();
+    static Str s;
+    static bool is_inited = false;
+    if(!is_inited) {
+        s = StrInit();
+        is_inited = true;
+    }
     return &s;
 }
 
