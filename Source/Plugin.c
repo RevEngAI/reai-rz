@@ -57,10 +57,13 @@ void pluginDeinit (Plugin *p) {
 }
 
 Plugin *getPlugin (bool reinit) {
-    static Plugin p         = pluginInit();
+    static Plugin p;
     static bool   is_inited = false;
 
     if (reinit) {
+        if(!is_inited) {
+            p = pluginInit();
+        }
         pluginDeinit (&p);
         is_inited = false;
     }
@@ -68,6 +71,7 @@ Plugin *getPlugin (bool reinit) {
     if (is_inited) {
         return &p;
     } else {
+        p = pluginInit();
         // Load config
         p.config = ConfigRead (NULL);
         if (!p.config.length) {
