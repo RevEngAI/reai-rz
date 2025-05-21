@@ -146,7 +146,7 @@ RzCmdStatus autoAnalyze (RzCore* core, int argc, const char** argv, bool restruc
     u32 min_similarity = 90;
     NUM_ARG (min_similarity, 1);
 
-    rzAutoRenameFunctions (result_count, min_similarity, restruct_to_debug);
+    rzAutoRenameFunctions (core, result_count, min_similarity, restruct_to_debug);
 
     return RZ_CMD_STATUS_OK;
 }
@@ -242,7 +242,7 @@ RzCmdStatus functionSimilaritySearch (RzCore* core, int argc, const char** argv,
 
     if (ZSTR_ARG (function_name, 1) && NUM_ARG (min_similarity, 2) && NUM_ARG (search.limit, 3) &&
         STR_ARG (collection_ids_csv, 4) && STR_ARG (binary_ids_csv, 5)) {
-        search.distance                       = 1 - (CLAMP (min_similarity, 1, 100) / 100);
+        search.distance                       = 1. - (CLAMP (min_similarity, 1, 100) / 100.);
         search.debug_include.user_symbols     = restrict_to_debug;
         search.debug_include.system_symbols   = restrict_to_debug;
         search.debug_include.external_symbols = restrict_to_debug;

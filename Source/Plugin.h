@@ -83,21 +83,23 @@ extern "C" {
     /// p[in]         : RzCore
     /// binary_id[in] : Binary ID to fetch analysis for and apply.
     ///
-    /// SUCCESS : true
-    /// FAILURE : false
-    ///
     void rzApplyAnalysis (RzCore* core, BinaryId binary_id);
 
     ///
     /// Get similar functions for each function and perform an auto-rename
     /// operation for functions that cross similarity level threshold
     ///
-    /// p[in]                        : Plugin
+    /// core[in]                     : Rizin core.
     /// max_results_per_function[in] : Number of results to get per function.
     /// min_confidence[in]           : Minimum similarity threshold to cross before candidacy for a rename.
     /// debug_symbols_only[in]       : Suggests symbols extracted from debug information only.
     ///
-    void rzAutoRenameFunctions (size max_results_per_function, u32 min_similarity, bool debug_symbols_only);
+    void rzAutoRenameFunctions (
+        RzCore* core,
+        size    max_results_per_function,
+        u32     min_similarity,
+        bool    debug_symbols_only
+    );
 
     ///
     /// Search for function ID corresponding to given rizin function.

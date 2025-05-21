@@ -21,6 +21,7 @@
 #include <Reai/Api.h>
 #include <Reai/Config.h>
 #include <Reai/Types.h>
+#include <Reai/Log.h>
 
 /* libc */
 #include <rz_util/rz_sys.h>
@@ -64,6 +65,8 @@ RZ_IPI bool rz_plugin_init (RzCore* core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
         return false;
     }
+
+    LogInit (true);
 
     rzshell_cmddescs_init (core);
     return true;

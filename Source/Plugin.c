@@ -142,8 +142,8 @@ ModelInfos GetModels() {
     }
 }
 
-SimilarFunction *getMostSimilarFunction (SimilarFunctions *functions, FunctionId origin_fn_id) {
-    if (!functions) {
+AnnSymbol *getMostSimilarFunctionSymbol (AnnSymbols *symbols, FunctionId origin_fn_id) {
+    if (!symbols) {
         LOG_FATAL ("Function matches are invalid. Cannot proceed.");
     }
 
@@ -151,9 +151,9 @@ SimilarFunction *getMostSimilarFunction (SimilarFunctions *functions, FunctionId
         LOG_FATAL ("Origin function ID is invalid. Cannot proceed.");
     }
 
-    SimilarFunction *most_similar_fn = VecBegin (functions);
-    VecForeachPtr (functions, fn, {
-        if (fn->distance < most_similar_fn->distance) {
+    AnnSymbol *most_similar_fn = VecBegin (symbols);
+    VecForeachPtr (symbols, fn, {
+        if (fn->source_function_id == origin_fn_id && fn->distance < most_similar_fn->distance) {
             most_similar_fn = fn;
         }
     });
@@ -185,10 +185,6 @@ FunctionInfos getFunctionBoundaries (RzCore *core) {
 
     return fv;
 }
-
-// TODO:
-//  - rzAutoRenameFunctions
-
 
 void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
     if (!core || !binary_id) {
@@ -230,6 +226,61 @@ void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
     }
 }
 
+FunctionId rizinFunctionToId (FunctionInfos *functions, RzAnalysisFunction *fn, u64 base_addr) {
+    VecForeach (functions, function, {
+        if (function.symbol.value.addr + base_addr == fn->addr) {
+            return function.id;
+        }
+    });
+
+    return 0;
+}
+
+void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min_similarity, bool debug_symbols_only) {
+    if (GetBinaryId() && rzCanWorkWithAnalysis (GetBinaryId(), true)) {
+        BatchAnnSymbolRequest batch_ann = BatchAnnSymbolRequestInit();
+
+        batch_ann.debug_symbols_only = debug_symbols_only;
+        batch_ann.limit              = max_results_per_function;
+        batch_ann.distance           = 1. - (min_similarity / 100.);
+        batch_ann.analysis_id        = AnalysisIdFromBinaryId (GetConnection(), GetBinaryId());
+        if (batch_ann.analysis_id) {
+            APPEND_ERROR ("Failed to convert binary id to analysis id.");
+            return;
+        }
+
+        AnnSymbols map = GetBatchAnnSymbols (GetConnection(), &batch_ann);
+        BatchAnnSymbolRequestDeinit (&batch_ann);
+        if (!map.length) {
+            APPEND_ERROR ("Failed to get similarity matches.");
+            return;
+        }
+
+        u64           base_addr = rzGetCurrentBinaryBaseAddr (core);
+        FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), GetBinaryId());
+
+        RzListIter         *it = NULL;
+        RzAnalysisFunction *fn = NULL;
+        rz_list_foreach (core->analysis->fcns, it, fn) {
+            FunctionId id = rizinFunctionToId (&functions, fn, base_addr);
+
+            AnnSymbol *best_match = getMostSimilarFunctionSymbol (&map, id);
+            if (best_match) {
+                LOG_INFO ("Renamed '%s' to '%s'", fn->name, best_match->function_name.data);
+                rz_analysis_function_force_rename (fn, best_match->function_name.data);
+            }
+        }
+
+        VecDeinit (&functions);
+        VecDeinit (&map);
+    } else {
+        APPEND_ERROR (
+            "Please apply an existing and complete analysis or\n"
+            "       create a new one and wait for it's completion."
+        );
+    }
+}
+
 bool rzCanWorkWithAnalysis (BinaryId binary_id, bool display_messages) {
     if (!binary_id) {
         APPEND_ERROR ("Invalid arguments: Invalid binary ID");
@@ -243,28 +294,27 @@ bool rzCanWorkWithAnalysis (BinaryId binary_id, bool display_messages) {
         switch (status & STATUS_MASK) {
             case STATUS_ERROR : {
                 DISPLAY_ERROR (
-                    "The applied/created RevEngAI analysis has errored out.\n"
-                    "I need a complete analysis to get function info. Please restart analysis."
+                    "The RevEngAI analysis has errored out.\n"
+                    "I need a complete analysis. Please restart analysis."
                 );
                 return false;
             }
             case STATUS_QUEUED : {
                 DISPLAY_ERROR (
-                    "The applied/created RevEngAI analysis is currently in queue.\n"
+                    "The RevEngAI analysis is currently in queue.\n"
                     "Please wait for the analysis to be analyzed."
                 );
                 return false;
             }
             case STATUS_PROCESSING : {
                 DISPLAY_ERROR (
-                    "The applied/created RevEngAI analysis is currently being processed "
-                    "(analyzed).\n"
+                    "The RevEngAI analysis is currently being processed (analyzed).\n"
                     "Please wait for the analysis to complete."
                 );
                 return false;
             }
             case STATUS_COMPLETE : {
-                LOG_INFO ("Analysis for binary ID %llu is COMPLETE.", GetBinaryId());
+                LOG_INFO ("Analysis for binary ID %llu is COMPLETE.", binary_id);
                 return true;
             }
             default : {
@@ -272,12 +322,12 @@ bool rzCanWorkWithAnalysis (BinaryId binary_id, bool display_messages) {
                     "Oops... something bad happened :-(\n"
                     "I got an invalid value for RevEngAI analysis status.\n"
                     "Consider\n"
-                    "\t- Checking the binary ID, reapply the correct one if wrong\n"
-                    "\t- Retrying the command\n"
-                    "\t- Restarting the plugin\n"
-                    "\t- Checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
-                    "\t- Checking the connection with RevEngAI host.\n"
-                    "\t- Contacting support if the issue persists\n"
+                    "\t- checking the binary ID, reapply the correct one if wrong\n"
+                    "\t- retrying the command\n"
+                    "\t- restarting the plugin\n"
+                    "\t- checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
+                    "\t- checking the connection with RevEngAI host.\n"
+                    "\t- contacting support if the issue persists\n"
                 );
                 return false;
             }
