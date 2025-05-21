@@ -200,6 +200,12 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, c
         rz_table_free (table);
 
         return RZ_CMD_STATUS_OK;
+    } else {
+        DISPLAY_ERROR (
+            "Current session has no completed analysis attached to it.\n"
+            "Please create a new analysis and wait for it's completion or\n"
+            "       apply an existing analysis that is already complete."
+        );
     }
 
     return RZ_CMD_STATUS_ERROR;
@@ -328,6 +334,14 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
     if (rzCanWorkWithAnalysis (GetBinaryId(), true)) {
         FunctionId fn_id = rzLookupFunctionIdForFunctionWithName (core, fn_name);
 
+        if (!fn_id) {
+            DISPLAY_ERROR (
+                "A function with that name does not exist in current Rizin session.\n"
+                "Please provide a name from output of `afl` command."
+            );
+            return RZ_CMD_STATUS_ERROR;
+        }
+
         Status status = GetAiDecompilationStatus (GetConnection(), fn_id);
         if ((status & STATUS_MASK) == STATUS_ERROR) {
             if (!BeginAiDecompilation (GetConnection(), fn_id)) {
@@ -376,10 +390,12 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
 
                     Str code = StrInit();
 
+                    static i32 SOFT_LIMIT = 120;
+
                     i32   l = smry->length;
                     char* p = smry->data;
-                    while (l > 80) {
-                        char* p1 = strchr (p + 80, ' ');
+                    while (l > SOFT_LIMIT) {
+                        char* p1 = strchr (p + SOFT_LIMIT, ' ');
                         if (p1) {
                             StrAppendf (&code, "// %.*s\n", (i32)(p1 - p), p);
                             p1++;
@@ -392,6 +408,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     StrAppendf (&code, "// %.*s\n\n", (i32)l, p);
                     StrMerge (&code, dec);
 
+                    LOG_INFO ("aidec.functions.length = %zu", aidec.functions.length);
                     VecForeachIdx (&aidec.functions, function, idx, {
                         Str dname = StrInit();
                         StrPrintf (&dname, "<DISASM_FUNCTION_%llu>", idx);
@@ -399,10 +416,43 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                         StrDeinit (&dname);
                     });
 
+                    LOG_INFO ("aidec.strings.length = %zu", aidec.strings.length);
                     VecForeachIdx (&aidec.strings, string, idx, {
                         Str dname = StrInit();
                         StrPrintf (&dname, "<DISASM_STRING_%llu>", idx);
                         StrReplace (&code, &dname, &string.string, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.functions.length = %zu", aidec.unmatched.functions.length);
+                    VecForeachIdx (&aidec.unmatched.functions, function, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<UNMATCHED_FUNCTION_%llu>", idx);
+                        StrReplace (&code, &dname, &function.name, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.strings.length = %zu", aidec.unmatched.strings.length);
+                    VecForeachIdx (&aidec.unmatched.strings, string, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<UNMATCHED_STRING_%llu>", idx);
+                        StrReplace (&code, &dname, &string.value.str, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.vars.length = %zu", aidec.unmatched.vars.length);
+                    VecForeachIdx (&aidec.unmatched.vars, var, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<VAR_%llu>", idx);
+                        StrReplace (&code, &dname, &var.value.str, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.external_vars.length = %zu", aidec.unmatched.external_vars.length);
+                    VecForeachIdx (&aidec.unmatched.external_vars, var, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<EXTERNAL_VARIABLE_%llu>", idx);
+                        StrReplace (&code, &dname, &var.value.str, -1);
                         StrDeinit (&dname);
                     });
 
@@ -804,8 +854,11 @@ RZ_IPI RzCmdStatus rz_get_analysis_logs_using_analysis_id_handler (RzCore* core,
         rz_cons_println (logs.data);
     } else {
         DISPLAY_ERROR ("Failed to get analysis logs.");
+        return RZ_CMD_STATUS_ERROR;
     }
     StrDeinit (&logs);
+
+    return RZ_CMD_STATUS_OK;
 }
 
 /**
@@ -834,8 +887,11 @@ RZ_IPI RzCmdStatus rz_get_analysis_logs_using_binary_id_handler (RzCore* core, i
         rz_cons_println (logs.data);
     } else {
         DISPLAY_ERROR ("Failed to get analysis logs.");
+        return RZ_CMD_STATUS_ERROR;
     }
     StrDeinit (&logs);
+
+    return RZ_CMD_STATUS_OK;
 }
 
 /**

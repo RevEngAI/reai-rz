@@ -44,6 +44,7 @@ void rzDisplayMsg (LogLevel level, Str* msg) {
 
     rzAppendMsg (level, msg);
     rz_cons_println (getMsg()->data);
+    StrClear (getMsg());
 }
 
 void rzAppendMsg (LogLevel level, Str* msg) {
