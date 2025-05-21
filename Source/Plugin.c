@@ -151,9 +151,10 @@ AnnSymbol *getMostSimilarFunctionSymbol (AnnSymbols *symbols, FunctionId origin_
         LOG_FATAL ("Origin function ID is invalid. Cannot proceed.");
     }
 
-    AnnSymbol *most_similar_fn = VecBegin (symbols);
+    AnnSymbol *most_similar_fn = NULL;
     VecForeachPtr (symbols, fn, {
-        if (fn->source_function_id == origin_fn_id && fn->distance < most_similar_fn->distance) {
+        if (fn->source_function_id == origin_fn_id &&
+            (!most_similar_fn || (fn->distance < most_similar_fn->distance))) {
             most_similar_fn = fn;
         }
     });
@@ -244,15 +245,15 @@ void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min
         batch_ann.limit              = max_results_per_function;
         batch_ann.distance           = 1. - (min_similarity / 100.);
         batch_ann.analysis_id        = AnalysisIdFromBinaryId (GetConnection(), GetBinaryId());
-        if (batch_ann.analysis_id) {
-            APPEND_ERROR ("Failed to convert binary id to analysis id.");
+        if (!batch_ann.analysis_id) {
+            DISPLAY_ERROR ("Failed to convert binary id to analysis id.");
             return;
         }
 
         AnnSymbols map = GetBatchAnnSymbols (GetConnection(), &batch_ann);
         BatchAnnSymbolRequestDeinit (&batch_ann);
         if (!map.length) {
-            APPEND_ERROR ("Failed to get similarity matches.");
+            DISPLAY_ERROR ("Failed to get similarity matches.");
             return;
         }
 
@@ -263,6 +264,14 @@ void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min
         RzAnalysisFunction *fn = NULL;
         rz_list_foreach (core->analysis->fcns, it, fn) {
             FunctionId id = rizinFunctionToId (&functions, fn, base_addr);
+            if (!id) {
+                LOG_ERROR (
+                    "Failed to get a function ID for function with name = '%s' at address = 0x%llx",
+                    fn->name,
+                    fn->addr
+                );
+                continue;
+            }
 
             AnnSymbol *best_match = getMostSimilarFunctionSymbol (&map, id);
             if (best_match) {
@@ -274,7 +283,7 @@ void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min
         VecDeinit (&functions);
         VecDeinit (&map);
     } else {
-        APPEND_ERROR (
+        DISPLAY_ERROR (
             "Please apply an existing and complete analysis or\n"
             "       create a new one and wait for it's completion."
         );

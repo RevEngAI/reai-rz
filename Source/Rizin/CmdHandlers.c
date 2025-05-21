@@ -246,9 +246,14 @@ RzCmdStatus functionSimilaritySearch (RzCore* core, int argc, const char** argv,
     Str         binary_ids_csv     = StrInit();
     u32         min_similarity     = 0;
 
-    if (ZSTR_ARG (function_name, 1) && NUM_ARG (min_similarity, 2) && NUM_ARG (search.limit, 3) &&
-        STR_ARG (collection_ids_csv, 4) && STR_ARG (binary_ids_csv, 5)) {
-        search.distance                       = 1. - (CLAMP (min_similarity, 1, 100) / 100.);
+    if (ZSTR_ARG (function_name, 1) && NUM_ARG (min_similarity, 2) && NUM_ARG (search.limit, 3)) {
+        STR_ARG (collection_ids_csv, 4);
+        STR_ARG (binary_ids_csv, 5);
+
+
+        search.distance = 1. - (CLAMP (min_similarity, 1, 100) / 100.);
+        LOG_INFO ("Requested similarity = %f %%", 100 - search.distance * 100);
+
         search.debug_include.user_symbols     = restrict_to_debug;
         search.debug_include.system_symbols   = restrict_to_debug;
         search.debug_include.external_symbols = restrict_to_debug;
@@ -288,7 +293,7 @@ RzCmdStatus functionSimilaritySearch (RzCore* core, int argc, const char** argv,
                         fn->id,
                         fn->binary_name.data,
                         fn->binary_id,
-                        (1 - fn->distance) * 100
+                        (1. - fn->distance) * 100.
                     );
                 });
 
