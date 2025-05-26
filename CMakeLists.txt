@@ -78,7 +78,7 @@ endif()
 #  - https://cmake.org/Wiki/CMake_RPATH_handling
 if(APPLE)
         set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
-        list(APPEND CMAKE_MODULE_PATH "/Applications/Cutter.app/Contents/Resources/lib/cmake")
+        # list(APPEND CMAKE_MODULE_PATH "/Applications/Cutter.app/Contents/Resources/lib/cmake")
 elseif(UNIX)
         set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 endif()
@@ -101,6 +101,22 @@ link_directories(
 include_directories(
     "${CMAKE_INSTALL_PREFIX}/include"
 )
+
+set(LOCAL_INCLUDE "$ENV{HOME}/.local/include")
+if(EXISTS "${LOCAL_INCLUDE}")
+    include_directories("${LOCAL_INCLUDE}")
+endif()
+
+set(LOCAL_BIN "$ENV{HOME}/.local/bin")
+if(EXISTS "${LOCAL_BIN}")
+    link_directories("${LOCAL_BIN}")
+endif()
+
+set(LOCAL_LIB "$ENV{HOME}/.local/lib")
+if(EXISTS "${LOCAL_LIB}")
+    link_directories("${LOCAL_LIB}")
+endif()
+
 
 if(BUILD_CUTTER_PLUGIN)
     find_package(Cutter REQUIRED)
