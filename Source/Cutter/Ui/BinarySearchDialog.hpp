@@ -19,9 +19,6 @@
 /* rizin */
 #include <rz_core.h>
 
-/* reai */
-#include <Reai/Types.h>
-
 class BinarySearchDialog : public QDialog {
     Q_OBJECT;
 

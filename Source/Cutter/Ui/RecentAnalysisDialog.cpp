@@ -5,11 +5,6 @@
  * @copyright : Copyright (c) 2025 RevEngAI. All Rights Reserved.
  * */
 
-/* plugin */
-#include <Plugin.h>
-#include <Reai/Api.h>
-#include <Cutter/Ui/RecentAnalysisDialog.hpp>
-
 /* qt */
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -27,6 +22,9 @@
 
 /* reai */
 #include <Reai/Util/Vec.h>
+#include <Plugin.h>
+#include <Reai/Api.h>
+#include <Cutter/Ui/RecentAnalysisDialog.hpp>
 
 RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) {
     setMinimumSize (QSize (960, 540));

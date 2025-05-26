@@ -5,14 +5,6 @@
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-/* plugin */
-#include <Plugin.h>
-#include <Cutter/Ui/FunctionRenameDialog.hpp>
-
-/* rizin */
-#include <rz_analysis.h>
-#include <cutter/core/Cutter.h>
-
 /* qt */
 #include <QVBoxLayout>
 #include <QScrollArea>
@@ -23,6 +15,14 @@
 #include <QStringListModel>
 #include <QDialogButtonBox>
 #include <QHeaderView>
+
+/* rizin */
+#include <rz_analysis.h>
+#include <cutter/core/Cutter.h>
+
+#include <Plugin.h>
+#include <Cutter/Ui/FunctionRenameDialog.hpp>
+
 
 FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) {
     QVBoxLayout* mainLayout = new QVBoxLayout;

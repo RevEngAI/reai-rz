@@ -20,9 +20,6 @@
 /* rizin */
 #include <rz_core.h>
 
-/* reai */
-#include <Reai/Types.h>
-
 class CreateAnalysisDialog : public QDialog {
     Q_OBJECT;
 

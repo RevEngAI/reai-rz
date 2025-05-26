@@ -5,11 +5,6 @@
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-/* plugin */
-#include <Plugin.h>
-#include <Reai/Api.h>
-#include <Cutter/Ui/CreateAnalysisDialog.hpp>
-
 /* qt */
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -20,8 +15,10 @@
 #include <cutter/core/Cutter.h>
 #include <librz/rz_analysis.h>
 
-/* reai */
+#include <Plugin.h>
+#include <Reai/Api.h>
 #include <Reai/Util/Vec.h>
+#include <Cutter/Ui/CreateAnalysisDialog.hpp>
 
 CreateAnalysisDialog::CreateAnalysisDialog (QWidget* parent) : QDialog (parent) {
     mainLayout = new QVBoxLayout;

@@ -5,13 +5,6 @@
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-/* plugin */
-#include <Plugin.h>
-#include <Reai/Api.h>
-#include <Cutter/Ui/FunctionSimilarityDialog.hpp>
-#include <Cutter/Ui/CollectionSearchDialog.hpp>
-#include <Cutter/Ui/BinarySearchDialog.hpp>
-
 /* qt */
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -25,12 +18,16 @@
 #include <QDesktopServices>
 
 /* cutter */
-#include <Reai/Util/Str.h>
 #include <cutter/core/Cutter.h>
 #include <librz/rz_analysis.h>
 
-/* reai */
+#include <Plugin.h>
+#include <Reai/Api.h>
 #include <Reai/Util/Vec.h>
+#include <Reai/Util/Str.h>
+#include <Cutter/Ui/FunctionSimilarityDialog.hpp>
+#include <Cutter/Ui/CollectionSearchDialog.hpp>
+#include <Cutter/Ui/BinarySearchDialog.hpp>
 
 // TODO: provide a way to rename functions from this dialog as well
 
