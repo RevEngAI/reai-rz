@@ -73,7 +73,7 @@ void rzDisplayMsg (LogLevel level, Str *msg) {
     StrClear (getMsg());
 }
 
-void reai_plugin_append_msg (LogLevel level, Str *msg) {
+void rzAppendMsg (LogLevel level, Str *msg) {
     StrAppendf (
         getMsg(),
         "%s : %s\n",
@@ -83,7 +83,6 @@ void reai_plugin_append_msg (LogLevel level, Str *msg) {
         msg->data
     );
 }
-
 
 void ReaiCutterPlugin::setupPlugin() {
     RzCoreLocked core (Core());

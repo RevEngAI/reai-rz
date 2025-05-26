@@ -54,8 +54,8 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
  * "REm"
  * */
 RZ_IPI RzCmdStatus rz_list_available_ai_models_handler (RzCore* core, int argc, const char** argv) {
-    ModelInfos models = GetModels();
-    VecForeach (&models, model, { rz_cons_println (model.name.data); });
+    ModelInfos *models = GetModels();
+    VecForeach (models, model, { rz_cons_println (model.name.data); });
 
     return RZ_CMD_STATUS_OK;
 }
@@ -767,9 +767,9 @@ RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, c
 }
 
 RzCmdStatus openLinkForId (const char* type, u64 id) {
-    Connection conn = GetConnection();
+    Connection *conn = GetConnection();
 
-    Str host = StrDup (&conn.host);
+    Str host = StrDup (&conn->host);
     StrReplaceZstr (&host, "api", "portal", 1);
     StrAppendf (&host, "/%s/%llu", type, id);
 

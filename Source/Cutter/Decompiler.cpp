@@ -260,3 +260,5 @@ void ReaiDec::decompileAt (RVA rva_addr) {
 
     thread->start();
 }
+
+#include "Decompiler.moc"
