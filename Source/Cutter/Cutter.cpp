@@ -8,6 +8,8 @@
 
 /* rizin */
 #include <Cutter.h>
+#include <Reai/Util/Str.h>
+#include <Reai/Util/Vec.h>
 #include <rz_analysis.h>
 #include <rz_core.h>
 
@@ -42,117 +44,60 @@
 #include <Cutter/Cutter.hpp>
 #include <Cutter/Decompiler.hpp>
 
-CStrVec *dmsgs[REAI_LOG_LEVEL_MAX];
+Str *getMsg() {
+    static Str msg = StrInit();
+    return &msg;
+}
 
-/**
- * Display a message of given level in rizin shell.
- *
- * If message is below error level then it's sent to log file,
- * otherwise it's displayed on screen as well as in log file.
- *
- * @param level
- * @param msg
- * */
-void reai_plugin_display_msg (ReaiLogLevel level, CString msg) {
-    RETURN_IF (!msg, ERR_INVALID_ARGUMENTS);
+void rzDisplayMsg (LogLevel level, Str *msg) {
+    rzAppendMsg (level, msg);
 
-    reai_plugin_append_msg (level, msg);
-
-    /* accumulate all messages in order of severity */
-    RzStrBuf sbuf;
-    rz_strbuf_init (&sbuf);
-
-    /* append logs from each category */
-    for (int x = REAI_LOG_LEVEL_TRACE; x < REAI_LOG_LEVEL_MAX; x++) {
-        CStrVec *v = dmsgs[x];
-        for (size_t l = 0; l < v->count; l++) {
-            rz_strbuf_append (&sbuf, v->items[l]);
-            rz_strbuf_append (&sbuf, "\n");
-            FREE (v->items[l]);
-        }
-        v->count = 0;
-    }
-
-    static CString win_title[REAI_LOG_LEVEL_MAX] = {0};
-
-    win_title[REAI_LOG_LEVEL_INFO]  = "Information";
-    win_title[REAI_LOG_LEVEL_TRACE] = "Trace";
-    win_title[REAI_LOG_LEVEL_DEBUG] = "Debug";
-    win_title[REAI_LOG_LEVEL_WARN]  = "Warning";
-    win_title[REAI_LOG_LEVEL_ERROR] = "Error";
-    win_title[REAI_LOG_LEVEL_FATAL] = "Critical";
-
-    /* show final message */
     switch (level) {
-        case REAI_LOG_LEVEL_INFO :
-        case REAI_LOG_LEVEL_TRACE :
-        case REAI_LOG_LEVEL_DEBUG : {
-            QMessageBox::information (
-                nullptr,
-                win_title[level],
-                rz_strbuf_get (&sbuf),
-                QMessageBox::Ok,
-                QMessageBox::Ok
-            );
+        case LOG_LEVEL_INFO : {
+            QMessageBox::information (nullptr, "Information", getMsg()->data, QMessageBox::Ok, QMessageBox::Ok);
             break;
         }
-        case REAI_LOG_LEVEL_WARN : {
-            QMessageBox::warning (nullptr, win_title[level], rz_strbuf_get (&sbuf), QMessageBox::Ok, QMessageBox::Ok);
+        case LOG_LEVEL_ERROR : {
+            QMessageBox::warning (nullptr, "Error", getMsg()->data, QMessageBox::Ok, QMessageBox::Ok);
             break;
         }
-        case REAI_LOG_LEVEL_ERROR :
-        case REAI_LOG_LEVEL_FATAL : {
-            QMessageBox::critical (nullptr, win_title[level], rz_strbuf_get (&sbuf), QMessageBox::Ok, QMessageBox::Ok);
+        case LOG_LEVEL_FATAL : {
+            QMessageBox::critical (nullptr, "Fatal", getMsg()->data, QMessageBox::Ok, QMessageBox::Ok);
             break;
         }
         default :
             break;
     }
 
-    reai_log_printf (level, "display", "%s", rz_strbuf_get (&sbuf));
-    rz_strbuf_fini (&sbuf);
+    LOG_INFO ("display", "%s", getMsg()->data);
+    StrClear (getMsg());
 }
 
-/**
- * Apend a message to a vector to be displayed all at once later on.
- *
- * @param level
- * @param msg
- * */
-void reai_plugin_append_msg (ReaiLogLevel level, CString msg) {
-    if (!msg || level >= REAI_LOG_LEVEL_MAX) {
-        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
-        return;
-    }
-
-    reai_cstr_vec_append (dmsgs[level], &msg);
+void reai_plugin_append_msg (LogLevel level, Str *msg) {
+    StrAppendf (
+        getMsg(),
+        "%s : %s\n",
+        level == LOG_LEVEL_INFO  ? "INFO" :
+        level == LOG_LEVEL_ERROR ? "ERROR" :
+                                   "FATAL",
+        msg->data
+    );
 }
 
 
 void ReaiCutterPlugin::setupPlugin() {
     RzCoreLocked core (Core());
 
-    for (int x = REAI_LOG_LEVEL_TRACE; x < REAI_LOG_LEVEL_MAX; x++) {
-        dmsgs[x] = reai_cstr_vec_create();
-    }
+    // if plugin failed to load because no config exists
+    if (!GetConfig()->length) {
+        // show setup dialog
+        on_Setup();
 
-    if (!reai_plugin_init (core)) {
-        // if plugin failed to load because no config exists
-        if (!reai_config()) {
-            // show setup dialog
-            on_Setup();
-
-            // if config is loaded then happy happy happy
-            if (reai_config()) {
-                isInitialized = true;
-                return;
-            }
+        // if config is loaded then happy happy happy
+        if (GetConfig()->length) {
+            isInitialized = true;
+            return;
         }
-
-        // otherwise terminate
-        REAI_LOG_TRACE ("Plugin initialization incomplete.");
-        isInitialized = false;
-        return;
     }
 
     isInitialized = true;
@@ -276,7 +221,6 @@ ReaiCutterPlugin::~ReaiCutterPlugin() {
     }
 
     RzCoreLocked core (Core());
-    reai_plugin_deinit();
 }
 
 void ReaiCutterPlugin::on_ToggleReaiPlugin() {
@@ -284,7 +228,7 @@ void ReaiCutterPlugin::on_ToggleReaiPlugin() {
 }
 
 void ReaiCutterPlugin::on_CreateAnalysis() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
@@ -293,7 +237,7 @@ void ReaiCutterPlugin::on_CreateAnalysis() {
 }
 
 void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
@@ -314,32 +258,27 @@ void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
         return;
     }
 
-    ok                    = false;
-    ReaiBinaryId binaryId = valueStr.toULongLong (&ok);
+    ok                = false;
+    BinaryId binaryId = valueStr.toULongLong (&ok);
 
     if (ok) {
-        if (!binaryId) {
-            DISPLAY_ERROR ("Invalid binary ID provided.");
+        if (!rzCanWorkWithAnalysis (binaryId, true)) {
             return;
         }
 
         // TODO: ask user here first whether they want to sync function names?
         // Not really a priority though
 
-        if (reai_plugin_apply_existing_analysis (core, binaryId, false, 0)) {
-            DISPLAY_INFO ("Analysis applied successfully.");
-        } else {
-            DISPLAY_INFO ("Failed to apply existing analysis.");
-        }
+        rzApplyAnalysis (core, binaryId);
     } else {
-        DISPLAY_ERROR ("Failed to get binary id to apply existing analysis. Cannot apply existing analysis.");
+        DISPLAY_ERROR ("Please provide a valid binary id (positive non-zero integer)");
     }
 
     mainWindow->refreshAll();
 }
 
 void ReaiCutterPlugin::on_AutoAnalyzeBin() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
@@ -354,37 +293,28 @@ void ReaiCutterPlugin::on_AutoAnalyzeBin() {
 void ReaiCutterPlugin::renameFunctions (std::vector<std::pair<QString, QString>> nameMap) {
     RzCoreLocked core (Core());
 
-    ReaiFnInfoVec *new_name_map = reai_fn_info_vec_create();
-    if (!new_name_map) {
-        DISPLAY_ERROR ("Failed to create a new name map. Cannot continue further. Try again.");
-        return;
-    }
+    FunctionInfos functions = VecInitWithDeepCopy (NULL, FunctionInfoDeinit);
 
     /* prepare new name map */
-    Size error_count = 0;
-    Size error_limit = 4;
+    size error_count = 0;
+    size error_limit = 4;
     for (const auto &[oldName, newName] : nameMap) {
         QByteArray oldNameByteArr = oldName.toLatin1();
-        CString    oldNameCstr    = oldNameByteArr.constData();
-
         QByteArray newNameByteArr = newName.toLatin1();
-        CString    newNameCstr    = newNameByteArr.constData();
 
         /* get function id for old name */
-        RzAnalysisFunction *rz_fn = rz_analysis_get_function_byname (core->analysis, oldNameCstr);
-        ReaiFunctionId      fn_id = reai_plugin_get_function_id_for_rizin_function (core, rz_fn);
+        FunctionId fn_id = rzLookupFunctionIdForFunctionWithName (core, oldNameByteArr.constData());
 
         if (!fn_id) {
             APPEND_ERROR (
                 "Failed to get a function id for function \"%s\". Cannot perform rename for this "
                 "function.",
-                oldNameCstr
+                oldNameByteArr.constData()
             );
 
             /* set a hard limit on how many names can go wrong */
             if (error_count > error_limit) {
                 DISPLAY_ERROR ("Too many errors. Cannot continue further.");
-                reai_fn_info_vec_destroy (new_name_map);
                 return;
             } else {
                 error_count++;
@@ -392,42 +322,38 @@ void ReaiCutterPlugin::renameFunctions (std::vector<std::pair<QString, QString>>
             }
         }
 
-        /* NOTE: It is assumed here that once name is appended into new name map, RevEng.AI will surely rename all functions.
-         * This means if anyone breaks this assumption, things can go bad. */
-        ReaiFnInfo fi;
-        fi.id    = fn_id;
-        fi.name  = newNameCstr;
-        fi.vaddr = 0; // vaddr not required for renaming
-        fi.size  = 0; // size not required for renaming
+        FunctionInfo fi;
+        memset (&fi, 0, sizeof (fi));
+        fi.id          = fn_id;
+        fi.symbol.name = StrInitFromZstr (newNameByteArr.constData());
 
         /* add new name to new name map */
-        reai_fn_info_vec_append (new_name_map, &fi);
-        Core()->renameFunction (rz_fn->addr, newNameCstr);
+        VecPushBack (&functions, fi);
+        Core()->renameFunction (
+            rz_analysis_get_function_byname (core->analysis, oldNameByteArr.constData())->addr,
+            newNameByteArr.constData()
+        );
     }
+
+    StrClear (getMsg());
 
     if (error_count == nameMap.size()) {
         DISPLAY_ERROR (
             "Failed to get function IDs for any of those functions you wanted to rename. Rename unsuccessful."
         );
-        reai_fn_info_vec_destroy (new_name_map);
+        VecDeinit (&functions);
         return;
     }
 
-    /* perform batch rename operation */
-    if (!reai_batch_renames_functions (reai(), reai_response(), new_name_map)) {
-        DISPLAY_ERROR ("Failed to perform batch rename operation.");
-    } else {
-        DISPLAY_INFO ("Batch rename operation completed successfully.");
-    }
+    BatchRenameFunctions (GetConnection(), functions);
 
-    reai_fn_info_vec_destroy (new_name_map);
-
+    VecDeinit (&functions);
     mainWindow->refreshAll();
 }
 
 
 void ReaiCutterPlugin::on_RenameFns() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
@@ -445,7 +371,7 @@ void ReaiCutterPlugin::on_RenameFns() {
 }
 
 void ReaiCutterPlugin::on_RecentAnalysis() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
@@ -456,36 +382,30 @@ void ReaiCutterPlugin::on_RecentAnalysis() {
 void ReaiCutterPlugin::on_Setup() {
     QInputDialog *iDlg = new QInputDialog ((QWidget *)this->parent());
     iDlg->setInputMode (QInputDialog::TextInput);
-    iDlg->setTextValue (reai_plugin_check_config_exists() ? reai_config()->apikey : "");
+    iDlg->setTextValue (GetConnection()->api_key.data ? GetConnection()->api_key.data : "");
     iDlg->setLabelText ("API key : ");
     iDlg->setWindowTitle ("Plugin Configuration");
     iDlg->setMinimumWidth (400);
 
     /* move ahead only if OK was pressed. */
     if (iDlg->exec() == QInputDialog::Accepted) {
-        QString    apiKeyInput = iDlg->textValue();
-        QByteArray baApiKey    = apiKeyInput.toLatin1();
-        CString    apiKey      = baApiKey.constData();
+        Config new_config = ConfigInit();
 
-        REAI_LOG_TRACE ("Config changed");
-        REAI_LOG_TRACE ("host = https://api.reveng.ai");
-        REAI_LOG_TRACE ("api key = %s", apiKey);
+        QByteArray baApiKey = iDlg->textValue().toLatin1();
+        ConfigAdd (&new_config, "api_key", baApiKey.constData());
+        ConfigAdd (&new_config, "host", "https://api.reveng.ai");
 
-        if (reai_plugin_save_config ("https://api.reveng.ai", apiKey)) {
-            DISPLAY_INFO ("Config saved successfully to \"%s\".", reai_config_get_default_path());
+        ConfigWrite (&new_config, NULL);
+        ReloadPluginData();
 
-            RzCoreLocked core (Core());
-            reai_plugin_init (core);
-        } else {
-            DISPLAY_ERROR ("Failed to save config.");
-        }
+        DISPLAY_INFO ("Config updated & reloaded");
     } else {
-        REAI_LOG_TRACE ("Config NOT changed");
+        DISPLAY_INFO ("Config NOT changed");
     }
 }
 
 void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
@@ -500,7 +420,7 @@ void ReaiCutterPlugin::on_FunctionSimilaritySearch() {
 }
 
 void ReaiCutterPlugin::on_CollectionSearch() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
@@ -508,7 +428,7 @@ void ReaiCutterPlugin::on_CollectionSearch() {
     searchDlg->exec();
 }
 void ReaiCutterPlugin::on_BinarySearch() {
-    if (!reai_plugin_check_config_exists()) {
+    if (!GetConfig()->length) {
         on_Setup();
     }
 
