@@ -22,10 +22,6 @@
 /* reai */
 #include <Reai/Types.h>
 
-/* plugin */
-#include <Table.h>
-
-
 class BinarySearchDialog : public QDialog {
     Q_OBJECT;
 

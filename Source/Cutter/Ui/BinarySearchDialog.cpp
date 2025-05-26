@@ -7,7 +7,7 @@
 
 /* plugin */
 #include <Plugin.h>
-#include <Reai/Api/Reai.h>
+#include <Reai/Api.h>
 #include <Cutter/Ui/BinarySearchDialog.hpp>
 
 /* qt */
@@ -22,6 +22,7 @@
 #include <QLabel>
 
 /* cutter */
+#include <Reai/Util/Str.h>
 #include <cutter/core/Cutter.h>
 #include <librz/rz_analysis.h>
 
@@ -63,11 +64,8 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     modelNameSelector->setPlaceholderText ("any model");
     modelNameSelector->setToolTip ("Model used to perform analysis");
 
-    CString* beg = reai_ai_models()->items;
-    CString* end = reai_ai_models()->items + reai_ai_models()->count;
-    for (CString* ai_model = beg; ai_model < end; ai_model++) {
-        modelNameSelector->addItem (*ai_model);
-    }
+    ModelInfos* models = GetModels();
+    VecForeachPtr (models, model, { modelNameSelector->addItem (model->name.data); });
 
     l->addWidget (n, 2, 0);
     l->addWidget (modelNameSelector, 2, 1);
@@ -99,63 +97,48 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
 void BinarySearchDialog::on_PerformBinarySearch() {
     RzCoreLocked core (Core());
 
-    const QString& partialBinaryName        = partialBinaryNameInput->text();
-    QByteArray     partialBinaryNameByteArr = partialBinaryName.toLatin1();
-    CString        partialBinaryNameCStr    = partialBinaryNameByteArr.constData();
+    SearchBinaryRequest search = SearchBinaryRequestInit();
 
-    const QString& partialBinarySha256        = partialBinarySha256Input->text();
-    QByteArray     partialBinarySha256ByteArr = partialBinarySha256.toLatin1();
-    CString        partialBinarySha256CStr    = partialBinarySha256ByteArr.constData();
+    QByteArray modelNameByteArr           = modelNameSelector->currentText().toLatin1();
+    QByteArray partialBinaryNameByteArr   = partialBinaryNameInput->text().toLatin1();
+    QByteArray partialBinarySha256ByteArr = partialBinarySha256Input->text().toLatin1();
 
-    CString modelNameCStr = NULL;
-    if (modelNameSelector->currentIndex() != -1) {
-        const QString& modelName        = modelNameSelector->currentText();
-        QByteArray     modelNameByteArr = modelName.toLatin1();
-        modelNameCStr                   = modelNameByteArr.constData();
-    }
+    search.partial_name   = StrInitFromZstr (partialBinaryNameByteArr.constData());
+    search.partial_sha256 = StrInitFromZstr (partialBinarySha256ByteArr.constData());
+    search.model_name     = StrInitFromZstr (modelNameByteArr.constData());
 
-    ReaiBinarySearchResultVec* results = reai_binary_search (
-        reai(),
-        reai_response(),
-        partialBinaryNameCStr,
-        partialBinarySha256CStr,
-        NULL,
-        modelNameCStr
-    );
+BinaryInfos binaries = SearchBinary(GetConnection(), &search);
 
-    if (!results) {
-        DISPLAY_ERROR ("Failed to get collection search results");
+SearchBinaryRequestDeinit(&search);
+
+    if (!binaries.length) {
+        DISPLAY_INFO("Search parameters returned no search results.");
         return;
     }
 
     table->clearContents();
     table->setRowCount (0);
 
-    ReaiBinarySearchResult* beg = results->items;
-    ReaiBinarySearchResult* end = results->items + results->count;
-    for (ReaiBinarySearchResult* csr = beg; csr < end; csr++) {
+    VecForeachPtr(&binaries, binary, {
         QStringList row;
-        row << csr->binary_name;
-        row << QString::number (csr->binary_id);
-        row << QString::number (csr->analysis_id);
-        row << csr->model_name;
-        row << csr->owned_by;
-        row << csr->created_at;
-        row << csr->sha_256_hash;
+        row << binary->binary_name.data;
+        row << QString::number (binary->binary_id);
+        row << QString::number (binary->analysis_id);
+        row << binary->model_name.data;
+        row << binary->owned_by.data;
+        row << binary->created_at.data;
+        row << binary->sha256.data;
 
         addNewRowToResultsTable (table, row);
-    }
+    });
 
     mainLayout->addWidget (table);
 }
 
 void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {
-    UNUSED (column);
-
     if (openPageOnDoubleClick) {
         // generate portal URL from host URL
-        const char* hostCStr = reai_plugin()->reai_config->host;
-        QString     host     = QString::fromUtf8 (hostCStr);
+        QString     host     = QString::fromUtf8 (GetConnection()->host.data);
         host.replace ("api", "portal", Qt::CaseSensitive); // replaces first occurrence
 
         // fetch collection id and open url
@@ -169,9 +152,9 @@ void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {
 }
 
 void BinarySearchDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {
-    Size tableRowCount = t->rowCount();
+    size_t tableRowCount = t->rowCount();
     t->insertRow (tableRowCount);
-    for (Int32 i = 0; i < headerLabels.size(); i++) {
+    for (i32 i = 0; i < headerLabels.size(); i++) {
         t->setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
     }
 }
