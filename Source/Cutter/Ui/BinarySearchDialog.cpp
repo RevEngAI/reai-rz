@@ -97,29 +97,28 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
 void BinarySearchDialog::on_PerformBinarySearch() {
     RzCoreLocked core (Core());
 
-    SearchBinaryRequest search = SearchBinaryRequestInit();
 
     QByteArray modelNameByteArr           = modelNameSelector->currentText().toLatin1();
     QByteArray partialBinaryNameByteArr   = partialBinaryNameInput->text().toLatin1();
     QByteArray partialBinarySha256ByteArr = partialBinarySha256Input->text().toLatin1();
 
+    SearchBinaryRequest search = SearchBinaryRequestInit();
     search.partial_name   = StrInitFromZstr (partialBinaryNameByteArr.constData());
     search.partial_sha256 = StrInitFromZstr (partialBinarySha256ByteArr.constData());
     search.model_name     = StrInitFromZstr (modelNameByteArr.constData());
 
-BinaryInfos binaries = SearchBinary(GetConnection(), &search);
-
-SearchBinaryRequestDeinit(&search);
+    BinaryInfos binaries = SearchBinary (GetConnection(), &search);
+    SearchBinaryRequestDeinit (&search);
 
     if (!binaries.length) {
-        DISPLAY_INFO("Search parameters returned no search results.");
+        DISPLAY_INFO ("Search parameters returned no search results.");
         return;
     }
 
     table->clearContents();
     table->setRowCount (0);
 
-    VecForeachPtr(&binaries, binary, {
+    VecForeachPtr (&binaries, binary, {
         QStringList row;
         row << binary->binary_name.data;
         row << QString::number (binary->binary_id);
@@ -132,20 +131,24 @@ SearchBinaryRequestDeinit(&search);
         addNewRowToResultsTable (table, row);
     });
 
+    VecDeinit(&binaries);
+
     mainLayout->addWidget (table);
 }
 
 void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {
     if (openPageOnDoubleClick) {
-        // generate portal URL from host URL
-        QString     host     = QString::fromUtf8 (GetConnection()->host.data);
-        host.replace ("api", "portal", Qt::CaseSensitive); // replaces first occurrence
-
-        // fetch collection id and open url
+        // fetch binary id an analysis id and open url
         QString binaryId   = table->item (row, 1)->text();
         QString analysisId = table->item (row, 2)->text();
-        QString link       = QString ("%1/analyses/%2?analysis-id=%3").arg (host).arg (binaryId).arg (analysisId);
-        QDesktopServices::openUrl (QUrl (link));
+
+        // generate portal URL from host URL
+        Str link = StrDup (&GetConnection()->host);
+        StrReplaceZstr (&link, "api", "portal", 1);
+        StrAppendf (&link, "/analyses/%llu?analysis-id=%llu", binaryId.toULongLong(), analysisId.toULongLong());
+        QDesktopServices::openUrl (QUrl (link.data));
+
+        StrDeinit (&link);
     } else {
         selectedBinaryIds << table->item (row, 1)->text();
     }

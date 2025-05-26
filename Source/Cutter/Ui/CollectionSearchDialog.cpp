@@ -7,7 +7,7 @@
 
 /* plugin */
 #include <Plugin.h>
-#include <Reai/Api/Reai.h>
+#include <Reai/Api.h>
 #include <Cutter/Ui/CollectionSearchDialog.hpp>
 
 /* qt */
@@ -71,11 +71,8 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     modelNameSelector->setPlaceholderText ("any model");
     modelNameSelector->setToolTip ("Model used to analyze the binaries in collection");
 
-    CString* beg = reai_ai_models()->items;
-    CString* end = reai_ai_models()->items + reai_ai_models()->count;
-    for (CString* ai_model = beg; ai_model < end; ai_model++) {
-        modelNameSelector->addItem (*ai_model);
-    }
+    ModelInfos* models = GetModels();
+    VecForeachPtr (models, model, { modelNameSelector->addItem (model->name.data); });
 
     l->addWidget (n, 3, 0);
     l->addWidget (modelNameSelector, 3, 1);
@@ -106,36 +103,16 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
 void CollectionSearchDialog::on_PerformCollectionSearch() {
     RzCoreLocked core (Core());
 
-    const QString& partialCollectionName        = partialCollectionNameInput->text();
-    QByteArray     partialCollectionNameByteArr = partialCollectionName.toLatin1();
-    CString        partialCollectionNameCStr    = partialCollectionNameByteArr.constData();
+    QByteArray partialCollectionNameByteArr = partialCollectionNameInput->text().toLatin1();
+    QByteArray partialBinaryNameByteArr     = partialBinaryNameInput->text().toLatin1();
+    QByteArray partialBinarySha256ByteArr   = partialBinarySha256Input->text().toLatin1();
+    QByteArray modelNameByteArr             = modelNameSelector->currentText().toLatin1();
 
-    const QString& partialBinaryName        = partialBinaryNameInput->text();
-    QByteArray     partialBinaryNameByteArr = partialBinaryName.toLatin1();
-    CString        partialBinaryNameCStr    = partialBinaryNameByteArr.constData();
+    SearchCollectionRequest search      = SearchCollectionRequestInit();
+    CollectionInfos         collections = SearchCollection (GetConnection(), &search);
+    SearchCollectionRequestDeinit (&search);
 
-    const QString& partialBinarySha256        = partialBinarySha256Input->text();
-    QByteArray     partialBinarySha256ByteArr = partialBinarySha256.toLatin1();
-    CString        partialBinarySha256CStr    = partialBinarySha256ByteArr.constData();
-
-    CString modelNameCStr = NULL;
-    if (modelNameSelector->currentIndex() != -1) {
-        const QString& modelName        = modelNameSelector->currentText();
-        QByteArray     modelNameByteArr = modelName.toLatin1();
-        modelNameCStr                   = modelNameByteArr.constData();
-    }
-
-    ReaiCollectionSearchResultVec* results = reai_collection_search (
-        reai(),
-        reai_response(),
-        partialCollectionNameCStr,
-        partialBinaryNameCStr,
-        partialBinarySha256CStr,
-        NULL,
-        modelNameCStr
-    );
-
-    if (!results) {
+    if (!collections.length) {
         DISPLAY_ERROR ("Failed to get collection search results");
         return;
     }
@@ -143,43 +120,42 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
     table->clearContents();
     table->setRowCount (0);
 
-    ReaiCollectionSearchResult* beg = results->items;
-    ReaiCollectionSearchResult* end = results->items + results->count;
-    for (ReaiCollectionSearchResult* csr = beg; csr < end; csr++) {
+    VecForeachPtr (&collections, collection, {
         QStringList row;
-        row << csr->collection_name;
-        row << QString::number (csr->collection_id);
-        row << csr->scope;
-        row << csr->last_updated_at;
-        row << csr->model_name;
-        row << csr->owned_by;
+        row << collection->name.data;
+        row << QString::number (collection->id);
+        row << (collection->is_private ? "PRIVATE" : "PUBLIC");
+        row << collection->last_updated_at.data;
+        row << collection->model_name.data;
+        row << collection->owned_by.data;
 
         addNewRowToResultsTable (table, row);
-    }
+    });
+
+    VecDeinit (&collections);
 }
 
 void CollectionSearchDialog::on_TableCellDoubleClick (int row, int column) {
-    UNUSED (column);
-
     if (openPageOnDoubleClick) {
         // generate portal URL from host URL
-        const char* hostCStr = reai_plugin()->reai_config->host;
-        QString     host     = QString::fromUtf8 (hostCStr);
-        host.replace ("api", "portal", Qt::CaseSensitive); // replaces first occurrence
+        Str link = StrDup (&GetConnection()->host);
+        StrReplaceZstr (&link, "api", "portal", 1);
 
         // fetch collection id and open url
         QString collectionId = table->item (row, 1)->text();
-        QString link         = QString ("%1/collections/%2").arg (host).arg (collectionId);
-        QDesktopServices::openUrl (QUrl (link));
+        StrAppendf (&link, "/collections/%llu", collectionId.toULongLong());
+        QDesktopServices::openUrl (QUrl (link.data));
+
+        StrDeinit (&link);
     } else {
         selectedCollectionIds << table->item (row, 1)->text();
     }
 }
 
 void CollectionSearchDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {
-    Size tableRowCount = t->rowCount();
+    size_t tableRowCount = t->rowCount();
     t->insertRow (tableRowCount);
-    for (Int32 i = 0; i < headerLabels.size(); i++) {
+    for (i32 i = 0; i < headerLabels.size(); i++) {
         t->setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
     }
 }

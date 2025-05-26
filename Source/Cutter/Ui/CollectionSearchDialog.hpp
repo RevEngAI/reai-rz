@@ -22,10 +22,6 @@
 /* reai */
 #include <Reai/Types.h>
 
-/* plugin */
-#include <Table.h>
-
-
 class CollectionSearchDialog : public QDialog {
     Q_OBJECT;
 
