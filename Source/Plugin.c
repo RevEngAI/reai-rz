@@ -6,6 +6,7 @@
  * */
 
 /* rizin */
+#include <Reai/Util/Vec.h>
 #include <rz_analysis.h>
 #include <rz_asm.h>
 #include <rz_cmd.h>
@@ -93,7 +94,7 @@ Plugin *getPlugin (bool reinit) {
         p.connection.host    = StrInitFromStr (host);
 
         // Get AI models, this way we also perform an implicit auth-check
-        p.models = GetAiModelInfos (p.connection);
+        p.models = GetAiModelInfos (&p.connection);
         if (!p.models.length) {
             DISPLAY_ERROR ("Failed to get AI models. Please check host and API key in config.");
             pluginDeinit (&p);
@@ -117,11 +118,12 @@ Config *GetConfig() {
     }
 }
 
-Connection GetConnection() {
+Connection* GetConnection() {
     if (getPlugin (false)) {
-        return getPlugin (false)->connection;
+        return &getPlugin (false)->connection;
     } else {
-        return (Connection) {0};
+        static Connection empty_conn = {0};
+        return &empty_conn;
     }
 }
 
@@ -139,11 +141,12 @@ void SetBinaryId (BinaryId binary_id) {
     }
 }
 
-ModelInfos GetModels() {
+ModelInfos *GetModels() {
     if (getPlugin (false)) {
-        return getPlugin (false)->models;
+        return &getPlugin (false)->models;
     } else {
-        return (ModelInfos) {0};
+        static ModelInfos empty_models_vec = VecInitWithDeepCopy(ModelInfoInitClone, ModelInfoDeinit);
+        return &empty_models_vec;
     }
 }
 

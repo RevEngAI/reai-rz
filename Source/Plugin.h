@@ -11,10 +11,6 @@
 #ifndef REAI_RIZIN_PLUGIN
 #define REAI_RIZIN_PLUGIN
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
     /* libc */
 #include <stdio.h>
 
@@ -26,6 +22,11 @@ extern "C" {
 /* rizin */
 #include <rz_bin.h>
 #include <rz_core.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
     ///
     /// Reinit plugin by deiniting current internal state and reloading config
@@ -48,7 +49,7 @@ extern "C" {
     /// SUCCESS : Connection object filled with valid data.
     /// FAILURE : Empty object.
     ///
-    Connection GetConnection();
+    Connection *GetConnection();
 
     ///
     /// Get current binary ID (if any set).
@@ -65,7 +66,7 @@ extern "C" {
     /// SUCCESS : Vector of ModelInfo objects filled with valid data.
     /// FAILURE : Empty vector otherwise.
     ///
-    ModelInfos GetModels();
+    ModelInfos *GetModels();
 
     ///
     /// Check whether or not we can work with analysis associated with given binary ID.
@@ -140,6 +141,10 @@ extern "C" {
     void rzDisplayMsg (LogLevel level, Str* msg);
     void rzAppendMsg (LogLevel level, Str* msg);
 
+#ifdef __cplusplus
+}
+#endif
+
 #define DISPLAY_MSG(level, ...)                                                                                        \
     do {                                                                                                               \
         Str msg = StrInit();                                                                                           \
@@ -165,9 +170,5 @@ extern "C" {
 #define APPEND_INFO(...)  APPEND_MSG (LOG_LEVEL_INFO, __VA_ARGS__)
 #define APPEND_ERROR(...) APPEND_MSG (LOG_LEVEL_ERROR, __VA_ARGS__)
 #define APPEND_FATAL(...) APPEND_MSG (LOG_LEVEL_FATAL, __VA_ARGS__)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // REAI_RIZIN_PLUGIN

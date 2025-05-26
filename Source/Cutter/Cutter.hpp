@@ -54,9 +54,9 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actRecentAnalysis           = nullptr;
     QAction *actSetup                    = nullptr;
 
-    ReaiBinaryId customAnalysisId = 0;
+    BinaryId customAnalysisId = 0;
 
-    Bool isInitialized = false;
+    bool isInitialized = false;
 
     MainWindow *mainWindow = NULL;
 
@@ -75,7 +75,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
         return "Siddharth Mishra";
     }
     QString getVersion() const override {
-        return "1";
+        return "2";
     }
     QString getDescription() const override {
         return "AI based reverse engineering helper API & Toolkit";

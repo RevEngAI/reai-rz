@@ -26,8 +26,7 @@
 #include <QInputDialog>
 
 /* creait lib */
-#include <Reai/Api/Api.h>
-#include <Reai/Common.h>
+#include <Reai/Api.h>
 #include <Reai/Config.h>
 #include <Reai/Log.h>
 
