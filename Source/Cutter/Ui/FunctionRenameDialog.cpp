@@ -33,11 +33,6 @@ FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) 
     {
         RzCoreLocked core (Core());
 
-        if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-            DISPLAY_ERROR ("Rizin analysis not performed yet. Please create rizin analysis first.");
-            return;
-        }
-
         if (!rz_analysis_function_list (core->analysis) ||
             !rz_list_length (rz_analysis_function_list (core->analysis))) {
             DISPLAY_ERROR (
@@ -118,7 +113,7 @@ void FunctionRenameDialog::getNameMapping (std::vector<std::pair<QString, QStrin
         const QString& newName = newNameMapTable->item (s, 1)->text();
         map.push_back ({oldName, newName});
 
-        REAI_LOG_TRACE (
+        LOG_INFO(
             "oldName = \"%s\" \t newName \"%s\"",
             oldName.toLatin1().constData(),
             oldName.toLatin1().constData()
@@ -126,7 +121,7 @@ void FunctionRenameDialog::getNameMapping (std::vector<std::pair<QString, QStrin
     }
 }
 
-Bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
+bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
         if (newNameMapTable->item (s, 0)->text() == newName) {
             return false;
@@ -136,7 +131,7 @@ Bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
     return true;
 }
 
-Bool FunctionRenameDialog::checkOldNameIsUnique (const QString& oldName) {
+bool FunctionRenameDialog::checkOldNameIsUnique (const QString& oldName) {
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
         if (newNameMapTable->item (s, 1)->text() == oldName) {
             return false;
@@ -165,7 +160,7 @@ void FunctionRenameDialog::on_AddToRename() {
         return;
     }
 
-    Size row = newNameMapTable->rowCount();
+    size_t row = newNameMapTable->rowCount();
     newNameMapTable->insertRow (row);
     newNameMapTable->setItem (row, 0, new QTableWidgetItem (oldName));
     newNameMapTable->setItem (row, 1, new QTableWidgetItem (newName));

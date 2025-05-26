@@ -23,9 +23,6 @@
 /* reai */
 #include <Reai/Types.h>
 
-/* plugin */
-#include <Table.h>
-
 class FunctionSimilarityDialog : public QDialog {
     Q_OBJECT;
 
