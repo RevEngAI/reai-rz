@@ -7,7 +7,7 @@
 
 /* plugin */
 #include <Plugin.h>
-#include <Reai/Api/Reai.h>
+#include <Reai/Api.h>
 #include <Cutter/Ui/RecentAnalysisDialog.hpp>
 
 /* qt */
@@ -22,7 +22,6 @@
 #include <QLabel>
 
 /* cutter */
-#include <Reai/Api/Request.h>
 #include <cutter/core/Cutter.h>
 #include <librz/rz_analysis.h>
 
@@ -63,11 +62,8 @@ RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) 
     modelNameSelector->setPlaceholderText ("any model");
     modelNameSelector->setToolTip ("Model used to perform analysis");
 
-    CString* beg = reai_ai_models()->items;
-    CString* end = reai_ai_models()->items + reai_ai_models()->count;
-    for (CString* ai_model = beg; ai_model < end; ai_model++) {
-        modelNameSelector->addItem (*ai_model);
-    }
+    ModelInfos* models = GetModels();
+    VecForeachPtr (models, model, { modelNameSelector->addItem (model->name.data); });
 
     l->addWidget (n, 2, 0);
     l->addWidget (modelNameSelector, 2, 1);
@@ -142,123 +138,49 @@ RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) 
 void RecentAnalysisDialog::on_GetRecentAnalysis() {
     RzCoreLocked core (Core());
 
-    const QString& searchTerm        = searchTermInput->text();
-    QByteArray     searchTermByteArr = searchTerm.toLatin1();
-    CString        searchTermCStr    = searchTermByteArr.constData();
-
-    const QString& usernames        = usernamesInput->text();
-    QByteArray     usernamesByteArr = usernames.toLatin1();
-    CString        usernamesCStr    = usernamesByteArr.constData();
-
-    CString modelNameCStr = NULL;
-    if (modelNameSelector->currentIndex() != -1) {
-        const QString& modelName        = modelNameSelector->currentText();
-        QByteArray     modelNameByteArr = modelName.toLatin1();
-        modelNameCStr                   = modelNameByteArr.constData();
-    }
-
-    ReaiWorkspace workspace = REAI_WORKSPACE_PERSONAL;
-    if (workspaceSelector->currentIndex() != -1) {
-        const QString& ws               = workspaceSelector->currentText();
-        QByteArray     workspaceByteArr = ws.toLatin1();
-        CString        workspaceCStr    = workspaceByteArr.constData();
-
-        if (!strcmp (workspaceCStr, "public")) {
-            workspace = REAI_WORKSPACE_PUBLIC;
-        } else if (!strcmp (workspaceCStr, "team")) {
-            workspace = REAI_WORKSPACE_TEAM;
-        }
-    }
-
-    ReaiRecentAnalysisOrderBy orderBy = REAI_RECENT_ANALYSIS_ORDER_BY_CREATED;
-    if (orderBySelector->currentIndex() != -1) {
-        const QString& ob             = orderBySelector->currentText();
-        QByteArray     orderByByteArr = ob.toLatin1();
-        CString        orderByCStr    = orderByByteArr.constData();
-
-        if (!strcmp (orderByCStr, "name")) {
-            orderBy = REAI_RECENT_ANALYSIS_ORDER_BY_NAME;
-        } else if (!strcmp (orderByCStr, "size")) {
-            orderBy = REAI_RECENT_ANALYSIS_ORDER_BY_SIZE;
-        }
-    }
-
-    ReaiAnalysisStatus analysisStatus = REAI_ANALYSIS_STATUS_ALL;
-    if (statusSelector->currentIndex() != -1) {
-        const QString& status        = statusSelector->currentText();
-        QByteArray     statusByteArr = status.toLatin1();
-        CString        statusCStr    = statusByteArr.constData();
-        analysisStatus               = reai_analysis_status_from_cstr (statusCStr);
-    }
-
-    CStrVec* usernamesCStrVec = reai_plugin_csv_to_cstr_vec (usernamesCStr);
-
-    // TODO: UI options to change page and result count (5 to 50 slider)
-
-    ReaiAnalysisInfoVec* results = reai_get_recent_analyses (
-        reai(),
-        reai_response(),
-        searchTermCStr /* search term */,
-        workspace,
-        analysisStatus,
-        modelNameCStr,                              /* model name */
-        REAI_DYN_EXEC_STATUS_ALL,
-        usernamesCStrVec,                           /* usernames */
-        25,                                         /* 25 most recent analyses */
-        0,
-        orderBy,
-        isOrderedInAsc->checkState() == Qt::Checked /* order in ascending or descending */
-    );
-
-    if (usernamesCStrVec) {
-        reai_cstr_vec_destroy (usernamesCStrVec);
-    }
-
-    if (!results) {
-        DISPLAY_ERROR ("Failed to get collection search results");
-        return;
-    }
+    RecentAnalysisRequest recents  = RecentAnalysisRequestInit();
+    AnalysisInfos         recent_analyses = GetRecentAnalysis (GetConnection(), &recents);
+    RecentAnalysisRequestDeinit (&recents);
 
     table->clearContents();
     table->setRowCount (0);
 
-    ReaiAnalysisInfo* beg = results->items;
-    ReaiAnalysisInfo* end = results->items + results->count;
-    for (ReaiAnalysisInfo* csr = beg; csr < end; csr++) {
+    VecForeachPtr(&recent_analyses, recent_analysis, {
         QStringList row;
-        row << csr->binary_name;
-        row << QString::number (csr->binary_id);
-        row << QString::number (csr->analysis_id);
-        row << reai_analysis_status_to_cstr (csr->status);
-        row << csr->username;
-        row << csr->creation;
-        row << csr->sha_256_hash;
+        row << recent_analysis->binary_name.data;
+        row << QString::number (recent_analysis->binary_id);
+        row << QString::number (recent_analysis->analysis_id);
+        Str status = StrInit();
+        StatusToStr(recent_analysis->status, &status);
+        row << status.data;
+        row << recent_analysis->username.data;
+        row << recent_analysis->creation.data;
+        row << recent_analysis->sha256.data;
 
         addNewRowToResultsTable (table, row);
-    }
+    });
 
     mainLayout->addWidget (table);
 }
 
 void RecentAnalysisDialog::on_TableCellDoubleClick (int row, int column) {
-    UNUSED (column);
-
     // generate portal URL from host URL
-    const char* hostCStr = reai_plugin()->reai_config->host;
-    QString     host     = QString::fromUtf8 (hostCStr);
-    host.replace ("api", "portal", Qt::CaseSensitive); // replaces first occurrence
-
+    Str link = StrDup(&GetConnection()->host);
+    StrReplaceZstr(&link, "api", "portal", 1);
+    
     // fetch collection id and open url
     QString binaryId   = table->item (row, 1)->text();
     QString analysisId = table->item (row, 2)->text();
-    QString link       = QString ("%1/analyses/%2?analysis-id=%3").arg (host).arg (binaryId).arg (analysisId);
-    QDesktopServices::openUrl (QUrl (link));
+    StrAppendf(&link, "/analyses/%llu?analysis-id=%llu", binaryId.toULongLong(), analysisId.toULongLong());
+    QDesktopServices::openUrl (QUrl (link.data));
+
+    StrDeinit(&link);
 }
 
 void RecentAnalysisDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {
-    Size tableRowCount = t->rowCount();
+    size_t tableRowCount = t->rowCount();
     t->insertRow (tableRowCount);
-    for (Int32 i = 0; i < headerLabels.size(); i++) {
+    for (i32 i = 0; i < headerLabels.size(); i++) {
         t->setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
     }
 }
