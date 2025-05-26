@@ -298,6 +298,8 @@ void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min
             "       create a new one and wait for it's completion."
         );
     }
+
+    // TODO: upload renamed functions name to reveng.ai as well
 }
 
 bool rzCanWorkWithAnalysis (BinaryId binary_id, bool display_messages) {
