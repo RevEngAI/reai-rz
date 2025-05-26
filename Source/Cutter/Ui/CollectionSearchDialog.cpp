@@ -98,6 +98,7 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
 }
 
 void CollectionSearchDialog::on_PerformCollectionSearch() {
+    rzClearMsg();
     RzCoreLocked core (Core());
 
     QByteArray partialCollectionNameByteArr = partialCollectionNameInput->text().toLatin1();

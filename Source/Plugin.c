@@ -196,6 +196,7 @@ FunctionInfos getFunctionBoundaries (RzCore *core) {
 }
 
 void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
+    rzClearMsg();
     if (!core || !binary_id) {
         LOG_FATAL ("Invalid arguments: invalid Rizin core or binary id.");
     }
@@ -246,6 +247,7 @@ FunctionId rizinFunctionToId (FunctionInfos *functions, RzAnalysisFunction *fn, 
 }
 
 void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min_similarity, bool debug_symbols_only) {
+    rzClearMsg();
     if (GetBinaryId() && rzCanWorkWithAnalysis (GetBinaryId(), true)) {
         BatchAnnSymbolRequest batch_ann = BatchAnnSymbolRequestInit();
 

@@ -92,6 +92,7 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
 }
 
 void BinarySearchDialog::on_PerformBinarySearch() {
+    rzClearMsg();
     RzCoreLocked core (Core());
 
 

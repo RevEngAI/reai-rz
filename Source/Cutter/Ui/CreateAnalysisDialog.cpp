@@ -58,6 +58,7 @@ CreateAnalysisDialog::CreateAnalysisDialog (QWidget* parent) : QDialog (parent) 
 }
 
 void CreateAnalysisDialog::on_CreateAnalysis() {
+    rzClearMsg();
     RzCoreLocked core (Core());
 
     QByteArray aiModelName = aiModelInput->currentText().toLatin1();

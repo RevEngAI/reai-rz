@@ -25,6 +25,7 @@
 
 
 FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) {
+    rzClearMsg();
     QVBoxLayout* mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
     setWindowTitle ("Select Functions To Rename");
@@ -108,6 +109,7 @@ FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) 
 }
 
 void FunctionRenameDialog::getNameMapping (std::vector<std::pair<QString, QString>>& map) {
+    rzClearMsg();
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
         const QString& oldName = newNameMapTable->item (s, 0)->text();
         const QString& newName = newNameMapTable->item (s, 1)->text();
@@ -142,6 +144,7 @@ bool FunctionRenameDialog::checkOldNameIsUnique (const QString& oldName) {
 }
 
 void FunctionRenameDialog::on_AddToRename() {
+    rzClearMsg();
     const QString& oldName = searchBar->text();
     const QString& newName = newFnName->text();
 

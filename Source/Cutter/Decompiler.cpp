@@ -160,25 +160,40 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                     StrDeinit (&dname);
                 });
 
+                LOG_INFO ("aidec.unmatched.custom_types.length = %zu", aidec.unmatched.custom_types.length);
+                VecForeachIdx (&aidec.unmatched.custom_types, var, idx, {
+                    Str dname = StrInit();
+                    StrPrintf (&dname, "<CUSTOM_TYPE_%llu>", idx);
+                    StrReplace (&final_code, &dname, &var.value.str, -1);
+                    StrDeinit (&dname);
+                });
+
+
                 RzAnnotatedCode *code = NULL;
+
+                LOG_INFO ("Final Code : %s", final_code.data);
 
                 if (aidec.decompilation.length) {
                     code = rz_annotated_code_new (strdup (final_code.data));
 
-                    FunctionInfos all_functions = VecInit();
-                    VecMerge (&all_functions, &aidec.functions);
-                    VecMerge (&all_functions, &aidec.unmatched.functions);
+                    SymbolInfos all_functions = VecInit();
+                    if (aidec.functions.length) {
+                        VecMerge (&all_functions, &aidec.functions);
+                    }
+                    if (aidec.unmatched.functions.length) {
+                        VecMerge (&all_functions, &aidec.unmatched.functions);
+                    }
 
                     VecForeachPtr (&all_functions, function, {
-                        if (function->symbol.is_external) {
-                            LOG_INFO ("Skipping external function '%s'", function->symbol.name.data);
+                        if (function->is_external) {
+                            LOG_INFO ("Skipping external function '%s'", function->name.data);
                             continue;
                         }
 
                         // Search for function and create annotation
-                        char *name_beg = strstr (final_code.data, function->symbol.name.data);
+                        char *name_beg = strstr (final_code.data, function->name.data);
                         while (name_beg) {
-                            size name_len = function->symbol.name.length;
+                            size name_len = function->name.length;
                             LOG_INFO ("Found string at offset %d", name_beg - final_code.data);
 
                             // provide funciton address information through code annotation
@@ -186,11 +201,11 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                             a.type             = RZ_CODE_ANNOTATION_TYPE_FUNCTION_NAME;
                             a.start            = name_beg - final_code.data;
                             a.end              = a.start + name_len;
-                            a.reference.name   = strdup (function->symbol.name.data);
-                            a.reference.offset = function->symbol.value.addr;
+                            a.reference.name   = strdup (function->name.data);
+                            a.reference.offset = function->value.addr;
                             rz_annotated_code_add_annotation (code, &a);
 
-                            LOG_INFO ("Annotating %s in (%zu, %zu)", function->symbol.name.data, a.start, a.end);
+                            LOG_INFO ("Annotating %s in (%zu, %zu)", function->name.data, a.start, a.end);
 
                             // syntax highlight function name
                             a.type                  = RZ_CODE_ANNOTATION_TYPE_SYNTAX_HIGHLIGHT;
@@ -198,7 +213,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                             rz_annotated_code_add_annotation (code, &a);
 
                             if (name_beg + name_len < final_code.data + final_code.length) {
-                                name_beg = strstr (name_beg + name_len, function->symbol.name.data);
+                                name_beg = strstr (name_beg + name_len, function->name.data);
                             } else {
                                 name_beg = NULL;
                             }
@@ -220,7 +235,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
             }
             default :
                 StrDeinit (&final_code);
-                LOG_FATAL ("Unreachable code reached. Invalid decompilation status");
+                LOG_FATAL ("Unreachable code reached. Invalid decompilation status = '%u'", status & STATUS_MASK);
                 return;
         }
     }

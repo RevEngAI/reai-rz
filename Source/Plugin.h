@@ -140,6 +140,7 @@ extern "C" {
 
     void rzDisplayMsg (LogLevel level, Str* msg);
     void rzAppendMsg (LogLevel level, Str* msg);
+    void rzClearMsg();
 
 #ifdef __cplusplus
 }

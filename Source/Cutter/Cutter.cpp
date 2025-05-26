@@ -49,6 +49,10 @@ Str *getMsg() {
     return &msg;
 }
 
+void rzClearMsg() {
+    StrClear (getMsg());
+}
+
 void rzDisplayMsg (LogLevel level, Str *msg) {
     rzAppendMsg (level, msg);
 
@@ -111,6 +115,8 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     if (!isInitialized) {
         return;
     }
+
+    LogInit(true);
 
     mainWindow = mainWin;
 
@@ -236,6 +242,7 @@ void ReaiCutterPlugin::on_CreateAnalysis() {
 }
 
 void ReaiCutterPlugin::on_ApplyExistingAnalysis() {
+    rzClearMsg();
     if (!GetConfig()->length) {
         on_Setup();
     }
@@ -290,6 +297,7 @@ void ReaiCutterPlugin::on_AutoAnalyzeBin() {
 }
 
 void ReaiCutterPlugin::renameFunctions (std::vector<std::pair<QString, QString>> nameMap) {
+    rzClearMsg();
     RzCoreLocked core (Core());
 
     FunctionInfos functions = VecInitWithDeepCopy (NULL, FunctionInfoDeinit);
@@ -379,6 +387,8 @@ void ReaiCutterPlugin::on_RecentAnalysis() {
 }
 
 void ReaiCutterPlugin::on_Setup() {
+    rzClearMsg();
+
     QInputDialog *iDlg = new QInputDialog ((QWidget *)this->parent());
     iDlg->setInputMode (QInputDialog::TextInput);
     iDlg->setTextValue (GetConnection()->api_key.data ? GetConnection()->api_key.data : "");

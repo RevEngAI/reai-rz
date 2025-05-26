@@ -32,6 +32,7 @@
 // TODO: provide a way to rename functions from this dialog as well
 
 FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (parent) {
+    rzClearMsg();
     setMinimumSize (540, 360);
 
     mainLayout = new QVBoxLayout;
@@ -163,6 +164,7 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
 }
 
 void FunctionSimilarityDialog::on_FindSimilarNames() {
+    rzClearMsg();
     RzCoreLocked core (Core());
 
     if (!rzCanWorkWithAnalysis (GetBinaryId(), true)) {

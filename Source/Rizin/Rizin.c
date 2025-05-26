@@ -32,13 +32,17 @@
 #include <Plugin.h>
 
 Str* getMsg() {
-    static Str s;
+    static Str  s;
     static bool is_inited = false;
-    if(!is_inited) {
-        s = StrInit();
+    if (!is_inited) {
+        s         = StrInit();
         is_inited = true;
     }
     return &s;
+}
+
+void rzClearMsg() {
+    StrClear (getMsg());
 }
 
 void rzDisplayMsg (LogLevel level, Str* msg) {
