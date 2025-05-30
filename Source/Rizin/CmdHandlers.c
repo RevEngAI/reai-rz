@@ -35,6 +35,8 @@
 #define NUM_ARG(vn, idx)  (argc > (idx) ? (((vn) = rz_num_get (core->num, argv[idx])), true) : false)
 
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     // NOTE(brightprogrammer): Developers should just change this in the config file.
     const char* host    = "https://api.reveng.ai"; // Hardcode API endpoint
     const char* api_key = argc > 1 ? argv[1] : NULL;
@@ -54,7 +56,11 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
  * "REm"
  * */
 RZ_IPI RzCmdStatus rz_list_available_ai_models_handler (RzCore* core, int argc, const char** argv) {
-    ModelInfos *models = GetModels();
+    (void)core;
+    (void)argc;
+    (void)argv;
+
+    ModelInfos* models = GetModels();
     VecForeach (models, model, { rz_cons_println (model.name.data); });
 
     return RZ_CMD_STATUS_OK;
@@ -66,6 +72,10 @@ RZ_IPI RzCmdStatus rz_list_available_ai_models_handler (RzCore* core, int argc, 
  * @b Perform an auth-check api call to check connection.
  * */
 RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+    (void)argc;
+    (void)argv;
+
     if (!Authenticate (GetConnection())) {
         rz_cons_println ("No connection");
     } else {
@@ -184,6 +194,10 @@ RZ_IPI RzCmdStatus rz_ann_auto_analyze_all_handler (RzCore* core, int argc, cons
  * "REfl"
  * */
 RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+    (void)argc;
+    (void)argv;
+
     if (rzCanWorkWithAnalysis (GetBinaryId(), true)) {
         FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), GetBinaryId());
 
@@ -431,7 +445,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     LOG_INFO ("aidec.functions.length = %zu", aidec.functions.length);
                     VecForeachIdx (&aidec.functions, function, idx, {
                         Str dname = StrInit();
-                        StrPrintf (&dname, "<DISASM_FUNCTION_%llu>", idx);
+                        StrPrintf (&dname, "<DISASM_FUNCTION_%zu>", idx);
                         StrReplace (&code, &dname, &function.name, -1);
                         StrDeinit (&dname);
                     });
@@ -439,7 +453,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     LOG_INFO ("aidec.strings.length = %zu", aidec.strings.length);
                     VecForeachIdx (&aidec.strings, string, idx, {
                         Str dname = StrInit();
-                        StrPrintf (&dname, "<DISASM_STRING_%llu>", idx);
+                        StrPrintf (&dname, "<DISASM_STRING_%zu>", idx);
                         StrReplace (&code, &dname, &string.string, -1);
                         StrDeinit (&dname);
                     });
@@ -447,7 +461,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     LOG_INFO ("aidec.unmatched.functions.length = %zu", aidec.unmatched.functions.length);
                     VecForeachIdx (&aidec.unmatched.functions, function, idx, {
                         Str dname = StrInit();
-                        StrPrintf (&dname, "<UNMATCHED_FUNCTION_%llu>", idx);
+                        StrPrintf (&dname, "<UNMATCHED_FUNCTION_%zu>", idx);
                         StrReplace (&code, &dname, &function.name, -1);
                         StrDeinit (&dname);
                     });
@@ -455,7 +469,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     LOG_INFO ("aidec.unmatched.strings.length = %zu", aidec.unmatched.strings.length);
                     VecForeachIdx (&aidec.unmatched.strings, string, idx, {
                         Str dname = StrInit();
-                        StrPrintf (&dname, "<UNMATCHED_STRING_%llu>", idx);
+                        StrPrintf (&dname, "<UNMATCHED_STRING_%zu>", idx);
                         StrReplace (&code, &dname, &string.value.str, -1);
                         StrDeinit (&dname);
                     });
@@ -463,7 +477,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     LOG_INFO ("aidec.unmatched.vars.length = %zu", aidec.unmatched.vars.length);
                     VecForeachIdx (&aidec.unmatched.vars, var, idx, {
                         Str dname = StrInit();
-                        StrPrintf (&dname, "<VAR_%llu>", idx);
+                        StrPrintf (&dname, "<VAR_%zu>", idx);
                         StrReplace (&code, &dname, &var.value.str, -1);
                         StrDeinit (&dname);
                     });
@@ -471,7 +485,15 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     LOG_INFO ("aidec.unmatched.external_vars.length = %zu", aidec.unmatched.external_vars.length);
                     VecForeachIdx (&aidec.unmatched.external_vars, var, idx, {
                         Str dname = StrInit();
-                        StrPrintf (&dname, "<EXTERNAL_VARIABLE_%llu>", idx);
+                        StrPrintf (&dname, "<EXTERNAL_VARIABLE_%zu>", idx);
+                        StrReplace (&code, &dname, &var.value.str, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.custom_types.length = %zu", aidec.unmatched.custom_types.length);
+                    VecForeachIdx (&aidec.unmatched.custom_types, var, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<CUSTOM_TYPE_%zu>", idx);
                         StrReplace (&code, &dname, &var.value.str, -1);
                         StrDeinit (&dname);
                     });
@@ -536,6 +558,8 @@ RzCmdStatus collectionSearch (SearchCollectionRequest* search) {
  * "REcs"
  * */
 RZ_IPI RzCmdStatus rz_collection_search_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     SearchCollectionRequest search = SearchCollectionRequestInit();
 
     Str tags = StrInit();
@@ -553,6 +577,8 @@ RZ_IPI RzCmdStatus rz_collection_search_handler (RzCore* core, int argc, const c
 }
 
 RZ_IPI RzCmdStatus rz_collection_search_by_binary_name_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     SearchCollectionRequest search = SearchCollectionRequestInit();
 
     STR_ARG (search.partial_binary_name, 1);
@@ -562,6 +588,8 @@ RZ_IPI RzCmdStatus rz_collection_search_by_binary_name_handler (RzCore* core, in
 }
 
 RZ_IPI RzCmdStatus rz_collection_search_by_collection_name_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     SearchCollectionRequest search = SearchCollectionRequestInit();
 
     STR_ARG (search.partial_collection_name, 1);
@@ -571,6 +599,8 @@ RZ_IPI RzCmdStatus rz_collection_search_by_collection_name_handler (RzCore* core
 }
 
 RZ_IPI RzCmdStatus rz_collection_search_by_hash_value_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     SearchCollectionRequest search = SearchCollectionRequestInit();
 
     STR_ARG (search.partial_binary_sha256, 1);
@@ -602,6 +632,8 @@ RzCmdStatus collectionFilteredSearch (Str term, Str filters, OrderBy order_by, b
  * REcat
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -612,6 +644,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_time_asc_handler (RzCore* core, int 
  * REcao
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -622,6 +656,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_owner_asc_handler (RzCore* core, int
  * REcan
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -632,6 +668,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_name_asc_handler (RzCore* core, int 
  * REcam
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -642,6 +680,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_model_asc_handler (RzCore* core, int
  * REcas
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -652,6 +692,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_size_asc_handler (RzCore* core, int 
  * REcdt
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -662,6 +704,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_time_desc_handler (RzCore* core, int
  * REcdo
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -672,6 +716,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_owner_desc_handler (RzCore* core, in
  * REcdn
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -682,6 +728,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_name_desc_handler (RzCore* core, int
  * REcdm
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -692,6 +740,8 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_model_desc_handler (RzCore* core, in
  * REcds
  * */
 RZ_IPI RzCmdStatus rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
     STR_ARG (term, 2);
@@ -733,6 +783,8 @@ RzCmdStatus searchBinary (SearchBinaryRequest* search) {
  * REbs
  * */
 RZ_IPI RzCmdStatus rz_binary_search_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     Str tags = StrInit();
 
     SearchBinaryRequest search = SearchBinaryRequestInit();
@@ -750,6 +802,8 @@ RZ_IPI RzCmdStatus rz_binary_search_handler (RzCore* core, int argc, const char*
  * REbsn
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_name_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     SearchBinaryRequest search = SearchBinaryRequestInit();
     STR_ARG (search.partial_name, 1);
     STR_ARG (search.model_name, 3);
@@ -760,6 +814,8 @@ RZ_IPI RzCmdStatus rz_binary_search_by_name_handler (RzCore* core, int argc, con
  * REbsh
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
     SearchBinaryRequest search = SearchBinaryRequestInit();
     STR_ARG (search.partial_sha256, 1);
     STR_ARG (search.model_name, 3);
@@ -767,7 +823,7 @@ RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, c
 }
 
 RzCmdStatus openLinkForId (const char* type, u64 id) {
-    Connection *conn = GetConnection();
+    Connection* conn = GetConnection();
 
     Str host = StrDup (&conn->host);
     StrReplaceZstr (&host, "api", "portal", 1);
@@ -922,6 +978,10 @@ RZ_IPI RzCmdStatus rz_get_analysis_logs_using_binary_id_handler (RzCore* core, i
  * "REar"
  * */
 RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+    (void)argc;
+    (void)argv;
+
     RecentAnalysisRequest recents  = RecentAnalysisRequestInit();
     AnalysisInfos         analyses = GetRecentAnalysis (GetConnection(), &recents);
     RecentAnalysisRequestDeinit (&recents);
@@ -961,6 +1021,10 @@ RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const
 
 // clang-format off
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+    (void)argc;
+    (void)argv;
+
     rz_cons_println (
         "\n"
         "\n"

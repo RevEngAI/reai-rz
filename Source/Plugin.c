@@ -383,7 +383,7 @@ FunctionId rzLookupFunctionId (RzCore *core, RzAnalysisFunction *rz_fn) {
             LOG_INFO (
                 "RizinFunction -> [FunctionName, FunctionID] :: \"%s\" -> [\"%s\", %llu]",
                 rz_fn->name,
-                fn->symbol.name,
+                fn->symbol.name.data,
                 fn->id
             );
             id = fn->id;
