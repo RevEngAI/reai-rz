@@ -112,13 +112,8 @@ commands:
       - name: bin_id
         type: RZ_CMD_ARG_TYPE_NUM
         optional: false
-      - name: base_addr
-        type: RZ_CMD_ARG_TYPE_NUM
-        optional: true
     details:
       - name: Examples 
         entries:
           - text: "REae 18700"
             comment: "Apply analysis corresponding to bianry id 18700"
-          - text: "REae 18700 0x2000"
-            comment: "Instead of using default base address, use 0x2000 as base address"
