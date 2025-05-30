@@ -19,13 +19,6 @@
 /* rizin */
 #include <rz_core.h>
 
-/* reai */
-#include <Reai/Types.h>
-
-/* plugin */
-#include <Table.h>
-
-
 class AutoAnalysisDialog : public QDialog {
     Q_OBJECT;
 

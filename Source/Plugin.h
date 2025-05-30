@@ -11,15 +11,11 @@
 #ifndef REAI_RIZIN_PLUGIN
 #define REAI_RIZIN_PLUGIN
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
     /* libc */
 #include <stdio.h>
 
 /* revenai */
-#include <Reai/Api/Api.h>
+#include <Reai/Api.h>
 #include <Reai/Config.h>
 #include <Reai/Log.h>
 
@@ -27,162 +23,153 @@ extern "C" {
 #include <rz_bin.h>
 #include <rz_core.h>
 
-/* plugin */
-#include <Table.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    REAI_MAKE_VEC (ReaiBgWorkersVec, bg_workers, RzThread*, NULL, NULL);
 
-    typedef struct ReaiPlugin {
-        ReaiConfig*   reai_config;
-        Reai*         reai;
-        ReaiResponse* reai_response;
-        ReaiBinaryId  binary_id;
-        CStrVec*      ai_models;
+    ///
+    /// Reinit plugin by deiniting current internal state and reloading config
+    ///
+    void ReloadPluginData();
 
-        ReaiBgWorkersVec* bg_workers;
-        Bool              locked;
-    } ReaiPlugin;
+    ///
+    /// Get loaded config.
+    /// Don't ever deinit returned `Config`.
+    ///
+    /// SUCCESS : Valid `Config` pointer.
+    /// FAILURE : `NULL`
+    ///
+    Config* GetConfig();
 
-    ReaiPlugin* reai_plugin();
-    Bool        reai_plugin_init (RzCore* core);
-    Bool        reai_plugin_deinit();
+    ///
+    /// Get connection information used by this plugin.
+    /// Don't ever deinit anything inside returned object.
+    ///
+    /// SUCCESS : Connection object filled with valid data.
+    /// FAILURE : Empty object.
+    ///
+    Connection *GetConnection();
 
-    U64Vec*  reai_plugin_csv_to_u64_vec (CString csv);
-    CStrVec* reai_plugin_csv_to_cstr_vec (CString csv);
+    ///
+    /// Get current binary ID (if any set).
+    ///
+    /// SUCCESS : A non-zero binary if it's set by user, 0 otherwise.
+    /// FAILURE : 0.
+    ///
+    BinaryId GetBinaryId();
+    void     SetBinaryId (BinaryId binary_id);
 
-    Bool reai_plugin_add_bg_work (RzThreadFunction fn, void* user_data);
+    ///
+    /// Get all available AI models.
+    ///
+    /// SUCCESS : Vector of ModelInfo objects filled with valid data.
+    /// FAILURE : Empty vector otherwise.
+    ///
+    ModelInfos *GetModels();
 
-    ReaiFnInfoVec* reai_plugin_get_function_boundaries (RzCore* core);
-    void           reai_plugin_display_msg (ReaiLogLevel level, CString msg);
-    void           reai_plugin_append_msg (ReaiLogLevel level, CString msg);
-    Bool           reai_plugin_check_config_exists();
-    CString        reai_plugin_get_default_log_dir_path();
-    Bool           reai_plugin_save_config (CString host, CString api_key);
+    ///
+    /// Check whether or not we can work with analysis associated with given binary ID.
+    ///
+    /// binary_id[in] : Binary ID to check for.
+    /// display_messages[in] : Whether to display popup messages if analysis is not workable with.
+    ///
+    /// SUCCESS : `true`/`false` depending on whether we can continue working with analysis.
+    /// FAILURE : `false` with log messages
+    ///
+    bool rzCanWorkWithAnalysis (BinaryId binary_id, bool display_messages);
 
-    Bool reai_plugin_upload_opened_binary_file (RzCore* core);
-    Bool reai_plugin_create_analysis_for_opened_binary_file (
+    ///
+    /// Apply an existing analysis to currently opened binary.
+    ///
+    /// p[in]         : RzCore
+    /// binary_id[in] : Binary ID to fetch analysis for and apply.
+    ///
+    void rzApplyAnalysis (RzCore* core, BinaryId binary_id);
+
+    ///
+    /// Get similar functions for each function and perform an auto-rename
+    /// operation for functions that cross similarity level threshold
+    ///
+    /// core[in]                     : Rizin core.
+    /// max_results_per_function[in] : Number of results to get per function.
+    /// min_confidence[in]           : Minimum similarity threshold to cross before candidacy for a rename.
+    /// debug_symbols_only[in]       : Suggests symbols extracted from debug information only.
+    ///
+    void rzAutoRenameFunctions (
         RzCore* core,
-        CString prog_name,
-        CString cmdline_args,
-        CString ai_model,
-        Bool    is_private
-    );
-    ReaiAnalysisStatus reai_plugin_get_analysis_status_for_binary_id (ReaiBinaryId binary_id);
-    Bool               reai_plugin_apply_existing_analysis (
-                      RzCore*      core,
-                      ReaiBinaryId binary_id,
-                      Bool         has_custom_base_addr,
-                      Uint64       base_addr
-                  );
-    Bool reai_plugin_auto_analyze_opened_binary_file (
-        RzCore* core,
-        Size    max_results_per_function,
-        Float64 min_confidence,
-        Bool    debug_filter
-    );
-    ReaiFunctionId
-         reai_plugin_get_function_id_for_rizin_function (RzCore* core, RzAnalysisFunction* fn);
-    Bool reai_plugin_search_and_show_similar_functions (
-        RzCore* core,
-        CString fcn_name,
-        Size    max_results,
-        Int32   confidence,
-        Bool    debug_mode,
-        CString collection_ids_csv,
-        CString binary_ids_csv
+        size    max_results_per_function,
+        u32     min_similarity,
+        bool    debug_symbols_only
     );
 
-    RzBinFile* reai_plugin_get_opened_binary_file (RzCore* core);
-    CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
-    CString    reai_plugin_get_opened_binary_file_path (RzCore* core);
-    Uint64     reai_plugin_get_opened_binary_file_baseaddr (RzCore* core);
-    Uint64     reai_plugin_get_rizin_analysis_function_count (RzCore* core);
+    ///
+    /// Search for function ID corresponding to given rizin function.
+    ///
+    /// p[in]    : Plugin
+    /// core[in] : Rizin core.
+    /// fn[in]   : Function to get RevEngAI function ID for.
+    ///
+    /// SUCCESS : Non-zero function ID.
+    /// FAILURE : Zero.
+    ///
+    FunctionId rzLookupFunctionId (RzCore* core, RzAnalysisFunction* fn);
+    FunctionId rzLookupFunctionIdForFunctionWithName (RzCore* core, const char* name);
+    FunctionId rzLookupFunctionIdForFunctionAtAddr (RzCore* core, u64 addr);
 
-    Bool reai_plugin_decompile_at (RzCore* core, ut64 addr);
-    ReaiAiDecompilationStatus
-            reai_plugin_check_decompiler_status_running_at (RzCore* core, ut64 addr);
-    CString reai_plugin_get_decompiled_code_at (RzCore* core, ut64 addr, Bool summarize);
+    ///
+    /// Get path to opened binary file.
+    /// Deinit returned string after use.
+    ///
+    /// core[in] : RzCore
+    ///
+    /// SUCCESS : `Str` object containing absolute path of currently opened binary.
+    /// FAILURE : Empty `Str` object if no file opened.
+    ///
+    Str rzGetCurrentBinaryPath (RzCore* core);
 
-    Bool reai_plugin_collection_search (
-        RzCore* core,
-        CString partial_collection_name,
-        CString partial_binary_name,
-        CString partial_binary_sha256,
-        CString model_name,
-        CString tags_csv
-    );
+    ///
+    /// Get base address of opened binary.
+    ///
+    /// core[in] : RzCore
+    ///
+    /// SUCCESS : base address if binary file opened (can be 0)
+    /// FAILURE : 0
+    ///
+    u64 rzGetCurrentBinaryBaseAddr (RzCore* core);
 
-    Bool reai_plugin_collection_basic_info (
-        RzCore*                            core,
-        CString                            search_term,
-        ReaiCollectionBasicInfoFilterFlags filter_flags,
-        ReaiCollectionBasicInfoOrderBy     order_by,
-        Bool                               order_in_asc
-    );
-
-    Bool reai_plugin_binary_search (
-        RzCore* core,
-        CString partial_name,
-        CString partial_sha256,
-        CString model_name,
-        CString tags_csv
-    );
-
-    Bool reai_plugin_get_analysis_logs (RzCore* core, Uint64 id, Bool is_analysis_id);
-
-#include "Override.h"
-
-// wrapper macros to make sure first call to any one of these
-// initializes plugin automatically
-#define reai()            reai_plugin()->reai
-#define reai_response()   reai_plugin()->reai_response
-#define reai_config()     reai_plugin()->reai_config
-#define reai_binary_id()  reai_plugin()->binary_id
-#define reai_ai_models()  reai_plugin()->ai_models
-#define reai_bg_workers() reai_plugin()->bg_workers
-
-#define DISPLAY_MSG(level, ...)                                                                    \
-    do {                                                                                           \
-        Size  msgsz = snprintf (0, 0, __VA_ARGS__) + 1;                                            \
-        Char* msg   = ALLOCATE (Char, msgsz);                                                      \
-        if (!msg) {                                                                                \
-            PRINT_ERR (ERR_OUT_OF_MEMORY);                                                         \
-            break;                                                                                 \
-        }                                                                                          \
-        snprintf (msg, msgsz, __VA_ARGS__);                                                        \
-        reai_plugin_display_msg (level, msg);                                                      \
-        FREE (msg);                                                                                \
-    } while (0)
-
-#define DISPLAY_TRACE(...) DISPLAY_MSG (REAI_LOG_LEVEL_TRACE, __VA_ARGS__)
-#define DISPLAY_INFO(...)  DISPLAY_MSG (REAI_LOG_LEVEL_INFO, __VA_ARGS__)
-#define DISPLAY_DEBUG(...) DISPLAY_MSG (REAI_LOG_LEVEL_DEBUG, __VA_ARGS__)
-#define DISPLAY_WARN(...)  DISPLAY_MSG (REAI_LOG_LEVEL_WARN, __VA_ARGS__)
-#define DISPLAY_ERROR(...) DISPLAY_MSG (REAI_LOG_LEVEL_ERROR, __VA_ARGS__)
-#define DISPLAY_FATAL(...) DISPLAY_MSG (REAI_LOG_LEVEL_FATAL, __VA_ARGS__)
-
-#define APPEND_MSG(level, ...)                                                                     \
-    do {                                                                                           \
-        Size  msgsz = snprintf (0, 0, __VA_ARGS__) + 1;                                            \
-        Char* msg   = ALLOCATE (Char, msgsz);                                                      \
-        if (!msg) {                                                                                \
-            PRINT_ERR (ERR_OUT_OF_MEMORY);                                                         \
-            break;                                                                                 \
-        }                                                                                          \
-        snprintf (msg, msgsz, __VA_ARGS__);                                                        \
-        reai_plugin_append_msg (level, msg);                                                       \
-        FREE (msg);                                                                                \
-    } while (0)
-
-#define APPEND_TRACE(...) APPEND_MSG (REAI_LOG_LEVEL_TRACE, __VA_ARGS__)
-#define APPEND_INFO(...)  APPEND_MSG (REAI_LOG_LEVEL_INFO, __VA_ARGS__)
-#define APPEND_DEBUG(...) APPEND_MSG (REAI_LOG_LEVEL_DEBUG, __VA_ARGS__)
-#define APPEND_WARN(...)  APPEND_MSG (REAI_LOG_LEVEL_WARN, __VA_ARGS__)
-#define APPEND_ERROR(...) APPEND_MSG (REAI_LOG_LEVEL_ERROR, __VA_ARGS__)
-#define APPEND_FATAL(...) APPEND_MSG (REAI_LOG_LEVEL_FATAL, __VA_ARGS__)
+    void rzDisplayMsg (LogLevel level, Str* msg);
+    void rzAppendMsg (LogLevel level, Str* msg);
+    void rzClearMsg();
 
 #ifdef __cplusplus
 }
 #endif
+
+#define DISPLAY_MSG(level, ...)                                                                                        \
+    do {                                                                                                               \
+        Str msg = StrInit();                                                                                           \
+        StrPrintf (&msg, __VA_ARGS__);                                                                                 \
+        rzDisplayMsg (level, &msg);                                                                                    \
+        StrDeinit (&msg);                                                                                              \
+    } while (0)
+
+#define APPEND_MSG(level, ...)                                                                                         \
+    do {                                                                                                               \
+        Str msg = StrInit();                                                                                           \
+        StrPrintf (&msg, __VA_ARGS__);                                                                                 \
+        rzAppendMsg (level, &msg);                                                                                     \
+        StrDeinit (&msg);                                                                                              \
+    } while (0)
+
+#define DISPLAY_INFO(...)  DISPLAY_MSG (LOG_LEVEL_INFO, __VA_ARGS__)
+#define DISPLAY_ERROR(...) DISPLAY_MSG (LOG_LEVEL_ERROR, __VA_ARGS__)
+#define DISPLAY_FATAL(...)                                                                                             \
+    DISPLAY_MSG (LOG_LEVEL_FATAL, __VA_ARGS__);                                                                        \
+    abort()
+
+#define APPEND_INFO(...)  APPEND_MSG (LOG_LEVEL_INFO, __VA_ARGS__)
+#define APPEND_ERROR(...) APPEND_MSG (LOG_LEVEL_ERROR, __VA_ARGS__)
+#define APPEND_FATAL(...) APPEND_MSG (LOG_LEVEL_FATAL, __VA_ARGS__)
 
 #endif // REAI_RIZIN_PLUGIN

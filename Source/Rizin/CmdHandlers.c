@@ -8,8 +8,7 @@
  * After adding a new command entry, implement corresponding handlers here and then compile.
  * */
 
-#include <Reai/Api/Api.h>
-#include <Reai/Common.h>
+#include <Reai/Api.h>
 #include <Reai/Config.h>
 #include <Reai/Log.h>
 #include <Reai/Types.h>
@@ -31,35 +30,24 @@
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
 
-/**
- * REi
- *
- * @b To be used on first setup of rizin plugin.
- *
- * This will create a new config file everytime it's called with correct arguments.
- * Requires a restart of rizin plugin after issue.
- * */
+#define ZSTR_ARG(vn, idx) (argc > (idx) ? (((vn) = argv[idx]), true) : false)
+#define STR_ARG(vn, idx)  (argc > (idx) ? (((vn) = StrInitFromZstr (argv[idx])), true) : false)
+#define NUM_ARG(vn, idx)  (argc > (idx) ? (((vn) = rz_num_get (core->num, argv[idx])), true) : false)
+
 RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] config initialize");
+    (void)core;
 
-    CString host = "https://api.reveng.ai"; // Hardcode API endpoint
     // NOTE(brightprogrammer): Developers should just change this in the config file.
-    CString api_key = argc > 1 ? argv[1] : NULL;
+    const char* host    = "https://api.reveng.ai"; // Hardcode API endpoint
+    const char* api_key = argc > 1 ? argv[1] : NULL;
 
-    /* attempt saving config */
-    if (reai_plugin_save_config (host, api_key)) {
-        /* try to reinit config after creating config */
-        if (!reai_plugin_init (core)) {
-            DISPLAY_ERROR (
-                "Failed to init plugin after creating a new config.\n"
-                "Please try restarting rizin."
-            );
-            return RZ_CMD_STATUS_ERROR;
-        }
-    } else {
-        DISPLAY_ERROR ("Failed to save config.");
-        return RZ_CMD_STATUS_ERROR;
-    }
+    Config cfg = ConfigInit();
+    ConfigAdd (&cfg, "host", host);
+    ConfigAdd (&cfg, "api_key", api_key);
+    ConfigWrite (&cfg, NULL);
+    ConfigDeinit (&cfg);
+
+    ReloadPluginData();
 
     return RZ_CMD_STATUS_OK;
 }
@@ -68,16 +56,14 @@ RZ_IPI RzCmdStatus rz_plugin_initialize_handler (RzCore* core, int argc, const c
  * "REm"
  * */
 RZ_IPI RzCmdStatus rz_list_available_ai_models_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (core && argc && argv);
-    REAI_LOG_TRACE ("[CMD] list available ai models");
+    (void)core;
+    (void)argc;
+    (void)argv;
 
-    if (reai_ai_models()) {
-        REAI_VEC_FOREACH (reai_ai_models(), model, { rz_cons_println (*model); });
-        return RZ_CMD_STATUS_OK;
-    } else {
-        DISPLAY_ERROR ("Seems like background worker failed to get available AI models.");
-        return RZ_CMD_STATUS_ERROR;
-    }
+    ModelInfos* models = GetModels();
+    VecForeach (models, model, { rz_cons_println (model.name.data); });
+
+    return RZ_CMD_STATUS_OK;
 }
 
 /**
@@ -86,314 +72,172 @@ RZ_IPI RzCmdStatus rz_list_available_ai_models_handler (RzCore* core, int argc, 
  * @b Perform an auth-check api call to check connection.
  * */
 RZ_IPI RzCmdStatus rz_health_check_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (core && argc && argv);
-    REAI_LOG_TRACE ("[CMD] health check");
+    (void)core;
+    (void)argc;
+    (void)argv;
 
-    if (!reai_auth_check (reai(), reai_response(), reai_config()->host, reai_config()->apikey)) {
-        DISPLAY_ERROR ("Authentication failed.");
-        return RZ_CMD_STATUS_ERROR;
+    if (!Authenticate (GetConnection())) {
+        rz_cons_println ("No connection");
+    } else {
+        rz_cons_println ("OK");
     }
 
-    rz_cons_println ("OK");
     return RZ_CMD_STATUS_OK;
 }
 
-/**
- * "REac"
- * */
-RZ_IPI RzCmdStatus rz_create_analysis_private_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] create analysis");
+RzCmdStatus createAnalysis (RzCore* core, int argc, const char** argv, bool is_private) {
+    NewAnalysisRequest new_analysis = NewAnalysisRequestInit();
+    BinaryId           bin_id       = 0;
 
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
+    if (STR_ARG (new_analysis.ai_model, 1) && STR_ARG (new_analysis.file_name, 2)) {
+        STR_ARG (new_analysis.cmdline_args, 3);
+
+        new_analysis.is_private = is_private;
+
+        Str path            = rzGetCurrentBinaryPath (core);
+        new_analysis.sha256 = UploadFile (GetConnection(), path);
+        if (!new_analysis.sha256.length) {
+            APPEND_ERROR ("Failed to upload binary");
+        } else {
+            new_analysis.base_addr = rzGetCurrentBinaryBaseAddr (core);
+            new_analysis.functions = VecInitWithDeepCopy_T (&new_analysis.functions, NULL, FunctionInfoDeinit);
+
+            RzListIter*         fn_iter = NULL;
+            RzAnalysisFunction* fn      = NULL;
+            rz_list_foreach (core->analysis->fcns, fn_iter, fn) {
+                FunctionInfo fi       = {0};
+                fi.symbol.is_addr     = true;
+                fi.symbol.is_external = false;
+                fi.symbol.value.addr  = fn->addr;
+                fi.symbol.name        = StrInitFromZstr (fn->name);
+                fi.size               = rz_analysis_function_size_from_entry (fn);
+                VecPushBack (&new_analysis.functions, fi);
+            }
+            bin_id = CreateNewAnalysis (GetConnection(), &new_analysis);
+            SetBinaryId (bin_id);
+        }
+        StrDeinit (&path);
     }
 
-    CString ai_model  = argc > 1 ? argv[1] : NULL;
-    CString prog_name = argc > 2 ? argv[2] : NULL;
+    NewAnalysisRequestDeinit (&new_analysis);
 
-    if (!ai_model || !prog_name) {
-        DISPLAY_ERROR (
-            "Invalid arguments. I need an AI model and a program name to create a new analysis"
-        );
+    if (!bin_id) {
+        DISPLAY_ERROR ("Failed to create new analysis");
         return RZ_CMD_STATUS_ERROR;
     }
-
-    CString cmdline_args = NULL;
-    if (argc == 4) {
-        cmdline_args = argv[3];
-    }
-
-    if (reai_plugin_create_analysis_for_opened_binary_file (
-            core,
-            prog_name,
-            cmdline_args,
-            ai_model,
-            true // private analysis
-        )) {
-        DISPLAY_INFO ("Analysis created sucessfully");
-        return RZ_CMD_STATUS_OK;
-    }
-
-    DISPLAY_ERROR ("Failed to create analysis");
 
     return RZ_CMD_STATUS_ERROR;
 }
 
 /**
- * "REacp"
+ * "REa"
  * */
 RZ_IPI RzCmdStatus rz_create_analysis_public_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] create analysis");
-
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
-
-    CString ai_model  = argc > 1 ? argv[1] : NULL;
-    CString prog_name = argc > 2 ? argv[2] : NULL;
-
-    if (!ai_model || !prog_name) {
-        DISPLAY_ERROR (
-            "Invalid arguments. I need an AI model and a program name to create a new analysis"
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    CString cmdline_args = NULL;
-    if (argc == 4) {
-        cmdline_args = argv[3];
-    }
-
-    if (reai_plugin_create_analysis_for_opened_binary_file (
-            core,
-            prog_name,
-            cmdline_args,
-            ai_model,
-            false // public analysis
-        )) {
-        DISPLAY_INFO ("Analysis created sucessfully");
-        return RZ_CMD_STATUS_OK;
-    }
-
-    DISPLAY_ERROR ("Failed to create analysis");
-
-    return RZ_CMD_STATUS_ERROR;
+    return createAnalysis (core, argc, argv, true);
 }
 
 /**
  * "REap"
  * */
-RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] apply existing analysis");
-
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
-
-    ReaiBinaryId binary_id            = rz_num_get (core->num, argv[1]); // binary id
-    Bool         has_custom_base_addr = argc >= 3; // third arg is optional custom base addr
-    Uint64       custom_base_addr     = has_custom_base_addr ? rz_num_get (core->num, argv[2]) : 0;
-
-    if (reai_plugin_apply_existing_analysis (
-            core,
-            binary_id,
-            has_custom_base_addr,
-            custom_base_addr
-        )) {
-        DISPLAY_INFO ("Existing analysis applied sucessfully");
-        return RZ_CMD_STATUS_OK;
-    }
-
-    DISPLAY_INFO ("Failed to apply existing analysis");
-    return RZ_CMD_STATUS_ERROR;
+RZ_IPI RzCmdStatus rz_create_analysis_private_handler (RzCore* core, int argc, const char** argv) {
+    return createAnalysis (core, argc, argv, false);
 }
 
 /**
- * REau
+ * "REae"
+ * */
+RZ_IPI RzCmdStatus rz_apply_existing_analysis_handler (RzCore* core, int argc, const char** argv) {
+    BinaryId bin_id = 0;
+
+    if (NUM_ARG (bin_id, 1)) {
+        rzApplyAnalysis (core, bin_id);
+        return RZ_CMD_STATUS_OK;
+    } else {
+        LOG_ERROR ("Invalid binary ID");
+        return RZ_CMD_STATUS_ERROR;
+    }
+}
+
+RzCmdStatus autoAnalyze (RzCore* core, int argc, const char** argv, bool restruct_to_debug) {
+    Config* cfg = GetConfig();
+
+    Str* armx         = ConfigGet (cfg, "auto_rename_max_results_per_function");
+    u32  result_count = 20;
+    if (armx) {
+        result_count = rz_num_get (core->num, armx->data);
+        result_count = CLAMP (result_count, 5, 50);
+    }
+
+    u32 min_similarity = 90;
+    NUM_ARG (min_similarity, 1);
+
+    rzAutoRenameFunctions (core, result_count, min_similarity, restruct_to_debug);
+
+    return RZ_CMD_STATUS_OK;
+}
+
+/**
+ * REaa
  * */
 RZ_IPI RzCmdStatus rz_ann_auto_analyze_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    REAI_LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
-
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
-
-    // NOTE: this is static here. I don't think it's a good command line option to have
-    // Since user won't know about this when issuing the auto-analysis command.
-    // Just set it to a large enough value to get good suggestions
-    const Size max_results_per_function = 10;
-
-    Uint32 min_similarity = rz_num_get (core->num, argv[1]);
-    min_similarity        = min_similarity > 100 ? 100 : min_similarity;
-
-
-    if (reai_plugin_auto_analyze_opened_binary_file (
-            core,
-            max_results_per_function,
-            min_similarity / 100.f,
-            false // no restrictions on debug or non-debug for symbol suggestions
-        )) {
-        DISPLAY_INFO (
-            "Auto-analysis completed successfully. Renamed names might contain debug and non-debug "
-            "symbols."
-        );
-        return RZ_CMD_STATUS_OK;
-    } else {
-        DISPLAY_ERROR ("Failed to perform RevEng.AI auto-analysis");
-        return RZ_CMD_STATUS_ERROR;
-    }
+    return autoAnalyze (core, argc, argv, true);
 }
 
 /**
- * REaud
+ * REaaa
  * */
-RZ_IPI RzCmdStatus
-    rz_ann_auto_analyze_restrict_debug_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
-    REAI_LOG_TRACE ("[CMD] ANN Auto Analyze Binary");
-
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
-
-    // NOTE: this is static here. I don't think it's a good command line option to have
-    // Since user won't know about this when issuing the auto-analysis command.
-    // Just set it to a large enough value to get good suggestions
-    const Size max_results_per_function = 10;
-
-    Uint32 min_similarity = rz_num_get (core->num, argv[1]);
-    min_similarity        = min_similarity > 100 ? 100 : min_similarity;
-
-
-    if (reai_plugin_auto_analyze_opened_binary_file (
-            core,
-            max_results_per_function,
-            min_similarity / 100.f,
-            true // restrict symbol suggestions to debug mode only.
-        )) {
-        DISPLAY_INFO (
-            "Auto-analysis completed successfully. Only debug symbols were used for renaming."
-        );
-        return RZ_CMD_STATUS_OK;
-    } else {
-        DISPLAY_ERROR ("Failed to perform RevEng.AI auto-analysis");
-        return RZ_CMD_STATUS_ERROR;
-    }
+RZ_IPI RzCmdStatus rz_ann_auto_analyze_all_handler (RzCore* core, int argc, const char** argv) {
+    return autoAnalyze (core, argc, argv, false);
 }
 
 /**
  * "REfl"
- *
- * @b Get information about all functions detected by the AI model from
- *    RevEng.AI servers.
- *
- * NOTE: This works just for currently opened binary file. If binary
- *       file is not opened, this will return with `RZ_CMD_STATUS_ERROR`.
- *       If analysis for binary file does not exist then this will again return
- *       with an error.
  * */
 RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc && argv);
-    REAI_LOG_TRACE ("[CMD] get basic function info");
+    (void)core;
+    (void)argc;
+    (void)argv;
 
-    /* get binary id of opened file */
-    ReaiBinaryId binary_id = reai_binary_id();
-    if (!binary_id) {
-        DISPLAY_ERROR (
-            "Please apply existing RevEngAI analysis (using REae command) or create a new one.\n"
-            "Cannot get function info from RevEng.AI without an existing analysis."
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
+    if (rzCanWorkWithAnalysis (GetBinaryId(), true)) {
+        FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), GetBinaryId());
 
-    /* an analysis must already exist in order to make function-rename work */
-    ReaiAnalysisStatus analysis_status =
-        reai_get_analysis_status (reai(), reai_response(), reai_binary_id());
-    switch (analysis_status) {
-        case REAI_ANALYSIS_STATUS_ERROR : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis has errored out.\n"
-                "I need a complete analysis to get function info. Please restart analysis."
-            );
+        if (!functions.length) {
+            DISPLAY_ERROR ("Failed to get functions from RevEngAI analysis.");
+        }
+
+        RzTable* table = rz_table_new();
+        if (!table) {
+            DISPLAY_ERROR ("Failed to create the table.");
             return RZ_CMD_STATUS_ERROR;
         }
-        case REAI_ANALYSIS_STATUS_QUEUED : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently in queue.\n"
-                "Please wait for the analysis to be analyzed."
-            );
-            return RZ_CMD_STATUS_OK;
-        }
-        case REAI_ANALYSIS_STATUS_PROCESSING : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
-                "Please wait for the analysis to complete."
-            );
-            return RZ_CMD_STATUS_OK;
-        }
-        case REAI_ANALYSIS_STATUS_COMPLETE : {
-            REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
-            break;
-        }
-        default : {
-            DISPLAY_ERROR (
-                "Oops... something bad happened :-(\n"
-                "I got an invalid value for RevEngAI analysis status.\n"
-                "Consider\n"
-                "\t- Checking the binary ID, reapply the correct one if wrong\n"
-                "\t- Retrying the command\n"
-                "\t- Restarting the plugin\n"
-                "\t- Checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
-                "\t- Checking the connection with RevEngAI host.\n"
-                "\t- Contacting support if the issue persists\n"
-            );
+
+        rz_table_set_columnsf (table, "nsxx", "function_id", "name", "vaddr", "size");
+        VecForeachPtr (&functions, fn, {
+            rz_table_add_rowf (table, "nsxx", fn->id, fn->symbol.name.data, fn->symbol.value.addr, fn->size);
+        });
+
+        const char* table_str = rz_table_tofancystring (table);
+        if (!table_str) {
+            DISPLAY_ERROR ("Failed to convert table to string.");
+            rz_table_free (table);
             return RZ_CMD_STATUS_ERROR;
         }
-    }
 
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
+        rz_cons_println (table_str);
 
-    /* make request to get function infos */
-    ReaiFnInfoVec* fn_infos = reai_get_basic_function_info (reai(), reai_response(), binary_id);
-    if (!fn_infos) {
-        DISPLAY_ERROR ("Failed to get function info from RevEng.AI servers.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    // prepare table and print info
-    RzTable* table = rz_table_new();
-    if (!table) {
-        DISPLAY_ERROR ("Failed to create the table.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    rz_table_set_columnsf (table, "nsxx", "function_id", "name", "vaddr", "size");
-    REAI_VEC_FOREACH (fn_infos, fn, {
-        rz_table_add_rowf (table, "nsxx", fn->id, fn->name, fn->vaddr, fn->size);
-    });
-
-    CString table_str = rz_table_tofancystring (table);
-    if (!table_str) {
-        DISPLAY_ERROR ("Failed to convert table to string.");
+        FREE (table_str);
         rz_table_free (table);
-        return RZ_CMD_STATUS_ERROR;
+
+        return RZ_CMD_STATUS_OK;
+    } else {
+        DISPLAY_ERROR (
+            "Current session has no completed analysis attached to it.\n"
+            "Please create a new analysis and wait for it's completion or\n"
+            "       apply an existing analysis that is already complete."
+        );
     }
 
-    rz_cons_println (table_str);
-
-    FREE (table_str);
-    rz_table_free (table);
-
-    return RZ_CMD_STATUS_OK;
+    return RZ_CMD_STATUS_ERROR;
 }
 
 /**
@@ -402,1037 +246,731 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, c
  * @b Rename function with given function id to given new name.
  * */
 RZ_IPI RzCmdStatus rz_rename_function_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] rename function");
+    if (rzCanWorkWithAnalysis (GetBinaryId(), true)) {
+        Str old_name = StrInit(), new_name = StrInit();
+        if (STR_ARG (old_name, 1), STR_ARG (new_name, 2)) {
+            RzAnalysisFunction* fn = rz_analysis_get_function_byname (core->analysis, old_name.data);
+            if (!fn) {
+                DISPLAY_ERROR ("Rizin function with given name not found.");
+                return RZ_CMD_STATUS_ERROR;
+            }
 
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
+            if (RenameFunction (GetConnection(), rzLookupFunctionId (core, fn), new_name)) {
+                DISPLAY_ERROR ("Failed to rename function");
+                return RZ_CMD_STATUS_ERROR;
+            }
 
-    /* get binary id of opened file */
-    ReaiBinaryId binary_id = reai_binary_id();
-    if (!binary_id) {
-        DISPLAY_ERROR (
-            "Please apply existing RevEngAI analysis (using REap command) or create a new one.\n"
-            "Cannot get function info from RevEng.AI without an existing analysis."
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    /* an analysis must already exist in order to make function-rename work */
-    ReaiAnalysisStatus analysis_status =
-        reai_get_analysis_status (reai(), reai_response(), reai_binary_id());
-    switch (analysis_status) {
-        case REAI_ANALYSIS_STATUS_ERROR : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis has errored out.\n"
-                "Please restart analysis."
-            );
-            return RZ_CMD_STATUS_ERROR;
-        }
-        case REAI_ANALYSIS_STATUS_QUEUED : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently in queue.\n"
-                "Please wait for the analysis to be analyzed."
-            );
             return RZ_CMD_STATUS_OK;
         }
-        case REAI_ANALYSIS_STATUS_PROCESSING : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
-                "Please wait for the analysis to complete."
-            );
-            return RZ_CMD_STATUS_OK;
-        }
-        case REAI_ANALYSIS_STATUS_COMPLETE : {
-            REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
-            break;
-        }
-        default : {
-            DISPLAY_ERROR (
-                "Oops... something bad happened :-(\n"
-                "I got an invalid value for RevEngAI analysis status.\n"
-                "Consider\n"
-                "\t- Checking the binary ID, reapply the correct one if wrong\n"
-                "\t- Retrying the command\n"
-                "\t- Restarting the plugin\n"
-                "\t- Checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
-                "\t- Checking the connection with RevEngAI host.\n"
-                "\t- Contacting support if the issue persists\n"
-            );
-            return RZ_CMD_STATUS_ERROR;
+    }
+
+    return RZ_CMD_STATUS_ERROR;
+}
+
+RzCmdStatus functionSimilaritySearch (RzCore* core, int argc, const char** argv, bool restrict_to_debug) {
+    SimilarFunctionsRequest search = SimilarFunctionsRequestInit();
+
+    const char* function_name      = NULL;
+    Str         collection_ids_csv = StrInit();
+    Str         binary_ids_csv     = StrInit();
+    u32         min_similarity     = 0;
+
+    if (ZSTR_ARG (function_name, 1) && NUM_ARG (min_similarity, 2) && NUM_ARG (search.limit, 3)) {
+        STR_ARG (collection_ids_csv, 4);
+        STR_ARG (binary_ids_csv, 5);
+
+
+        search.distance = 1. - (CLAMP (min_similarity, 1, 100) / 100.);
+        LOG_INFO ("Requested similarity = %f %%", 100 - search.distance * 100);
+
+        search.debug_include.user_symbols     = restrict_to_debug;
+        search.debug_include.system_symbols   = restrict_to_debug;
+        search.debug_include.external_symbols = restrict_to_debug;
+
+        Strs cids = StrSplit (&collection_ids_csv, ",");
+        VecForeachPtr (&cids, cid, { VecPushBack (&search.collection_ids, strtoull (cid->data, NULL, 0)); });
+        StrDeinit (&collection_ids_csv);
+        VecDeinit (&cids);
+
+        Strs bids = StrSplit (&binary_ids_csv, ",");
+        VecForeachPtr (&bids, bid, { VecPushBack (&search.binary_ids, strtoull (bid->data, NULL, 0)); });
+        StrDeinit (&binary_ids_csv);
+        VecDeinit (&bids);
+
+        search.function_id = rzLookupFunctionIdForFunctionWithName (core, function_name);
+
+        if (search.function_id) {
+            SimilarFunctions functions = GetSimilarFunctions (GetConnection(), &search);
+
+            if (functions.length) {
+                RzTable* table = rz_table_new();
+                rz_table_set_columnsf (
+                    table,
+                    "snsnn",
+                    "Function Name",
+                    "Function ID",
+                    "Binary Name",
+                    "Binary ID",
+                    "Similarity"
+                );
+
+                VecForeachPtr (&functions, fn, {
+                    rz_table_add_rowf (
+                        table,
+                        "snsnf",
+                        fn->name.data,
+                        fn->id,
+                        fn->binary_name.data,
+                        fn->binary_id,
+                        (1. - fn->distance) * 100.
+                    );
+                });
+
+                const char* table_str = rz_table_tofancystring (table);
+                rz_cons_println (table_str);
+
+                FREE (table_str);
+                rz_table_free (table);
+                VecDeinit (&functions);
+                SimilarFunctionsRequestDeinit (&search);
+
+                return RZ_CMD_STATUS_OK;
+            }
         }
     }
 
-    CString old_name = argc > 1 ? argv[1] : NULL;
-    CString new_name = argc > 2 ? argv[2] : NULL;
-
-    RzAnalysisFunction* fn = rz_analysis_get_function_byname (core->analysis, old_name);
-    if (!fn) {
-        DISPLAY_ERROR ("Function with given name not found.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
-    if (!fn_id) {
-        DISPLAY_ERROR (
-            "A function ID for given function does not exist in RevEngAI analysis.\n"
-            "I won't be able to rename this function."
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    /* perform rename operation */
-    if (reai_rename_function (reai(), reai_response(), fn_id, new_name)) {
-        if (rz_analysis_function_rename (fn, new_name)) {
-            DISPLAY_INFO ("Rename success.");
-        } else {
-            DISPLAY_ERROR ("Rename failed in rizin.");
-            return RZ_CMD_STATUS_ERROR;
-        }
-    } else {
-        DISPLAY_ERROR ("Failed to rename the function in RevEngAI.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    return RZ_CMD_STATUS_OK;
+    DISPLAY_ERROR ("Failed to perform function similarity search");
+    SimilarFunctionsRequestDeinit (&search);
+    return RZ_CMD_STATUS_ERROR;
 }
 
 /**
  * "REfs"
- *
- * @b Similar function name search 
  * */
-RZ_IPI RzCmdStatus
-    rz_function_similarity_search_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] function similarity search");
-    if (argc < 4) {
-        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
-        return RZ_CMD_STATUS_WRONG_ARGS;
-    }
-
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
-
-    // Parse command line arguments
-    CString function_name      = argv[1];
-    Uint32  min_similarity     = (Uint32)rz_num_math (core->num, argv[2]);
-    Uint32  max_results_count  = (Uint32)rz_num_math (core->num, argv[3]);
-    CString collection_ids_csv = argc > 4 ? argv[4] : NULL;
-    CString binary_ids_csv     = argc > 5 ? argv[5] : NULL;
-
-    // clamp value between 0 and 100
-    min_similarity = min_similarity < 100 ? min_similarity : 100;
-
-    if (!reai_plugin_search_and_show_similar_functions (
-            core,
-            function_name,
-            max_results_count,
-            min_similarity,
-            false, // Don't restrict suggestions to debug symbols only.
-            collection_ids_csv,
-            binary_ids_csv
-        )) {
-        DISPLAY_ERROR ("Failed to get similar functions search result.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    return RZ_CMD_STATUS_OK;
+RZ_IPI RzCmdStatus rz_function_similarity_search_handler (RzCore* core, int argc, const char** argv) {
+    return functionSimilaritySearch (core, argc, argv, false);
 }
 
 /**
  * "REfsd"
- *
- * @b Similar function name search with debug symbol suggestions only.
  * */
-RZ_IPI RzCmdStatus
-    rz_function_similarity_search_debug_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] function similarity search (DEBUG)");
-    if (argc < 4) {
-        REAI_LOG_ERROR (ERR_INVALID_ARGUMENTS);
-        return RZ_CMD_STATUS_WRONG_ARGS;
-    }
-
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    // TODO: make this a config setting
-    // This can be set to y/n in config. If set to y then we'll try to perform rizin analysis automatically,
-    // otherwise just inform the user about the issue and report a failure in command execution
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
-
-    // Parse command line arguments
-    CString function_name      = argv[1];
-    Uint32  min_similarity     = (Uint32)rz_num_math (core->num, argv[2]);
-    Uint32  max_results_count  = (Uint32)rz_num_math (core->num, argv[3]);
-    CString collection_ids_csv = argc > 4 ? argv[4] : NULL;
-    CString binary_ids_csv     = argc > 5 ? argv[5] : NULL;
-
-    // TODO: keep an LRU of binary and collection ids
-    // No need to allow the user to reset the recently used collection and binary ids, just provide an
-    // option to show it through a command.
-
-    // clamp value between 0 and 100
-    min_similarity = min_similarity < 100 ? min_similarity : 100;
-
-    if (!reai_plugin_search_and_show_similar_functions (
-            core,
-            function_name,
-            max_results_count,
-            min_similarity,
-            true, // Restrict suggestions to debug symbols only.
-            collection_ids_csv,
-            binary_ids_csv
-        )) {
-        DISPLAY_ERROR ("Failed to get similar functions search result.");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    return RZ_CMD_STATUS_OK;
+RZ_IPI RzCmdStatus rz_function_similarity_search_debug_handler (RzCore* core, int argc, const char** argv) {
+    return functionSimilaritySearch (core, argc, argv, true);
 }
 
-
 RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] AI decompile");
+    LOG_INFO ("[CMD] AI decompile");
     const char* fn_name = argc > 1 ? argv[1] : NULL;
     if (!fn_name) {
         return RZ_CMD_STATUS_INVALID;
     }
 
-    /* Make sure analysis functions exist in rizin as well, so we can get functions by their address values. */
-    if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-        rz_core_perform_auto_analysis (core, RZ_CORE_ANALYSIS_EXPERIMENTAL);
-    }
+    if (rzCanWorkWithAnalysis (GetBinaryId(), true)) {
+        FunctionId fn_id = rzLookupFunctionIdForFunctionWithName (core, fn_name);
 
-    /* get binary id of opened file */
-    ReaiBinaryId binary_id = reai_binary_id();
-    if (!binary_id) {
-        DISPLAY_ERROR (
-            "Please apply existing RevEngAI analysis (using REap command) or create a new one.\n"
-            "Cannot get function info from RevEng.AI without an existing analysis."
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    /* an analysis must already exist in order to make function decompile work */
-    ReaiAnalysisStatus analysis_status =
-        reai_get_analysis_status (reai(), reai_response(), reai_binary_id());
-    switch (analysis_status) {
-        case REAI_ANALYSIS_STATUS_ERROR : {
+        if (!fn_id) {
             DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis has errored out.\n"
-                "I need a complete analysis to function decompilation. Please restart analysis."
+                "A function with that name does not exist in current Rizin session.\n"
+                "Please provide a name from output of `afl` command."
             );
             return RZ_CMD_STATUS_ERROR;
         }
-        case REAI_ANALYSIS_STATUS_QUEUED : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently in queue.\n"
-                "Please wait for the analysis to be analyzed."
-            );
-            return RZ_CMD_STATUS_OK;
+
+        Status status = GetAiDecompilationStatus (GetConnection(), fn_id);
+        if ((status & STATUS_MASK) == STATUS_ERROR) {
+            if (!BeginAiDecompilation (GetConnection(), fn_id)) {
+                DISPLAY_ERROR ("Failed to start AI decompilation process.");
+                return RZ_CMD_STATUS_ERROR;
+            }
         }
-        case REAI_ANALYSIS_STATUS_PROCESSING : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
-                "Please wait for the analysis to complete."
-            );
-            return RZ_CMD_STATUS_OK;
-        }
-        case REAI_ANALYSIS_STATUS_COMPLETE : {
-            REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
-            break;
-        }
-        default : {
-            DISPLAY_ERROR (
-                "Oops... something bad happened :-(\n"
-                "I got an invalid value for RevEngAI analysis status.\n"
-                "Consider\n"
-                "\t- Checking the binary ID, reapply the correct one if wrong\n"
-                "\t- Retrying the command\n"
-                "\t- Restarting the plugin\n"
-                "\t- Checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
-                "\t- Checking the connection with RevEngAI host.\n"
-                "\t- Contacting support if the issue persists\n"
-            );
-            return RZ_CMD_STATUS_ERROR;
-        }
-    }
 
-    RzAnalysisFunction* rzfn = rz_analysis_get_function_byname (core->analysis, fn_name);
+        while (true) {
+            DISPLAY_INFO ("Checking decompilation status...");
 
-    if (!rzfn) {
-        DISPLAY_ERROR (
-            "A function with given name does not exist in Rizin.\n"
-            "Cannot decompile :-("
-        );
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    /* NOTE(brightprogrammer): Error count is a hack used to mitigate the case
-     * where the AI decompilation process is already errored out and user wants
-     * to restart the process. */
-    int error_count = 0;
-
-    while (true) {
-        DISPLAY_INFO ("Checking decompilation status...");
-
-        ReaiAiDecompilationStatus status =
-            reai_plugin_check_decompiler_status_running_at (core, rzfn->addr);
-        REAI_LOG_DEBUG (
-            "Decompilation status for function \"%s\" is \"%s\".",
-            rzfn->name,
-            reai_ai_decompilation_status_to_cstr (status)
-        );
-
-
-        switch (status) {
-            case REAI_AI_DECOMPILATION_STATUS_ERROR :
-                if (!error_count) {
-                    DISPLAY_INFO (
-                        "Looks like the decompilation process failed last time\n"
-                        "I'll restart the decompilation process again..."
-                    );
-                    reai_plugin_decompile_at (core, rzfn->addr);
-                } else if (error_count > 1) {
+            status = GetAiDecompilationStatus (GetConnection(), fn_id);
+            switch (status & STATUS_MASK) {
+                case STATUS_ERROR :
                     DISPLAY_ERROR (
-                        "Failed to decompile \"%s\"\n"
+                        "Failed to decompile '%s'\n"
                         "Is this function from RevEngAI's analysis?\n"
-                        "What's the output of REfl?",
+                        "What's the output of REfl?~'%s'",
+                        fn_name,
                         fn_name
                     );
                     return RZ_CMD_STATUS_ERROR;
+
+                case STATUS_UNINITIALIZED :
+                    DISPLAY_INFO (
+                        "No decompilation exists for this function...\n"
+                        "Starting AI decompilation process!"
+                    );
+                    if (!BeginAiDecompilation (GetConnection(), fn_id)) {
+                        DISPLAY_ERROR ("Failed to start AI decompilation process.");
+                        return RZ_CMD_STATUS_ERROR;
+                    }
+                    break;
+
+                case STATUS_PENDING : {
+                    DISPLAY_INFO ("AI decompilation is queued and is pending. Should start soon!");
+                    break;
                 }
-                error_count++;
-                break;
-            case REAI_AI_DECOMPILATION_STATUS_UNINITIALIZED :
-                DISPLAY_INFO ("No decompilation exists for this function...");
-                reai_plugin_decompile_at (core, rzfn->addr);
-                break;
-            case REAI_AI_DECOMPILATION_STATUS_SUCCESS : {
-                DISPLAY_INFO ("AI decompilation complete ;-)\n");
 
-                // Returns code prepended with summary
-                char* code = (char*)
-                    reai_plugin_get_decompiled_code_at (core, rzfn->addr, true /* summarize */);
+                case STATUS_SUCCESS : {
+                    DISPLAY_INFO ("AI decompilation complete ;-)\n");
 
-                // Get function mappings
-                ReaiAiDecompFnMapVec* fn_map =
-                    reai_response()->poll_ai_decompilation.data.function_mapping;
+                    AiDecompilation aidec = GetAiDecompilation (GetConnection(), fn_id, true);
+                    Str*            smry  = &aidec.summary;
+                    Str*            dec   = &aidec.decompilation;
 
-                // Apply function mappings by replacing all <DISASM_FUNCTION_NN> with it's actual function name
-                if (fn_map && code) {
-                    // Search and replace all tagged function names
-                    char fn_tagged_name[64] = {0};
-                    for (Size i = 0; i < fn_map->count; i++) {
-                        ReaiAiDecompFnMap* fn = fn_map->items + i;
+                    Str code = StrInit();
 
-                        // Check if function actually does exist
-                        RzAnalysisFunction* afn = rz_analysis_get_function_at (
-                            core->analysis,
-                            fn->addr + reai_plugin_get_opened_binary_file_baseaddr (core)
-                        );
-                        if (afn) {
-                            // Create name for tagged function name
-                            // I knowingly didn't store these names, because I know these can be generated like this on the fly
-                            snprintf (
-                                fn_tagged_name,
-                                sizeof (fn_tagged_name),
-                                "<DISASM_FUNCTION_%zu>",
-                                i
-                            );
+                    static i32 SOFT_LIMIT = 120;
 
-                            // replace tagged names in form of <DISASM_FUNCTION_NN> with actual name
-                            char* tmp = rz_str_replace (code, fn_tagged_name, fn->name, true);
-                            if (tmp) {
-                                code = tmp;
-                            }
+                    i32   l = smry->length;
+                    char* p = smry->data;
+                    while (l > SOFT_LIMIT) {
+                        char* p1 = strchr (p + SOFT_LIMIT, ' ');
+                        if (p1) {
+                            StrAppendf (&code, "// %.*s\n", (i32)(p1 - p), p);
+                            p1++;
+                            l -= (p1 - p);
+                            p  = p1;
                         } else {
-                            REAI_LOG_ERROR (
-                                "Function with %s name does not exist. Provided in function "
-                                "mapping fo AI "
-                                "decomp.",
-                                fn->name
-                            );
+                            break;
                         }
                     }
-                }
+                    StrAppendf (&code, "// %.*s\n\n", (i32)l, p);
+                    StrMerge (&code, dec);
 
-                if (code) {
-                    rz_cons_println (code);
-                    FREE (code);
-                } else {
-                    REAI_LOG_ERROR ("Decompilation failed");
+                    LOG_INFO ("aidec.functions.length = %zu", aidec.functions.length);
+                    VecForeachIdx (&aidec.functions, function, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<DISASM_FUNCTION_%llu>", idx);
+                        StrReplace (&code, &dname, &function.name, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.strings.length = %zu", aidec.strings.length);
+                    VecForeachIdx (&aidec.strings, string, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<DISASM_STRING_%llu>", idx);
+                        StrReplace (&code, &dname, &string.string, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.functions.length = %zu", aidec.unmatched.functions.length);
+                    VecForeachIdx (&aidec.unmatched.functions, function, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<UNMATCHED_FUNCTION_%llu>", idx);
+                        StrReplace (&code, &dname, &function.name, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.strings.length = %zu", aidec.unmatched.strings.length);
+                    VecForeachIdx (&aidec.unmatched.strings, string, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<UNMATCHED_STRING_%llu>", idx);
+                        StrReplace (&code, &dname, &string.value.str, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.vars.length = %zu", aidec.unmatched.vars.length);
+                    VecForeachIdx (&aidec.unmatched.vars, var, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<VAR_%llu>", idx);
+                        StrReplace (&code, &dname, &var.value.str, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.external_vars.length = %zu", aidec.unmatched.external_vars.length);
+                    VecForeachIdx (&aidec.unmatched.external_vars, var, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<EXTERNAL_VARIABLE_%llu>", idx);
+                        StrReplace (&code, &dname, &var.value.str, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    LOG_INFO ("aidec.unmatched.custom_types.length = %zu", aidec.unmatched.custom_types.length);
+                    VecForeachIdx (&aidec.unmatched.custom_types, var, idx, {
+                        Str dname = StrInit();
+                        StrPrintf (&dname, "<CUSTOM_TYPE_%llu>", idx);
+                        StrReplace (&code, &dname, &var.value.str, -1);
+                        StrDeinit (&dname);
+                    });
+
+                    // print decompiled code with summary
+                    rz_cons_println (code.data);
+
+                    StrDeinit (&code);
+                    AiDecompilationDeinit (&aidec);
+                    return RZ_CMD_STATUS_OK;
                 }
-                return RZ_CMD_STATUS_OK;
+                default :
+                    LOG_FATAL ("Unreachable code reached. Invalid decompilation status");
+                    return RZ_CMD_STATUS_ERROR;
             }
-            default :
-                break;
-        }
 
-        DISPLAY_INFO ("Going to sleep for two seconds...");
-        rz_sys_sleep (2);
+            DISPLAY_INFO ("Going to sleep for two seconds...");
+            rz_sys_sleep (2);
+        }
+    } else {
+        DISPLAY_ERROR ("Failed to get AI decompilation.");
+        return RZ_CMD_STATUS_ERROR;
     }
+}
+
+RzCmdStatus collectionSearch (SearchCollectionRequest* search) {
+    CollectionInfos collections = SearchCollection (GetConnection(), search);
+    SearchCollectionRequestDeinit (search);
+
+    if (collections.length) {
+        RzTable* t = rz_table_new();
+        rz_table_set_columnsf (t, "snnssss", "Name", "Size", "Id", "Scope", "Last Updated", "Model", "Owner");
+
+        VecForeachPtr (&collections, collection, {
+            rz_table_add_rowf (
+                t,
+                "snnssss",
+                collection->name.data,
+                collection->size,
+                collection->id,
+                collection->is_private ? "PRIVATE" : "PUBLIC",
+                collection->last_updated_at.data,
+                collection->model_name.data,
+                collection->owned_by.data
+            );
+        });
+
+        const char* s = rz_table_tofancystring (t);
+        rz_cons_println (s);
+        FREE (s);
+        rz_table_free (t);
+    } else {
+        DISPLAY_ERROR ("Failed to get collection search results");
+    }
+
+    VecDeinit (&collections);
+
+    return RZ_CMD_STATUS_ERROR;
 }
 
 /**
  * "REcs"
  * */
 RZ_IPI RzCmdStatus rz_collection_search_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection search");
-    CString partial_collection_name =
-        argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString partial_binary_name   = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-    CString partial_binary_sha256 = argc > 3 ? argv[3] && strlen (argv[3]) ? argv[3] : NULL : NULL;
-    CString model_name            = argc > 4 ? argv[4] && strlen (argv[4]) ? argv[4] : NULL : NULL;
-    CString tags_csv              = argc > 5 ? argv[5] && strlen (argv[5]) ? argv[5] : NULL : NULL;
+    (void)core;
 
-    if (reai_plugin_collection_search (
-            core,
-            partial_collection_name,
-            partial_binary_name,
-            partial_binary_sha256,
-            model_name,
-            tags_csv
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
+    SearchCollectionRequest search = SearchCollectionRequestInit();
 
-    return RZ_CMD_STATUS_ERROR;
-}
-RZ_IPI RzCmdStatus
-    rz_collection_search_by_binary_name_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (argc);
+    Str tags = StrInit();
 
-    CString partial_binary_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString model_name          = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    STR_ARG (search.partial_collection_name, 1);
+    STR_ARG (search.partial_binary_name, 2);
+    STR_ARG (search.partial_binary_sha256, 3);
+    STR_ARG (search.model_name, 4);
+    STR_ARG (tags, 5);
 
-    if (reai_plugin_collection_search (core, NULL, partial_binary_name, NULL, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
-    }
+    search.tags = StrSplit (&tags, ",");
+    StrDeinit (&tags);
 
-    return RZ_CMD_STATUS_ERROR;
-}
-RZ_IPI RzCmdStatus
-    rz_collection_search_by_collection_name_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection search (by name)");
-
-    CString partial_collection_name =
-        argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString model_name = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    if (reai_plugin_collection_search (
-            core,
-            partial_collection_name,
-            NULL,
-            NULL,
-            model_name,
-            NULL
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-
-    return RZ_CMD_STATUS_ERROR;
-}
-RZ_IPI RzCmdStatus
-    rz_collection_search_by_hash_value_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection search (by hash value)");
-
-    CString partial_binary_sha256 = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString model_name            = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    if (reai_plugin_collection_search (core, NULL, NULL, partial_binary_sha256, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
-    }
-
-    return RZ_CMD_STATUS_ERROR;
+    return collectionSearch (&search);
 }
 
-static Bool str_to_filter_flags (CString filters, ReaiCollectionBasicInfoFilterFlags* flags) {
-    if (!flags) {
-        return false;
+RZ_IPI RzCmdStatus rz_collection_search_by_binary_name_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
+    SearchCollectionRequest search = SearchCollectionRequestInit();
+
+    STR_ARG (search.partial_binary_name, 1);
+    STR_ARG (search.model_name, 2);
+
+    return collectionSearch (&search);
+}
+
+RZ_IPI RzCmdStatus rz_collection_search_by_collection_name_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
+    SearchCollectionRequest search = SearchCollectionRequestInit();
+
+    STR_ARG (search.partial_collection_name, 1);
+    STR_ARG (search.model_name, 2);
+
+    return collectionSearch (&search);
+}
+
+RZ_IPI RzCmdStatus rz_collection_search_by_hash_value_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
+
+    SearchCollectionRequest search = SearchCollectionRequestInit();
+
+    STR_ARG (search.partial_binary_sha256, 1);
+    STR_ARG (search.model_name, 2);
+
+    return collectionSearch (&search);
+}
+
+RzCmdStatus collectionFilteredSearch (Str term, Str filters, OrderBy order_by, bool is_asc) {
+    SearchCollectionRequest search = SearchCollectionRequestInit();
+
+    search.partial_collection_name = term;
+
+    if (filters.data) {
+        search.filter_public   = !!strchr (filters.data, 'p');
+        search.filter_official = !!strchr (filters.data, 'o');
+        search.filter_user     = !!strchr (filters.data, 'u');
+        search.filter_team     = !!strchr (filters.data, 't');
+        StrDeinit (&filters);
     }
 
-    if (!filters) {
-        return true;
-    }
+    search.order_by     = order_by;
+    search.order_in_asc = is_asc;
 
-    while (*filters) {
-        switch (*filters) {
-            case 'o' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_OFFICIAL;
-                break;
-            case 'u' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_PUBLIC;
-                break;
-            case 't' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_TEAM;
-                break;
-            case 'p' :
-                *flags |= REAI_COLLECTION_BASIC_INFO_FILTER_PUBLIC;
-                break;
-            default :
-                APPEND_ERROR (
-                    "Invalid filter flag '%c'.\nAvailable flags are [o] - official, [u] - user, "
-                    "[t] - team, [p] - public only",
-                    *filters
-                );
-                return false;
-                break;
-        }
-        filters++;
-    }
-
-    return true;
+    return collectionSearch (&search);
 }
 
 /**
  * REcat
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by TIME in ascending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_time_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_LAST_UPDATED, true);
 }
 
 /**
  * REcao
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by OWNER in ascending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_owner_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_OWNER, true);
 }
 
 /**
  * REcan
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by NAME in ascending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_name_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_NAME, true);
 }
 
 /**
  * REcam
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by MODEL in ascending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_model_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_MODEL, true);
 }
 
 /**
  * REcas
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by SIZE in ascending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_size_asc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-            true // ascending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_SIZE, true);
 }
 
 /**
  * REcdt
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by TIME in descending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_time_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_CREATED,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_LAST_UPDATED, false);
 }
 
 /**
  * REcdo
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by OWNER in descending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_owner_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_OWNER,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_OWNER, false);
 }
 
 /**
  * REcdn
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by NAME in descending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_name_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_NAME, false);
 }
 
 /**
  * REcdm
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by MODEL in descending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_model_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_MODEL,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_MODEL, false);
 }
 
 /**
  * REcds
  * */
-RZ_IPI RzCmdStatus
-    rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection basic info order by SIZE in descending");
+RZ_IPI RzCmdStatus rz_collection_basic_info_size_desc_handler (RzCore* core, int argc, const char** argv) {
+    (void)core;
 
-    CString search_term = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString filters     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    Str term = StrInit(), filters = StrInit();
+    STR_ARG (term, 1);
+    STR_ARG (term, 2);
+    return collectionFilteredSearch (term, filters, ORDER_BY_SIZE, false);
+}
 
-    ReaiCollectionBasicInfoFilterFlags filter_flags = REAI_COLLECTION_BASIC_INFO_FILTER_HIDE_EMPTY;
-    if (!str_to_filter_flags (filters, &filter_flags)) {
-        DISPLAY_ERROR ("Failed to understand provided filter flags");
-        return RZ_CMD_STATUS_ERROR;
-    }
+RzCmdStatus searchBinary (SearchBinaryRequest* search) {
+    BinaryInfos binaries = SearchBinary (GetConnection(), search);
+    SearchBinaryRequestDeinit (search);
 
-    if (reai_plugin_collection_basic_info (
-            core,
-            search_term,
-            filter_flags,
-            REAI_COLLECTION_BASIC_INFO_ORDER_BY_COLLECTION_SIZE,
-            false // descending ordering
-        )) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    RzTable* t = rz_table_new();
+    rz_table_set_columnsf (t, "snnssss", "name", "binary_id", "analysis_id", "model", "owner", "created_at", "sha256");
+
+    VecForeachPtr (&binaries, binary, {
+        rz_table_add_rowf (
+            t,
+            "snnssss",
+            binary->binary_name.data,
+            binary->binary_id,
+            binary->analysis_id,
+            binary->model_name.data,
+            binary->owned_by.data,
+            binary->created_at.data,
+            binary->sha256.data
+        );
+    });
+
+    const char* s = rz_table_tofancystring (t);
+    rz_cons_println (s);
+    FREE (s);
+    rz_table_free (t);
+
+    VecDeinit (&binaries);
+
+    return RZ_CMD_STATUS_OK;
 }
 
 /**
  * REbs
  * */
 RZ_IPI RzCmdStatus rz_binary_search_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] binary search");
+    (void)core;
 
-    CString partial_name   = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString partial_sha256 = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-    CString model_name     = argc > 3 ? argv[3] && strlen (argv[3]) ? argv[3] : NULL : NULL;
-    CString tags_csv       = argc > 4 ? argv[4] && strlen (argv[4]) ? argv[4] : NULL : NULL;
+    Str tags = StrInit();
 
-    if (reai_plugin_binary_search (core, partial_name, partial_sha256, model_name, tags_csv)) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    SearchBinaryRequest search = SearchBinaryRequestInit();
+    STR_ARG (search.partial_name, 1);
+    STR_ARG (search.partial_sha256, 2);
+    STR_ARG (search.model_name, 3);
+    STR_ARG (tags, 4);
+
+    search.tags = StrSplit (&tags, ",");
+
+    return searchBinary (&search);
 }
 
 /**
  * REbsn
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_name_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] binary search (by NAME)");
+    (void)core;
 
-    CString partial_name = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString model_name   = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
-
-    if (reai_plugin_binary_search (core, partial_name, NULL, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
-    }
-    return RZ_CMD_STATUS_ERROR;
+    SearchBinaryRequest search = SearchBinaryRequestInit();
+    STR_ARG (search.partial_name, 1);
+    STR_ARG (search.model_name, 3);
+    return searchBinary (&search);
 }
 
 /**
  * REbsh
  * */
 RZ_IPI RzCmdStatus rz_binary_search_by_sha256_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] binary search (by SHA256)");
+    (void)core;
 
-    CString partial_sha256 = argc > 1 ? argv[1] && strlen (argv[1]) ? argv[1] : NULL : NULL;
-    CString model_name     = argc > 2 ? argv[2] && strlen (argv[2]) ? argv[2] : NULL : NULL;
+    SearchBinaryRequest search = SearchBinaryRequestInit();
+    STR_ARG (search.partial_sha256, 1);
+    STR_ARG (search.model_name, 3);
+    return searchBinary (&search);
+}
 
-    if (reai_plugin_binary_search (core, NULL, partial_sha256, model_name, NULL)) {
-        return RZ_CMD_STATUS_OK;
+RzCmdStatus openLinkForId (const char* type, u64 id) {
+    Connection* conn = GetConnection();
+
+    Str host = StrDup (&conn->host);
+    StrReplaceZstr (&host, "api", "portal", 1);
+    StrAppendf (&host, "/%s/%llu", type, id);
+
+    rz_cons_println (host.data);
+
+    const char* syscmd = NULL;
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    syscmd = "start";
+#elif __APPLE__
+    syscmd = "open";
+#elif __linux__
+    syscmd = "xdg-open";
+#else
+    syscmd = NULL;
+#    warn "Unsupported OS. Won't open links from command line."
+#endif
+
+    if (syscmd) {
+        Str cmd = StrInit();
+        StrPrintf (&cmd, "%s %s", syscmd, host.data);
+        rz_sys_system (cmd.data);
+        StrDeinit (&cmd);
     }
-    return RZ_CMD_STATUS_ERROR;
+
+    StrDeinit (&host);
+
+    return RZ_CMD_STATUS_OK;
 }
 
 /**
  * REco
  * */
 RZ_IPI RzCmdStatus rz_collection_link_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] collection link open");
+    CollectionId cid = 0;
+    NUM_ARG (cid, 1);
 
-    ReaiCollectionId cid =
-        argc > 1 ? argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0 : 0;
-
-    // generate portal link
-    char* host = strdup (reai_plugin()->reai_config->host);
-    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
-    if (!host) {
-        DISPLAY_ERROR ("Failed to generate portal link");
-        return RZ_CMD_STATUS_ERROR;
+    if (!cid) {
+        DISPLAY_ERROR ("Invalid collection ID provided.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    // TODO: should we also get basic collection information and display it here?
-    DISPLAY_INFO ("%s/collections/%llu", host, cid);
-
-    CString syscmd = NULL;
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    syscmd = "start";
-#elif __APPLE__
-    syscmd = "open";
-#elif __linux__
-    syscmd = "xdg-open";
-#else
-    syscmd = NULL;
-#    warn "Unsupported OS. Won't open links from command line."
-#endif
-
-    if (syscmd) {
-        CString cmd = rz_str_newf ("%s %s/collections/%llu", syscmd, host, cid);
-        rz_sys_system (cmd);
-        FREE (cmd);
-    }
-
-    FREE (host);
-
-    FREE (host);
-
-    return RZ_CMD_STATUS_OK;
+    return openLinkForId ("collection", cid);
 }
 
 /**
  * REao
  * */
 RZ_IPI RzCmdStatus rz_analysis_link_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] analysis link open");
+    BinaryId bid = 0;
+    NUM_ARG (bid, 1);
 
-    ReaiBinaryId bid = 0;
-    if (argc == 2) {
-        bid = argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0;
+    if (!bid) {
+        bid = GetBinaryId();
         if (!bid) {
-            DISPLAY_ERROR ("Invalid binary ID provided.");
-            return RZ_CMD_STATUS_ERROR;
-        }
-    } else {
-        bid = reai_binary_id();
-        if (!bid) {
-            APPEND_ERROR ("No existing analysis applied. Don't know what analysis to open.");
             DISPLAY_ERROR (
-                "Please either apply an existing analysis or provide me a binary ID to open an "
-                "analysis page"
+                "No existing analysis attached to current session, and no binary id provided.\n"
+                "Please create a new analysis or apply an existing one, or provide a valid binary id"
             );
+            return RZ_CMD_STATUS_WRONG_ARGS;
         }
     }
 
-    // generate portal link
-    char* host = strdup (reai_plugin()->reai_config->host);
-    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
-    if (!host) {
-        DISPLAY_ERROR ("Failed to generate portal link");
-        return RZ_CMD_STATUS_ERROR;
-    }
-
-    // TODO: should we also get basic binary information and display it here?
-    DISPLAY_INFO (
-        "%s/analyses/%llu?analysis-id=%llu",
-        host,
-        bid,
-        reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
-    );
-
-    CString syscmd = NULL;
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    syscmd = "start";
-#elif __APPLE__
-    syscmd = "open";
-#elif __linux__
-    syscmd = "xdg-open";
-#else
-    syscmd = NULL;
-#    warn "Unsupported OS. Won't open links from command line."
-#endif
-
-    if (syscmd) {
-        CString cmd = rz_str_newf (
-            "%s %s/analyses/%llu?analysis-id=%llu",
-            syscmd,
-            host,
-            bid,
-            reai_analysis_id_from_binary_id (reai(), reai_response(), bid)
-        );
-        rz_sys_system (cmd);
-        FREE (cmd);
-    }
-
-    FREE (host);
-
-    return RZ_CMD_STATUS_OK;
+    return openLinkForId ("analyses", bid);
 }
 
 /**
  * REfo
  * */
 RZ_IPI RzCmdStatus rz_function_link_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] function link open");
+    FunctionId fid = 0;
+    NUM_ARG (fid, 1);
 
-    ReaiFunctionId fid =
-        argc > 1 ? argv[1] && strlen (argv[1]) ? rz_num_get (core->num, argv[1]) : 0 : 0;
-
-    // generate portal link
-    char* host = strdup (reai_plugin()->reai_config->host);
-    host       = rz_str_replace (host, "api", "portal", 0 /* replace first only */);
-    if (!host) {
-        DISPLAY_ERROR ("Failed to generate portal link");
-        return RZ_CMD_STATUS_ERROR;
+    if (!fid) {
+        DISPLAY_ERROR ("Invalid function ID provided.");
+        return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    // TODO: should we also get basic function information and display it here?
-    DISPLAY_INFO ("%s/functions/%llu", host, fid);
-
-    CString syscmd = NULL;
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    syscmd = "start";
-#elif __APPLE__
-    syscmd = "open";
-#elif __linux__
-    syscmd = "xdg-open";
-#else
-    syscmd = NULL;
-#    warn "Unsupported OS. Won't open links from command line."
-#endif
-
-    if (syscmd) {
-        CString cmd = rz_str_newf ("%s %s/function/%llu", syscmd, host, fid);
-        rz_sys_system (cmd);
-        FREE (cmd);
-    }
-
-
-    FREE (host);
-
-    return RZ_CMD_STATUS_OK;
+    return openLinkForId ("collection", fid);
 }
 
 /**
  * REal
  * */
-RZ_IPI RzCmdStatus
-    rz_get_analysis_logs_using_analysis_id_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] Get Analysis Logs");
+RZ_IPI RzCmdStatus rz_get_analysis_logs_using_analysis_id_handler (RzCore* core, int argc, const char** argv) {
+    AnalysisId analysis_id = 0;
+    NUM_ARG (analysis_id, 1);
 
-    ReaiAnalysisId id             = 0;
-    Bool           is_analysis_id = true;
-    if (argc == 2) {
-        id = rz_num_get (core->num, argv[1]);
-    } else {
-        id = reai_binary_id();
-
-        if (!id) {
+    if (!analysis_id) {
+        if (!GetBinaryId()) {
             DISPLAY_ERROR (
-                "You haven't provided any analysis id.\n"
-                "Did you forget to apply an existing analysis or to create a new one?\n"
-                "Cannot fetch analysis logs, not enough information provided.\n"
+                "No RevEngAI analysis attached with current session.\n"
+                "Either provide an analysis id, apply an existing analysis or create a new analysis\n"
             );
             return RZ_CMD_STATUS_WRONG_ARGS;
         }
 
-        is_analysis_id = false;
+        analysis_id = AnalysisIdFromBinaryId (GetConnection(), GetBinaryId());
+        if (!analysis_id) {
+            DISPLAY_ERROR ("Failed to get analysis id from binary id attached to this session");
+            return RZ_CMD_STATUS_ERROR;
+        }
     }
 
-    if (!reai_plugin_get_analysis_logs (core, id, is_analysis_id)) {
-        DISPLAY_ERROR ("Failed to fetch and display analysis logs");
+    Str logs = GetAnalysisLogs (GetConnection(), analysis_id);
+    if (logs.length) {
+        rz_cons_println (logs.data);
+    } else {
+        DISPLAY_ERROR ("Failed to get analysis logs.");
         return RZ_CMD_STATUS_ERROR;
     }
+    StrDeinit (&logs);
+
     return RZ_CMD_STATUS_OK;
 }
 
 /**
  * REalb
  * */
-RZ_IPI RzCmdStatus
-    rz_get_analysis_logs_using_binary_id_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] get binary analysis logs");
+RZ_IPI RzCmdStatus rz_get_analysis_logs_using_binary_id_handler (RzCore* core, int argc, const char** argv) {
+    AnalysisId binary_id = 0;
+    NUM_ARG (binary_id, 1);
 
-    ReaiAnalysisId binary_id = 0;
-    if (argc == 2) {
-        binary_id = rz_num_get (core->num, argv[1]);
-    } else {
-        binary_id = reai_binary_id();
-
-        if (!binary_id) {
-            DISPLAY_ERROR (
-                "You haven't provided any binary id.\n"
-                "Did you forget to apply an existing analysis or to create a new one?\n"
-                "Cannot fetch analysis logs\n"
-            );
-            return RZ_CMD_STATUS_WRONG_ARGS;
-        }
+    if (!binary_id && !GetBinaryId()) {
+        DISPLAY_ERROR (
+            "No RevEngAI analysis attached with current session.\n"
+            "Either provide an analysis id, apply an existing analysis or create a new analysis\n"
+        );
+        return RZ_CMD_STATUS_WRONG_ARGS;
     }
 
-    if (!reai_plugin_get_analysis_logs (core, binary_id, false /* provided is a binary id */)) {
-        DISPLAY_ERROR ("Failed to fetch and display analysis logs");
+    AnalysisId analysis_id = AnalysisIdFromBinaryId (GetConnection(), GetBinaryId());
+    if (!analysis_id) {
+        DISPLAY_ERROR ("Failed to get analysis id from binary id");
         return RZ_CMD_STATUS_ERROR;
     }
+
+    Str logs = GetAnalysisLogs (GetConnection(), analysis_id);
+    if (logs.length) {
+        rz_cons_println (logs.data);
+    } else {
+        DISPLAY_ERROR ("Failed to get analysis logs.");
+        return RZ_CMD_STATUS_ERROR;
+    }
+    StrDeinit (&logs);
+
     return RZ_CMD_STATUS_OK;
 }
 
@@ -1440,56 +978,42 @@ RZ_IPI RzCmdStatus
  * "REar"
  * */
 RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const char** argv) {
-    REAI_LOG_TRACE ("[CMD] recent analysis");
-    UNUSED (core && argc && argv);
+    (void)core;
+    (void)argc;
+    (void)argv;
 
-    ReaiAnalysisInfoVec* results = reai_get_recent_analyses (
-        reai(),
-        reai_response(),
-        NULL /* search term */,
-        REAI_WORKSPACE_PERSONAL,
-        REAI_ANALYSIS_STATUS_ALL,
-        NULL, /* model name */
-        REAI_DYN_EXEC_STATUS_ALL,
-        NULL, /* usernames */
-        25,   /* 25 most recent analyses */
-        0,
-        REAI_RECENT_ANALYSIS_ORDER_BY_CREATED,
-        false
-    );
-    if (!results) {
+    RecentAnalysisRequest recents  = RecentAnalysisRequestInit();
+    AnalysisInfos         analyses = GetRecentAnalysis (GetConnection(), &recents);
+    RecentAnalysisRequestDeinit (&recents);
+
+    if (!analyses.length) {
         DISPLAY_ERROR ("Failed to get most recent analysis. Are you a new user?");
         return RZ_CMD_STATUS_ERROR;
     }
 
-    ReaiPluginTable* t = reai_plugin_table_create();
-    reai_plugin_table_set_title (t, "Most Recent Analyses");
-    reai_plugin_table_set_columnsf (
-        t,
-        "nnssss",
-        "analysis_id",
-        "binary_id",
-        "status",
-        "creation",
-        "binary_name",
-        "scope"
-    );
+    RzTable* t = rz_table_new();
+    rz_table_set_columnsf (t, "nnssss", "analysis_id", "binary_id", "status", "creation", "binary_name", "scope");
 
-    REAI_VEC_FOREACH (results, r, {
-        reai_plugin_table_add_rowf (
+    VecForeachPtr (&analyses, analysis, {
+        Str status_str = StrInit();
+        StatusToStr (analysis->status, &status_str);
+        rz_table_add_rowf (
             t,
             "nnssss",
-            r->analysis_id,
-            r->binary_id,
-            reai_analysis_status_to_cstr (r->status),
-            r->creation,
-            r->binary_name,
-            r->is_public ? "PUBLIC" : "PRIVATE"
+            analysis->analysis_id,
+            analysis->binary_id,
+            status_str.data,
+            analysis->creation.data,
+            analysis->binary_name.data,
+            analysis->is_private ? "PRIVATE" : "PUBLIC"
         );
+        StrDeinit (&status_str);
     });
 
-    reai_plugin_table_show (t);
-    reai_plugin_table_destroy (t);
+    const char* s = rz_table_tofancystring (t);
+    rz_cons_println (s);
+    FREE (s);
+    rz_table_free (t);
 
     return RZ_CMD_STATUS_OK;
 }
@@ -1497,7 +1021,9 @@ RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const
 
 // clang-format off
 RZ_IPI RzCmdStatus rz_show_revengai_art_handler (RzCore* core, int argc, const char** argv) {
-    UNUSED (core && argc && argv);
+    (void)core;
+    (void)argc;
+    (void)argv;
 
     rz_cons_println (
         "\n"

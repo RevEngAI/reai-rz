@@ -77,7 +77,7 @@ commands:
         args:
           - name: binary_id 
             type: RZ_CMD_ARG_TYPE_NUM
-  - name: REau
+  - name: REaa
     cname: ann_auto_analyze
     summary: Auto analyze binary functions using ANN and perform batch rename.
     args:
@@ -87,12 +87,12 @@ commands:
     details:
       - name: Examples
         entries:
-          - text: "REau"
-            comment: "Apply auto analysis to this binary with 90% min similarity"
-          - text: "REau 85"
-            comment: "Min 85% similairty"
-  - name: REaud
-    cname: ann_auto_analyze_restrict_debug
+          - text: "REaa"
+            comment: "Apply auto analysis to this binary with 90% min similarity using only debug symbols"
+          - text: "REaa 85"
+            comment: "Min 85% similairty with debug symbols"
+  - name: REaaa
+    cname: ann_auto_analyze_all
     summary: Auto analyze binary functions using ANN and perform batch rename. Restrict renamed symbols to debug names only.
     args:
       - name: min_similarity
@@ -101,10 +101,10 @@ commands:
     details:
       - name: Examples
         entries:
-          - text: "REaud"
-            comment: "Apply auto analysis to this binary with 90% min similarity using only debug symbols"
-          - text: "REaud 85"
-            comment: "Min 85% similairty with debug symbols"
+          - text: "REaaa"
+            comment: "Apply auto analysis to this binary with 90% min similarity using any available symbol"
+          - text: "REaaa 85"
+            comment: "Min 85% similairty with any available symbols"
   - name: REae
     cname: apply_existing_analysis 
     summary: Apply existing RevEng.AI analysis to this binary.

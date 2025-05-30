@@ -11,8 +11,6 @@ set(CMAKE_AUTORCC ON) # Auto Resource Compile
 # Libraries needs to be searched here to be linked properly
 # Because MSVC obviously
 find_package(CURL REQUIRED)
-pkg_check_modules(CJSON REQUIRED libcjson)
-pkg_check_modules(TOML REQUIRED libtoml)
 
 if(CUTTER_USE_QT6)
   find_package(Qt6 COMPONENTS Widgets REQUIRED)
@@ -23,7 +21,7 @@ else()
 endif()
 
 # main plugin library and sources
-set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c" "Ui/Table.cpp"
+set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c"
                            "Ui/FunctionRenameDialog.cpp" "Ui/FunctionSimilarityDialog.cpp"
                            "Ui/AutoAnalysisDialog.cpp" "Ui/CreateAnalysisDialog.cpp"
                            "Ui/BinarySearchDialog.cpp" "Ui/CollectionSearchDialog.cpp"
@@ -37,8 +35,6 @@ target_link_libraries(
   reai
   ${CURL_LIBRARIES}
   ${QT_LIBRARIES}
-  ${CJSON_LIBRARIES}
-  ${TOML_LIBRARIES}
 )
 
 # install the built binaries to cutter's plugin directory

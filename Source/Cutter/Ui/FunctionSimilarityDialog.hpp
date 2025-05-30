@@ -20,12 +20,6 @@
 /* rizin */
 #include <rz_core.h>
 
-/* reai */
-#include <Reai/Types.h>
-
-/* plugin */
-#include <Table.h>
-
 class FunctionSimilarityDialog : public QDialog {
     Q_OBJECT;
 
@@ -34,12 +28,12 @@ class FunctionSimilarityDialog : public QDialog {
 
     // Take a name to name mapping vector and copy contents over
     // from our local copy
-    void getNameMapping(std::vector<std::pair<QString, QString>>& nameMap) const {
-	nameMap = oldNameToNewNameMap;
+    void getNameMapping (std::vector<std::pair<QString, QString>>& nameMap) const {
+        nameMap = oldNameToNewNameMap;
     }
 
     bool doRename() const {
-	return oldNameToNewNameMap.size() != 0;
+        return oldNameToNewNameMap.size() != 0;
     }
 
    private:

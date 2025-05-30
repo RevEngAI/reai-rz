@@ -20,9 +20,6 @@
 /* rizin */
 #include <rz_core.h>
 
-/* reai */
-#include <Reai/Types.h>
-
 class FunctionRenameDialog : public QDialog {
     Q_OBJECT;
 
@@ -30,7 +27,7 @@ class FunctionRenameDialog : public QDialog {
     FunctionRenameDialog (QWidget* parent);
 
     void getNameMapping (std::vector<std::pair<QString, QString>>& map);
-    Bool isFinished() const {
+    bool isFinished() const {
         return is_finished;
     }
 
@@ -41,10 +38,10 @@ class FunctionRenameDialog : public QDialog {
     QCompleter*   fnNameCompleter;
     QTableWidget* newNameMapTable;
 
-    Bool is_finished = false;
+    bool is_finished = false;
 
-    Bool checkNewNameIsUnique (const QString& newName);
-    Bool checkOldNameIsUnique (const QString& oldName);
+    bool checkNewNameIsUnique (const QString& newName);
+    bool checkOldNameIsUnique (const QString& oldName);
 
     void on_AddToRename();
     void on_Finish();

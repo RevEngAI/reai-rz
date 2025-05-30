@@ -37,7 +37,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     Q_INTERFACES (CutterPlugin)
 
     /* to create separate menu for revengai plugin in cutter's main window's menu
-   * bar */
+     * bar */
     QMenu *reaiMenu = nullptr;
 
     /* action to enable/disable (show/hide) revengai plugin */
@@ -54,13 +54,13 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actRecentAnalysis           = nullptr;
     QAction *actSetup                    = nullptr;
 
-    ReaiBinaryId customAnalysisId = 0;
+    BinaryId customAnalysisId = 0;
 
-    Bool isInitialized = false;
+    bool isInitialized = false;
 
     MainWindow *mainWindow = NULL;
 
-    void renameFunctions(std::vector<std::pair<QString, QString>> nameMap);
+    void renameFunctions (std::vector<std::pair<QString, QString>> nameMap);
 
    public:
     void setupPlugin() override;
@@ -75,7 +75,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
         return "Siddharth Mishra";
     }
     QString getVersion() const override {
-        return "1";
+        return "2";
     }
     QString getDescription() const override {
         return "AI based reverse engineering helper API & Toolkit";

@@ -5,14 +5,6 @@
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-/* plugin */
-#include <Plugin.h>
-#include <Cutter/Ui/FunctionRenameDialog.hpp>
-
-/* rizin */
-#include <rz_analysis.h>
-#include <cutter/core/Cutter.h>
-
 /* qt */
 #include <QVBoxLayout>
 #include <QScrollArea>
@@ -24,7 +16,16 @@
 #include <QDialogButtonBox>
 #include <QHeaderView>
 
+/* rizin */
+#include <rz_analysis.h>
+#include <cutter/core/Cutter.h>
+
+#include <Plugin.h>
+#include <Cutter/Ui/FunctionRenameDialog.hpp>
+
+
 FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) {
+    rzClearMsg();
     QVBoxLayout* mainLayout = new QVBoxLayout;
     setLayout (mainLayout);
     setWindowTitle ("Select Functions To Rename");
@@ -32,11 +33,6 @@ FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) 
     /* get function names from binary */
     {
         RzCoreLocked core (Core());
-
-        if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-            DISPLAY_ERROR ("Rizin analysis not performed yet. Please create rizin analysis first.");
-            return;
-        }
 
         if (!rz_analysis_function_list (core->analysis) ||
             !rz_list_length (rz_analysis_function_list (core->analysis))) {
@@ -113,12 +109,13 @@ FunctionRenameDialog::FunctionRenameDialog (QWidget* parent) : QDialog (parent) 
 }
 
 void FunctionRenameDialog::getNameMapping (std::vector<std::pair<QString, QString>>& map) {
+    rzClearMsg();
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
         const QString& oldName = newNameMapTable->item (s, 0)->text();
         const QString& newName = newNameMapTable->item (s, 1)->text();
         map.push_back ({oldName, newName});
 
-        REAI_LOG_TRACE (
+        LOG_INFO(
             "oldName = \"%s\" \t newName \"%s\"",
             oldName.toLatin1().constData(),
             oldName.toLatin1().constData()
@@ -126,7 +123,7 @@ void FunctionRenameDialog::getNameMapping (std::vector<std::pair<QString, QStrin
     }
 }
 
-Bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
+bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
         if (newNameMapTable->item (s, 0)->text() == newName) {
             return false;
@@ -136,7 +133,7 @@ Bool FunctionRenameDialog::checkNewNameIsUnique (const QString& newName) {
     return true;
 }
 
-Bool FunctionRenameDialog::checkOldNameIsUnique (const QString& oldName) {
+bool FunctionRenameDialog::checkOldNameIsUnique (const QString& oldName) {
     for (int s = 0; s < newNameMapTable->rowCount(); s++) {
         if (newNameMapTable->item (s, 1)->text() == oldName) {
             return false;
@@ -147,14 +144,13 @@ Bool FunctionRenameDialog::checkOldNameIsUnique (const QString& oldName) {
 }
 
 void FunctionRenameDialog::on_AddToRename() {
+    rzClearMsg();
     const QString& oldName = searchBar->text();
     const QString& newName = newFnName->text();
 
     /* both new and old names must be unique */
     if (!(checkNewNameIsUnique (newName) && checkOldNameIsUnique (oldName))) {
-        DISPLAY_ERROR (
-            "New name and old name must be unique one-to-one mapping. Cannot add this to rename."
-        );
+        DISPLAY_ERROR ("New name and old name must be unique one-to-one mapping. Cannot add this to rename.");
         return;
     }
 
@@ -167,7 +163,7 @@ void FunctionRenameDialog::on_AddToRename() {
         return;
     }
 
-    Size row = newNameMapTable->rowCount();
+    size_t row = newNameMapTable->rowCount();
     newNameMapTable->insertRow (row);
     newNameMapTable->setItem (row, 0, new QTableWidgetItem (oldName));
     newNameMapTable->setItem (row, 1, new QTableWidgetItem (newName));

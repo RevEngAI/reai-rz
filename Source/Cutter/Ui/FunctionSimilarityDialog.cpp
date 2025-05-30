@@ -5,13 +5,6 @@
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-/* plugin */
-#include <Plugin.h>
-#include <Reai/Api/Reai.h>
-#include <Cutter/Ui/FunctionSimilarityDialog.hpp>
-#include <Cutter/Ui/CollectionSearchDialog.hpp>
-#include <Cutter/Ui/BinarySearchDialog.hpp>
-
 /* qt */
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -28,12 +21,18 @@
 #include <cutter/core/Cutter.h>
 #include <librz/rz_analysis.h>
 
-/* reai */
+#include <Plugin.h>
+#include <Reai/Api.h>
 #include <Reai/Util/Vec.h>
+#include <Reai/Util/Str.h>
+#include <Cutter/Ui/FunctionSimilarityDialog.hpp>
+#include <Cutter/Ui/CollectionSearchDialog.hpp>
+#include <Cutter/Ui/BinarySearchDialog.hpp>
 
 // TODO: provide a way to rename functions from this dialog as well
 
 FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (parent) {
+    rzClearMsg();
     setMinimumSize (540, 360);
 
     mainLayout = new QVBoxLayout;
@@ -49,10 +48,6 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     QStringList fnNamesList;
     {
         RzCoreLocked core (Core());
-
-        if (!reai_plugin_get_rizin_analysis_function_count (core)) {
-            return;
-        }
 
         if (!rz_analysis_function_list (core->analysis) ||
             !rz_list_length (rz_analysis_function_list (core->analysis))) {
@@ -129,33 +124,18 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     enableDebugFilterCheckBox->setCheckState (Qt::CheckState::Checked);
 
     QPushButton* binaryIdsSearchBtn = new QPushButton ("Select Binaries");
-    connect (
-        binaryIdsSearchBtn,
-        &QPushButton::pressed,
-        this,
-        &FunctionSimilarityDialog::on_SearchBinaries
-    );
+    connect (binaryIdsSearchBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::on_SearchBinaries);
 
     QPushButton* collectionIdsSearchBtn = new QPushButton ("Select Collections");
-    connect (
-        collectionIdsSearchBtn,
-        &QPushButton::pressed,
-        this,
-        &FunctionSimilarityDialog::on_SearchCollections
-    );
+    connect (collectionIdsSearchBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::on_SearchCollections);
 
     QPushButton* searchBtn = new QPushButton ("Search", this);
-    connect (
-        searchBtn,
-        &QPushButton::pressed,
-        this,
-        &FunctionSimilarityDialog::on_FindSimilarNames
-    );
+    connect (searchBtn, &QPushButton::pressed, this, &FunctionSimilarityDialog::on_FindSimilarNames);
 
     QPushButton* cancelBtn = new QPushButton ("Cancel", this);
-    connect (cancelBtn, &QPushButton::pressed, this, [this](){
-	oldNameToNewNameMap.clear();
-	reject();
+    connect (cancelBtn, &QPushButton::pressed, this, [this]() {
+        oldNameToNewNameMap.clear();
+        reject();
     });
 
     QDialogButtonBox* btnBox = new QDialogButtonBox (this);
@@ -180,135 +160,68 @@ FunctionSimilarityDialog::FunctionSimilarityDialog (QWidget* parent) : QDialog (
     table->horizontalHeader()->setSectionResizeMode (QHeaderView::Stretch);
     mainLayout->addWidget (table);
 
-    connect (
-        table,
-        &QTableWidget::cellDoubleClicked,
-        this,
-        &FunctionSimilarityDialog::on_TableCellDoubleClick
-    );
+    connect (table, &QTableWidget::cellDoubleClicked, this, &FunctionSimilarityDialog::on_TableCellDoubleClick);
 }
 
 void FunctionSimilarityDialog::on_FindSimilarNames() {
+    rzClearMsg();
     RzCoreLocked core (Core());
 
-    if (!reai_binary_id()) {
-        DISPLAY_ERROR (
-            "No analysis created or applied. I need a RevEngAI analysis to get function info."
-        );
+    if (!rzCanWorkWithAnalysis (GetBinaryId(), true)) {
         return;
     }
+
+    SimilarFunctionsRequest search = SimilarFunctionsRequestInit();
 
     /* check if function exists or not */
-    const QString& fnName        = searchBarInput->text();
-    QByteArray     fnNameByteArr = fnName.toLatin1();
-    CString        fnNameCStr    = fnNameByteArr.constData();
+    QByteArray fnNameByteArr = searchBarInput->text().toLatin1();
 
-    Uint32 requiredSimilarity = similaritySlider->value();
-    Bool   debugFilter        = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
-    Int32  maxResultCount     = maxResultCountInput->value();
-
-    const QString& collectionIdsCsv        = collectionIdsInput->text();
-    QByteArray     collectionIdsCsvByteArr = collectionIdsCsv.toLatin1();
-    CString        collectionIdsCsvCStr    = collectionIdsCsvByteArr.constData();
-
-    const QString& binaryIdsCsv        = collectionIdsInput->text();
-    QByteArray     binaryIdsCsvByteArr = collectionIdsCsv.toLatin1();
-    CString        binaryIdsCsvCStr    = collectionIdsCsvByteArr.constData();
-
-    ReaiAnalysisStatus status = reai_plugin_get_analysis_status_for_binary_id (reai_binary_id());
-    switch (status) {
-        case REAI_ANALYSIS_STATUS_ERROR : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis has errored out.\n"
-                "I need a complete analysis to get function info. Please restart analysis."
-            );
-            return;
-        }
-        case REAI_ANALYSIS_STATUS_QUEUED : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently in queue.\n"
-                "Please wait for the analysis to be analyzed."
-            );
-            return;
-        }
-        case REAI_ANALYSIS_STATUS_PROCESSING : {
-            DISPLAY_ERROR (
-                "The applied/created RevEngAI analysis is currently being processed (analyzed).\n"
-                "Please wait for the analysis to complete."
-            );
-            return;
-        }
-        case REAI_ANALYSIS_STATUS_COMPLETE : {
-            REAI_LOG_TRACE ("Analysis for binary ID %llu is COMPLETE.", reai_binary_id());
-            break;
-        }
-        default : {
-            DISPLAY_ERROR (
-                "Oops... something bad happened :-(\n"
-                "I got an invalid value for RevEngAI analysis status.\n"
-                "Consider\n"
-                "\t- Checking the binary ID, reapply the correct one if wrong\n"
-                "\t- Retrying the command\n"
-                "\t- Restarting the plugin\n"
-                "\t- Checking logs in $TMPDIR or $TMP or $PWD (reai_<pid>)\n"
-                "\t- Checking the connection with RevEngAI host.\n"
-                "\t- Contacting support if the issue persists\n"
-            );
-            return;
-        }
-    }
-
-    RzAnalysisFunction* fn = rz_analysis_get_function_byname (core->analysis, fnNameCStr);
-    if (!fn) {
-        DISPLAY_ERROR ("Provided function name does not exist. Cannot get similar function names.");
-        return;
-    }
-
-    ReaiFunctionId fn_id = reai_plugin_get_function_id_for_rizin_function (core, fn);
-    if (!fn_id) {
+    search.function_id = rzLookupFunctionIdForFunctionWithName (core, fnNameByteArr.constData());
+    if (!search.function_id) {
         DISPLAY_ERROR (
-            "Failed to get function id of given function. Cannot get similar function names."
+            "Failed to get a function id for selected Rizin function. Cannot get similar functions for this one."
         );
         return;
     }
 
-    U64Vec* collection_ids = reai_plugin_csv_to_u64_vec (collectionIdsCsvCStr);
-    U64Vec* binary_ids     = reai_plugin_csv_to_u64_vec (binaryIdsCsvCStr);
+    u32        requiredSimilarity      = similaritySlider->value();
+    bool       debugFilter             = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
+    i32        maxResultCount          = maxResultCountInput->value();
+    QByteArray collectionIdsCsvByteArr = collectionIdsInput->text().toLatin1();
+    QByteArray binaryIdsCsvByteArr     = binaryIdsInput->text().toLatin1();
 
-    Float32           maxDistance = 1.f - (requiredSimilarity / 100.f);
-    ReaiSimilarFnVec* fnMatches   = reai_get_similar_functions (
-        reai(),
-        reai_response(),
-        fn_id,
-        maxResultCount,
-        maxDistance,
-        collection_ids,
-        debugFilter,
-        binary_ids
-    );
+    search.distance                       = 1.f - (requiredSimilarity / 100.f);
+    search.limit                          = maxResultCount;
+    search.debug_include.external_symbols = debugFilter;
+    search.debug_include.system_symbols   = debugFilter;
+    search.debug_include.user_symbols     = debugFilter;
 
-    if (collection_ids) {
-        reai_u64_vec_destroy (collection_ids);
-    }
+    Str  collection_ids_csv = StrInitFromZstr (collectionIdsCsvByteArr.constData());
+    Strs cids               = StrSplit (&collection_ids_csv, ",");
+    VecForeachPtr (&cids, cid, { VecPushBack (&search.collection_ids, strtoull (cid->data, NULL, 0)); });
+    StrDeinit (&collection_ids_csv);
+    VecDeinit (&cids);
 
-    if (binary_ids) {
-        reai_u64_vec_destroy (binary_ids);
-    }
+    Str  binary_ids_csv = StrInitFromZstr (collectionIdsCsvByteArr.constData());
+    Strs bids           = StrSplit (&collection_ids_csv, ",");
+    VecForeachPtr (&bids, bid, { VecPushBack (&search.binary_ids, strtoull (bid->data, NULL, 0)); });
+    StrDeinit (&binary_ids_csv);
+    VecDeinit (&bids);
+
+    SimilarFunctions similar_functions = GetSimilarFunctions (GetConnection(), &search);
+    SimilarFunctionsRequestDeinit (&search);
 
     table->clearContents();
     table->setRowCount (0);
 
-    if (fnMatches && fnMatches->count) {
-        for (ReaiSimilarFn* fnMatch = fnMatches->items;
-             fnMatch < fnMatches->items + fnMatches->count;
-             fnMatch++) {
+    if (similar_functions.length) {
+        VecForeachPtr (&similar_functions, similar_function, {
             QStringList row;
-
-            row << fnMatch->function_name << QString::number (fnMatch->function_id);
-            row << fnMatch->binary_name << QString::number (fnMatch->binary_id);
-            row << QString::number ((1 - fnMatch->distance) * 100);
+            row << similar_function->name.data << QString::number (similar_function->id);
+            row << similar_function->binary_name.data << QString::number (similar_function->binary_id);
+            row << QString::number ((1 - similar_function->distance) * 100);
             addNewRowToResultsTable (table, row);
-        }
+        });
     } else {
         DISPLAY_ERROR ("No similar functions found for given settings");
     }
@@ -320,9 +233,7 @@ void FunctionSimilarityDialog::on_SearchCollections() {
         false /* store ids on double click instead of opening links */
     );
     csDlg->exec();
-    collectionIdsInput->setText (
-        collectionIdsInput->text() + csDlg->getSelectedCollectionIds().join (",")
-    );
+    collectionIdsInput->setText (collectionIdsInput->text() + csDlg->getSelectedCollectionIds().join (","));
 }
 
 void FunctionSimilarityDialog::on_SearchBinaries() {
@@ -341,21 +252,22 @@ void FunctionSimilarityDialog::on_TableCellDoubleClick (int row, int column) {
     }
 
     // generate portal URL from host URL
-    const char* hostCStr = reai_plugin()->reai_config->host;
-    QString     host     = QString::fromUtf8 (hostCStr);
-    host.replace ("api", "portal", Qt::CaseSensitive); // replaces first occurrence
+    Str link = StrDup (&GetConnection()->host);
+    StrReplaceZstr (&link, "api", "portal", 1); // replaces first occurrence
 
     // fetch collection id and open url
     QString functionId = table->item (row, 1)->text();
-    QString link       = QString ("%1/function/%2").arg (host).arg (functionId);
-    QDesktopServices::openUrl (QUrl (link));
+    StrAppendf (&link, "/function/%llu", functionId.toULongLong());
+    QDesktopServices::openUrl (QUrl (link.data));
+
+    StrDeinit (&link);
 }
 
 void FunctionSimilarityDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {
-    Size tableRowCount = t->rowCount();
+    size_t tableRowCount = t->rowCount();
     t->insertRow (tableRowCount);
 
-    for (Int32 i = 0; i < headerLabels.size() - 1; i++) {
+    for (i32 i = 0; i < headerLabels.size() - 1; i++) {
         t->setItem (tableRowCount, i, new QTableWidgetItem (row[i]));
     }
 
@@ -363,13 +275,13 @@ void FunctionSimilarityDialog::addNewRowToResultsTable (QTableWidget* t, const Q
     t->setCellWidget (tableRowCount, 5, renameBtn);
 
     connect (renameBtn, &QPushButton::clicked, this, [this, tableRowCount]() {
-	// get target function name
-    	QString targetFunctionName = table->item (tableRowCount, 0)->text();
+        // get target function name
+        QString targetFunctionName = table->item (tableRowCount, 0)->text();
 
-	// get source function name
-    	const QString& sourceFunctionName = searchBarInput->text();
+        // get source function name
+        const QString& sourceFunctionName = searchBarInput->text();
 
-	// add to rename map
-	oldNameToNewNameMap.push_back({sourceFunctionName, targetFunctionName});
+        // add to rename map
+        oldNameToNewNameMap.push_back ({sourceFunctionName, targetFunctionName});
     });
 }
