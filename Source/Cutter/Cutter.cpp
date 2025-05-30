@@ -73,7 +73,7 @@ void rzDisplayMsg (LogLevel level, Str *msg) {
             break;
     }
 
-    LOG_INFO ("display", "%s", getMsg()->data);
+    LOG_INFO ("%s", getMsg()->data);
     StrClear (getMsg());
 }
 

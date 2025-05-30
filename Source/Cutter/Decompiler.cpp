@@ -115,7 +115,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                 LOG_INFO ("aidec.functions.length = %zu", aidec.functions.length);
                 VecForeachIdx (&aidec.functions, function, idx, {
                     Str dname = StrInit();
-                    StrPrintf (&dname, "<DISASM_FUNCTION_%zu>", idx);
+                    StrPrintf (&dname, "<DISASM_FUNCTION_%llu>", idx);
                     StrReplace (&final_code, &dname, &function.name, -1);
                     StrDeinit (&dname);
                 });
@@ -123,7 +123,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                 LOG_INFO ("aidec.strings.length = %zu", aidec.strings.length);
                 VecForeachIdx (&aidec.strings, string, idx, {
                     Str dname = StrInit();
-                    StrPrintf (&dname, "<DISASM_STRING_%zu>", idx);
+                    StrPrintf (&dname, "<DISASM_STRING_%llu>", idx);
                     StrReplace (&final_code, &dname, &string.string, -1);
                     StrDeinit (&dname);
                 });
@@ -131,7 +131,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                 LOG_INFO ("aidec.unmatched.functions.length = %zu", aidec.unmatched.functions.length);
                 VecForeachIdx (&aidec.unmatched.functions, function, idx, {
                     Str dname = StrInit();
-                    StrPrintf (&dname, "<UNMATCHED_FUNCTION_%zu>", idx);
+                    StrPrintf (&dname, "<UNMATCHED_FUNCTION_%llu>", idx);
                     StrReplace (&final_code, &dname, &function.name, -1);
                     StrDeinit (&dname);
                 });
@@ -139,7 +139,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                 LOG_INFO ("aidec.unmatched.strings.length = %zu", aidec.unmatched.strings.length);
                 VecForeachIdx (&aidec.unmatched.strings, string, idx, {
                     Str dname = StrInit();
-                    StrPrintf (&dname, "<UNMATCHED_STRING_%zu>", idx);
+                    StrPrintf (&dname, "<UNMATCHED_STRING_%llu>", idx);
                     StrReplace (&final_code, &dname, &string.value.str, -1);
                     StrDeinit (&dname);
                 });
@@ -147,7 +147,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                 LOG_INFO ("aidec.unmatched.vars.length = %zu", aidec.unmatched.vars.length);
                 VecForeachIdx (&aidec.unmatched.vars, var, idx, {
                     Str dname = StrInit();
-                    StrPrintf (&dname, "<VAR_%zu>", idx);
+                    StrPrintf (&dname, "<VAR_%llu>", idx);
                     StrReplace (&final_code, &dname, &var.value.str, -1);
                     StrDeinit (&dname);
                 });
@@ -155,7 +155,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                 LOG_INFO ("aidec.unmatched.external_vars.length = %zu", aidec.unmatched.external_vars.length);
                 VecForeachIdx (&aidec.unmatched.external_vars, var, idx, {
                     Str dname = StrInit();
-                    StrPrintf (&dname, "<EXTERNAL_VARIABLE_%zu>", idx);
+                    StrPrintf (&dname, "<EXTERNAL_VARIABLE_%llu>", idx);
                     StrReplace (&final_code, &dname, &var.value.str, -1);
                     StrDeinit (&dname);
                 });
@@ -163,7 +163,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                 LOG_INFO ("aidec.unmatched.custom_types.length = %zu", aidec.unmatched.custom_types.length);
                 VecForeachIdx (&aidec.unmatched.custom_types, var, idx, {
                     Str dname = StrInit();
-                    StrPrintf (&dname, "<CUSTOM_TYPE_%zu>", idx);
+                    StrPrintf (&dname, "<CUSTOM_TYPE_%llu>", idx);
                     StrReplace (&final_code, &dname, &var.value.str, -1);
                     StrDeinit (&dname);
                 });
@@ -194,7 +194,7 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
                         char *name_beg = strstr (final_code.data, function->name.data);
                         while (name_beg) {
                             size name_len = function->name.length;
-                            LOG_INFO ("Found string at offset %d", name_beg - final_code.data);
+                            LOG_INFO ("Found string at offset %d", (i32)(name_beg - final_code.data));
 
                             // provide funciton address information through code annotation
                             RzCodeAnnotation a;

@@ -135,6 +135,8 @@ void BinarySearchDialog::on_PerformBinarySearch() {
 }
 
 void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {
+    (void)column;
+    
     if (openPageOnDoubleClick) {
         // fetch binary id an analysis id and open url
         QString binaryId   = table->item (row, 1)->text();

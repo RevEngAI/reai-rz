@@ -84,6 +84,8 @@ void RecentAnalysisDialog::on_GetRecentAnalysis() {
 }
 
 void RecentAnalysisDialog::on_TableCellDoubleClick (int row, int column) {
+    (void)column;
+    
     // generate portal URL from host URL
     Str link = StrDup(&GetConnection()->host);
     StrReplaceZstr(&link, "api", "portal", 1);
