@@ -3,7 +3,7 @@
 [![Build Linux](https://github.com/RevEngAI/reai-rz/workflows/Build%20Linux/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-linux.yml)
 [![Build macOS](https://github.com/RevEngAI/reai-rz/workflows/Build%20macOS/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-macos.yml)
 [![Build Windows](https://github.com/RevEngAI/reai-rz/workflows/Build%20Windows/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-windows.yml)
-[![Create Release](https://github.com/RevEngAI/reai-rz/workflows/Create%20Release/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/release.yml)
+
 
 RevEng.AI plugins for Rizin & Cutter.
 

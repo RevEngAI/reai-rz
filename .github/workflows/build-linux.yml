@@ -36,7 +36,13 @@ jobs:
           fuse \
           libfuse2 \
           ca-certificates \
-          python3-dev
+          python3-dev \
+          qt6-base-dev \
+          qt6-tools-dev \
+          qt6-tools-dev-tools \
+          libqt6core6 \
+          libqt6gui6 \
+          libqt6widgets6
           
     - name: Install Cutter (contains bundled rizin)
       run: |
@@ -120,22 +126,67 @@ jobs:
         # Collect only shared libraries (.so files)
         find $HOME/.local/lib -name "*.so*" -exec cp {} artifacts/ \; 2>/dev/null || true
         
-        # Collect rizin plugin
-        PLUGIN_DIR=$(rizin -H RZ_USER_PLUGINS 2>/dev/null) || PLUGIN_DIR=""
-        if [ -n "$PLUGIN_DIR" ] && [ -d "$PLUGIN_DIR" ]; then
-          find "$PLUGIN_DIR" -name "*reai*" -exec cp {} artifacts/ \; 2>/dev/null || true
+        # Collect rizin plugin from rizin plugin directory
+        RIZIN_PLUGIN_DIR=$(rizin -H RZ_USER_PLUGINS 2>/dev/null) || RIZIN_PLUGIN_DIR=""
+        if [ -n "$RIZIN_PLUGIN_DIR" ] && [ -d "$RIZIN_PLUGIN_DIR" ]; then
+          echo "=== Collecting rizin plugins from $RIZIN_PLUGIN_DIR ==="
+          find "$RIZIN_PLUGIN_DIR" -name "*reai*" -exec cp {} artifacts/ \; 2>/dev/null || true
         fi
         
-        # Also check common plugin locations
+        # Collect cutter plugin from cutter plugin directory
+        # Get cutter plugin directory from cmake or fall back to common locations
+        CUTTER_PLUGIN_DIRS=(
+          "$HOME/.local/lib/cutter/plugins"
+          "$HOME/.local/share/cutter/plugins"
+          "/usr/local/lib/cutter/plugins"
+          "/usr/local/share/cutter/plugins"
+          "/Applications/Cutter.app/Contents/Resources/plugins"
+        )
+        
+        for CUTTER_DIR in "${CUTTER_PLUGIN_DIRS[@]}"; do
+          if [ -d "$CUTTER_DIR" ]; then
+            echo "=== Collecting cutter plugins from $CUTTER_DIR ==="
+            find "$CUTTER_DIR" -name "*reai*" -exec cp {} artifacts/ \; 2>/dev/null || true
+          fi
+        done
+        
+        # Also check build directories for plugins that might not have been installed
+        echo "=== Collecting plugins from build directories ==="
+        find Build -name "*reai*rizin*" -o -name "*reai*cutter*" | while read file; do
+          if [ -f "$file" ]; then
+            cp "$file" artifacts/ 2>/dev/null || true
+            echo "Found plugin in build: $(basename $file)"
+          fi
+        done
+        
+        # Search for plugins in local installation
         find $HOME/.local -name "*reai*rizin*" -o -name "*reai*cutter*" | while read file; do
           if [ -f "$file" ]; then
             cp "$file" artifacts/ 2>/dev/null || true
+            echo "Found plugin in .local: $(basename $file)"
           fi
         done
         
         # Show what we collected
         echo "=== Collected Runtime Binaries ==="
         find artifacts -type f | sort
+        
+        # Verify we have both plugins
+        RIZIN_PLUGIN=$(find artifacts -name "*reai*rizin*" | head -1)
+        CUTTER_PLUGIN=$(find artifacts -name "*reai*cutter*" | head -1)
+        
+        echo "=== Plugin Collection Summary ==="
+        if [ -n "$RIZIN_PLUGIN" ]; then
+          echo "✅ Rizin plugin found: $(basename $RIZIN_PLUGIN)"
+        else
+          echo "❌ Rizin plugin NOT found"
+        fi
+        
+        if [ -n "$CUTTER_PLUGIN" ]; then
+          echo "✅ Cutter plugin found: $(basename $CUTTER_PLUGIN)"
+        else
+          echo "❌ Cutter plugin NOT found"
+        fi
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
