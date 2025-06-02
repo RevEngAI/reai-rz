@@ -28,7 +28,7 @@ target_link_libraries(
 set_target_properties(
     reai_rizin PROPERTIES
     INSTALL_RPATH "$ENV{HOME}/.local/lib"
-    BUILD_RPATH "${CMAKE_BINARY_DIR}/Source/Radare"
+    BUILD_RPATH "${CMAKE_BINARY_DIR}/Source/Rizin"
 )
 
 # install the built binaries to cutter's plugin directory

@@ -103,7 +103,7 @@ message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 # This will give us path where plugins are installed on this sytem, also libraries to be linked.
 find_package(Rizin REQUIRED)
 
-# Get path of radare2 executable
+# Get path of rizin executable
 execute_process(
     COMMAND where rizin
     OUTPUT_VARIABLE RZ_PATH
