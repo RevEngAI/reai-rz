@@ -145,6 +145,12 @@ jobs:
       run: |
         mkdir -p artifacts
         
+        # Copy install script
+        echo "=== Adding install script ==="
+        cp Scripts/install-linux.sh artifacts/
+        chmod +x artifacts/install-linux.sh
+        cp Scripts/README.md artifacts/
+        
         # Show what was built
         echo "=== Contents of $HOME/.local ==="
         find $HOME/.local -type f | head -20

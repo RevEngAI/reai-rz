@@ -103,118 +103,155 @@ jobs:
         body: |
           ## RevEngAI Rizin Plugin Release ${{ steps.tag_name.outputs.tag_name }}
           
-          This release contains the RevEngAI plugin and runtime libraries for Rizin.
+          This release contains the RevEngAI plugin for both **Rizin** and **Cutter** with automated install scripts.
           
           ### 📦 Downloads
           
           | Platform | Download | Contents |
           |----------|----------|----------|
-          | 🐧 **Linux** | `reai-rz-linux.tar.gz` | Plugin + Runtime Libraries |
-          | 🍎 **macOS** | `reai-rz-macos.tar.gz` | Plugin + Runtime Libraries |
-          | 🪟 **Windows** | `reai-rz-windows.zip` | Plugin + Runtime Libraries + curl |
+          | 🐧 **Linux** | `reai-rz-linux.tar.gz` | Rizin + Cutter plugins + install script |
+          | 🍎 **macOS** | `reai-rz-macos.tar.gz` | Rizin + Cutter plugins + install script |
+          | 🪟 **Windows** | `reai-rz-windows.zip` | Rizin + Cutter plugins + install script |
           
           ### 📋 What's Included
           
-          **All Platforms:**
-          - 🔌 `reai_rizin` plugin (.so/.dylib/.dll)
-          - 📚 `libreai`/`reai` runtime library
-          
-          **Windows Additional:**
-          - 🌐 libcurl runtime library
-          - 📄 Import libraries (.lib files) for development
-          
-          ### 🚀 Installation
-          
-          #### 🚀 Quick Install (One-line commands)
-          
           **Linux:**
-          ```bash
-          curl -sL $(curl -s https://api.github.com/repos/RevEngAI/reai-rz/releases/latest | grep -o 'https://.*reai-rz-linux.tar.gz') | tar -xz && cp reai_rizin.* $(rizin -H RZ_USER_PLUGINS) && sudo cp *.so /usr/local/lib/ && sudo ldconfig
-          ```
+          - 🔌 `libreai_rizin.so` - Rizin plugin  
+          - 🎨 `libreai_cutter.so` - Cutter plugin
+          - 📚 `libreai.so` - RevEngAI runtime library
+          - 🚀 `install-linux.sh` - Automated installer with rpath fixing
           
           **macOS:**
+          - 🔌 `libreai_rizin.dylib` - Rizin plugin
+          - 🎨 `libreai_cutter.dylib` - Cutter plugin  
+          - 📚 `libreai.dylib` - RevEngAI runtime library
+          - 🚀 `install-macos.sh` - Automated installer with rpath fixing
+          
+          **Windows:**
+          - 🔌 `libreai_rizin.dll` - Rizin plugin
+          - 🎨 `libreai_cutter.dll` - Cutter plugin
+          - 📚 `reai.dll` + `reai.lib` - RevEngAI runtime library
+          - 🌐 `libcurl.dll` + `libcurl_imp.lib` - HTTP client library
+          - 🚀 `install-windows.ps1` - Automated installer with PATH setup
+          
+          ### 🚀 Installation (Recommended)
+          
+          **🎯 Use the included install scripts for best results:**
+          
+          #### Linux
           ```bash
-          curl -sL $(curl -s https://api.github.com/repos/RevEngAI/reai-rz/releases/latest | grep -o 'https://.*reai-rz-macos.tar.gz') | tar -xz && cp reai_rizin.* $(rizin -H RZ_USER_PLUGINS) && sudo cp *.dylib /usr/local/lib/
+          # Download and extract
+          wget https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-linux.tar.gz
+          tar -xzf reai-rz-linux.tar.gz
+          cd reai-rz-linux
+          
+          # Run automated installer (requires patchelf)
+          sudo apt install patchelf  # Ubuntu/Debian
+          chmod +x install-linux.sh
+          ./install-linux.sh
           ```
           
-          **Windows (PowerShell):**
-          ```powershell
-          $url = (Invoke-RestMethod "https://api.github.com/repos/RevEngAI/reai-rz/releases/latest").assets | Where-Object {$_.name -like "*windows.zip"} | Select-Object -ExpandProperty browser_download_url; Invoke-WebRequest $url -OutFile "reai-rz.zip"; Expand-Archive "reai-rz.zip" -Force; $pluginDir = & rizin -H RZ_USER_PLUGINS; if (-not (Test-Path $pluginDir)) { New-Item -ItemType Directory -Path $pluginDir }; Copy-Item "reai-rz\*.dll" $pluginDir; Remove-Item "reai-rz.zip", "reai-rz" -Recurse -Force
-          ```
-          
-          ---
-          
-          #### 📋 Manual Installation
-          
-          #### Linux/macOS
+          #### macOS  
           ```bash
-          # Extract the package
-          tar -xzf reai-rz-<platform>.tar.gz
+          # Download and extract
+          curl -L -O https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-macos.tar.gz
+          tar -xzf reai-rz-macos.tar.gz
+          cd reai-rz-macos
           
-          # Install plugin
-          cp reai_rizin.* $(rizin -H RZ_USER_PLUGINS)
-          
-          # Install libraries to system (optional, if not found automatically)
-          sudo cp libreai.* /usr/local/lib/
-          sudo ldconfig  # Linux only
+          # Run automated installer (requires Xcode tools)
+          xcode-select --install  # if not already installed
+          chmod +x install-macos.sh
+          ./install-macos.sh
           ```
           
           #### Windows
+          ```powershell
+          # Download and extract (PowerShell)
+          Invoke-WebRequest "https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-windows.zip" -OutFile "reai-rz-windows.zip"
+          Expand-Archive "reai-rz-windows.zip" -Force
+          cd reai-rz-windows
           
-          **⚠️ Important:** On Windows, ALL DLL files must be placed in the rizin plugins directory to ensure proper loading.
-          
-          ```cmd
-          # Extract the zip file to a temporary location
-          # 
-          # Get the rizin plugins directory path:
-          rizin -H RZ_USER_PLUGINS
-          # This will show something like: C:\Users\YourName\AppData\Local\rizin\plugins
-          
-          # Method 1: Copy ALL DLL files to plugins directory (RECOMMENDED)
-          copy *.dll "%APPDATA%\rizin\plugins\"
-          
-          # Method 2: If the above path doesn't work, create it manually:
-          mkdir "%APPDATA%\rizin\plugins" 2>nul
-          copy *.dll "%APPDATA%\rizin\plugins\"
-          
-          # Method 3: For portable rizin installations:
-          # copy *.dll "C:\path\to\your\rizin\plugins\"
+          # Run automated installer
+          .\install-windows.ps1
           ```
           
-          **Files that must be installed:**
-          - `reai_rizin.dll` (the plugin)
-          - `reai.dll` (RevEngAI library)
-          - `libcurl.dll` (HTTP client library)
-          - Other DLL dependencies (if any)
+          ### 🛠️ What The Install Scripts Do
           
-          **Optional for developers:**
-          - `.lib` files can be placed anywhere in your development environment for linking
+          The install scripts provide **intelligent, platform-specific installation**:
+          
+          - ✅ **Install libraries** to proper user directories (`~/.local/lib/`)
+          - ✅ **Install Rizin plugin** to `$(rizin -H RZ_USER_PLUGINS)`
+          - ✅ **Install Cutter plugin** to platform-specific Cutter plugin directory
+          - ✅ **Fix rpath/library paths** so plugins can find dependencies
+          - ✅ **Set up environment** with helper scripts for easy usage
+          - ✅ **Verify installation** and provide clear success/error messages
+          
+          ### 📋 Manual Installation (Advanced)
+          
+          If you prefer manual installation or the scripts don't work:
+          
+          #### Exact File Locations
+          
+          **Shared Libraries:**
+          - Linux: `~/.local/lib/libreai.so`
+          - macOS: `~/.local/lib/libreai.dylib`  
+          - Windows: `%USERPROFILE%\.local\bin\reai.dll` + `%USERPROFILE%\.local\lib\reai.lib`
+          
+          **Rizin Plugin:**
+          - All platforms: Copy to `$(rizin -H RZ_USER_PLUGINS)`
+          
+          **Cutter Plugin:**
+          - Linux: `~/.local/share/rizin/cutter/plugins/native/`
+          - macOS: `~/Library/Application Support/rizin/cutter/plugins/native/`
+          - Windows: `%APPDATA%\rizin\cutter\plugins\native\`
+          
+          **⚠️ Important:** On Unix systems, you may need to set environment variables:
+          ```bash
+          export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"  # Linux
+          export DYLD_LIBRARY_PATH="$HOME/.local/lib:$DYLD_LIBRARY_PATH"  # macOS
+          ```
           
           ### ✅ Verification
           
-          After installation, verify the plugin is loaded:
+          After installation, verify both plugins work:
+          
+          **Rizin:**
           ```bash
           rizin -
           [0x00000000]> REh
           # Should display RevEngAI plugin help
           ```
           
+          **Cutter:**
+          - Launch Cutter
+          - Check **Plugins** menu for RevEngAI options
+          - Or check **Edit** → **Preferences** → **Plugins** for loaded plugins
+          
           ### 📝 Configuration
           
           Create a configuration file at `~/.creait`:
           ```toml
-          api_key = YOUR_REVENGAI_API_KEY
-          host = https://api.reveng.ai
+          api_key = "YOUR_REVENGAI_API_KEY"
+          host = "https://api.reveng.ai"
           ```
           
           ### 🔧 Requirements
           
-          - **Rizin 0.7.3** or compatible version
+          - **Rizin 0.8.0** or compatible version
+          - **Cutter 2.4.0+** (optional, for GUI plugin)
           - **Internet connection** for RevEngAI API access
           - **Valid RevEngAI API key** from https://portal.reveng.ai
           
+          **Platform-specific:**
+          - **Linux:** `patchelf` tool for rpath fixing
+          - **macOS:** Xcode command line tools for rpath fixing  
+          - **Windows:** PowerShell (included with Windows)
+          
           ### 🐛 Issues & Support
           
-          Report issues at: https://github.com/RevEngAI/reai-rz/issues
+          - 📋 **Installation issues:** Check the install script output for detailed error messages
+          - 🔧 **Plugin not loading:** Verify environment variables are set (see install script output)
+          - 🌐 **API issues:** Verify your API key and configuration file
+          - 🐛 **Bug reports:** https://github.com/RevEngAI/reai-rz/issues
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

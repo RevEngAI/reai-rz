@@ -32,7 +32,12 @@ jobs:
       
     - name: Collect runtime binaries
       run: |
-        New-Item -ItemType Directory -Force -Path "artifacts"
+        New-Item -ItemType Directory -Force -Path artifacts
+        
+        # Copy install script
+        Write-Host "=== Adding install script ==="
+        Copy-Item Scripts\install-windows.ps1 artifacts\
+        Copy-Item Scripts\README.md artifacts\
         
         $InstallPath = "$env:USERPROFILE\.local\RevEngAI\Rizin\Install"
         
@@ -109,6 +114,9 @@ jobs:
         Write-Host "✅ Cutter Plugin: Found"
         Write-Host "`nCollected files:"
         $files | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
+        
+        # Show what was built
+        Write-Host "=== Contents of user profile .local ==="
       shell: powershell
       
     - name: Upload artifacts

@@ -46,6 +46,10 @@ set_target_properties(
 # Set platform-specific INSTALL_RPATH
 if(APPLE)
     # macOS: @loader_path is relative to the plugin location
+    # Cutter plugin is at: ~/Library/Application Support/rizin/cutter/plugins/native/plugin.so
+    # Libraries at: ~/.local/lib/librz_*.dylib
+    # For development builds: $ENV{HOME} expands correctly at build time
+    # For CI builds: install script will fix rpath at installation time
     set_target_properties(reai_cutter PROPERTIES
         INSTALL_RPATH "@loader_path;@loader_path/../lib;@rpath;$ENV{HOME}/.local/lib;/usr/local/lib;/opt/homebrew/lib;/usr/lib;/lib"
     )
