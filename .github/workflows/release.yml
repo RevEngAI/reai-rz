@@ -24,7 +24,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Download Linux artifacts
-      uses: dawidd6/action-download-artifact@v3
+      uses: dawidd6/action-download-artifact@v6
       with:
         workflow: build-linux.yml
         name: reai-rz-linux-binaries
@@ -32,7 +32,7 @@ jobs:
         if_no_artifact_found: warn
         
     - name: Download macOS artifacts
-      uses: dawidd6/action-download-artifact@v3
+      uses: dawidd6/action-download-artifact@v6
       with:
         workflow: build-macos.yml
         name: reai-rz-macos-binaries
@@ -40,7 +40,7 @@ jobs:
         if_no_artifact_found: warn
         
     - name: Download Windows artifacts
-      uses: dawidd6/action-download-artifact@v3
+      uses: dawidd6/action-download-artifact@v6
       with:
         workflow: build-windows.yml
         name: reai-rz-windows-binaries
