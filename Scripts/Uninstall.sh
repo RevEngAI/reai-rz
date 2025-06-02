@@ -5,14 +5,9 @@ echo "Assuming install path $InstallPath"
 
 # Remove installed headers
 sudo rm -rf "$InstallPath/include/Reai"
-sudo rm -rf "$InstallPath/include/cjson"
-sudo rm "$InstallPath/include/toml.h"
 
 # Remove installed libraries
 sudo rm -rf "$InstallPath/lib/libreai*"
-sudo rm -rf "$InstallPath/lib/libcjson*"
-sudo rm -rf "$InstallPath/lib/libtoml*"
-sudo rm -rf "$InstallPath/lib/cmake/cJSON"
 
 # Remove plugin
 OS="$(uname)"
