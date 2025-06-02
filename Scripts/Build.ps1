@@ -10,21 +10,13 @@
 # Dependencies
 # - MSVC Compiler Toolchain
 
-$BaseDir = "$HOME\\.local\\RevEngAI\\Rizin"
+$BaseDir = "$($HOME -replace '\\', '\\')\\.local\\RevEngAI\\Rizin"
 $BuildDir = "$BaseDir\\Build"
 $InstallPath = "$BaseDir\\Install"
 $DownPath = "$BuildDir\\Artifacts"
 $DepsPath = "$BuildDir\\Dependencies"
 
-# Remove install directory if already exists to avoid clashes
-if ((Test-Path "$InstallPath")) {
-    Remove-Item -LiteralPath "$InstallPath" -Force -Recurse
-}
-
-# Setup build directory structure
-if ((Test-Path "$BuildDir")) {
-    Remove-Item -LiteralPath "$BuildDir" -Force -Recurse
-}
+Remove-Item -LiteralPath "$BaseDir" -Force -Recurse 
 
 md "$BaseDir"
 md "$BuildDir"
@@ -75,12 +67,12 @@ function Make-Available () {
 
 # Make Cutter available for use
 Make-Available -pkgCmdName "cutter" `
-    -pkgUrl "https://github.com/rizinorg/cutter/releases/download/v2.3.4/Cutter-v2.3.4-Windows-x86_64.zip" `
-    -pkgName "Cutter-v2.3.4-Windows-x86_64.zip" `
-    -pkgSubfolderName "Cutter-v2.3.4-Windows-x86_64"
+    -pkgUrl "https://github.com/rizinorg/cutter/releases/download/v2.4.1/Cutter-v2.4.1-Windows-x86_64.zip" `
+    -pkgName "Cutter-v2.4.1-Windows-x86_64.zip" `
+    -pkgSubfolderName "Cutter-v2.4.1-Windows-x86_64"
 
 # Make Cutter Deps available for use
-aria2c "https://github.com/rizinorg/cutter-deps/releases/download/v15/cutter-deps-win-x86_64.tar.gz" -j8 -d "$DownPath"
+aria2c "https://github.com/rizinorg/cutter-deps/releases/download/v16/cutter-deps-win-x86_64.tar.gz" -j8 -d "$DownPath"
 
 # Installing dependency
 tar -xvf "$DownPath\\cutter-deps-win-x86_64.tar.gz" -C "$DownPath"
@@ -114,8 +106,6 @@ Write-Host "Now fetching plugin dependencies, and then building and installing t
 $DepsList = @"
 
 https://curl.se/download/curl-8.13.0.zip
-https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.18.zip
-https://github.com/brightprogrammer/tomlc99/archive/refs/tags/v1.zip
 https://github.com/RevEngAI/creait/archive/refs/heads/master.zip
 https://github.com/RevEngAI/reai-rz/archive/refs/heads/master.zip
 "@
@@ -132,9 +122,7 @@ $pkgs = @(
     # Final Destination         Downloaded archive name                Subfolder name where actually extracted
     @{name = "curl";    path = "$DownPath\\curl-8.13.0.zip";           subfolderName="curl-8.13.0"},
     @{name = "reai-rz"; path = "$DownPath\\reai-rz-master.zip";        subfolderName="reai-rz-master"},
-    @{name = "tomlc99"; path = "$DownPath\\tomlc99-1.zip";             subfolderName="tomlc99-1"},
-    @{name = "creait";  path = "$DownPath\\creait-master.zip";         subfolderName="creait-master"},
-    @{name = "cjson";   path = "$DownPath\\cJSON-1.7.18.zip";          subfolderName="cJSON-1.7.18"}
+    @{name = "creait";  path = "$DownPath\\creait-master.zip";         subfolderName="creait-master"}
 )
 # Unpack a dependency to be built later on
 # These temporarily go into dependencies directory
@@ -171,43 +159,13 @@ cmake --build "$DepsPath\\curl\\Build" --config Release
 cmake --install "$DepsPath\\curl\\Build" --prefix "$InstallPath" --config Release
 Write-Host Build" & INSTALL libCURL... DONE"
 
-# Prepare creait 
-# Build and install cjson
-Write-Host Build" & INSTALL cJSON..."
-cmake -S "$DepsPath\\cjson" -A x64 `
-    -B "$DepsPath\\cjson\\Build" `
-    -G "Visual Studio 17 2022" `
-    -D CMAKE_C_STANDARD=99 `
-    -D ENABLE_CUSTOM_COMPILER_FLAGS=OFF `
-    -D CMAKE_PREFIX_PATH="$InstallPath" `
-    -D CMAKE_INSTALL_PREFIX="$InstallPath" `
-    -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
-cmake --build "$DepsPath\\cjson\\Build" --config Release
-cmake --install "$DepsPath\\cjson\\Build" --prefix "$InstallPath" --config Release
-Write-Host Build" & INSTALL cJSON... DONE"
-
-# Build and install tomlc99 
-Write-Host Build" & INSTALL tomlc99..."
-cmake -S "$DepsPath\\tomlc99" -A x64 `
-    -B "$DepsPath\\tomlc99\\Build" `
-    -G "Visual Studio 17 2022" `
-    -D CMAKE_C_STANDARD=23 `
-    -D CMAKE_PREFIX_PATH="$InstallPath" `
-    -D CMAKE_INSTALL_PREFIX="$InstallPath" `
-    -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
-cmake --build "$DepsPath\\tomlc99\\Build" --config Release
-cmake --install "$DepsPath\\tomlc99\\Build" --prefix "$InstallPath" --config Release
-Write-Host Build" & INSTALL tomlc99... DONE"
-
 # Build and install creait
 Write-Host Build" & INSTALL creait..."
 cmake -S "$DepsPath\\creait" -A x64 `
     -B "$DepsPath\\creait\\Build" `
     -G "Visual Studio 17 2022" `
     -D CMAKE_PREFIX_PATH="$InstallPath" `
-    -D CMAKE_INSTALL_PREFIX="$InstallPath" `
-    -D BUILD_SHARED_LIBS=OFF `
-    -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
+    -D CMAKE_INSTALL_PREFIX="$InstallPath"
 cmake --build "$DepsPath\\creait\\Build" --config Release
 cmake --install "$DepsPath\\creait\\Build" --prefix "$InstallPath" --config Release
 Write-Host Build" & INSTALL creait... DONE"
@@ -216,16 +174,17 @@ Write-Host Build" & INSTALL creait... DONE"
 cmake -S "$DepsPath\\reai-rz" -A x64 `
     -B "$DepsPath\\reai-rz\\Build" `
     -G "Visual Studio 17 2022" `
+    -D CMAKE_MODULE_PATH="$InstallPath\\lib\\cmake\\Modules" `
     -D Rizin_DIR="$InstallPath\\lib\\cmake\\Rizin" `
     -D Cutter_DIR="$InstallPath\\lib\\cmake\\Cutter" `
     -D Qt5_DIR="$InstallPath\\lib\\cmake\\Qt5" `
     -D CMAKE_PREFIX_PATH="$InstallPath" `
     -D CMAKE_INSTALL_PREFIX="$InstallPath" `
     -D BUILD_CUTTER_PLUGIN=ON `
-    -D CUTTER_USE_QT6=OFF `
+    -D CUTTER_USE_QT6=ON `
     -D CMAKE_C_FLAGS="/TC" `
-    -D CMAKE_CXX_FLAGS="/TC" `
-    -D CMAKE_POLICY_VERSION_MINIMUM="3.5"
+    -D CMAKE_CXX_FLAGS="/TC"
+
 cmake --build "$DepsPath\\reai-rz\\Build" --config Release
 cmake --install "$DepsPath\\reai-rz\\Build" --prefix "$InstallPath" --config Release
 Write-Host Build" & INSTALL reai-rz... DONE"
