@@ -30,23 +30,6 @@ md "$DepsPath"
 # Set environment variable for this powershell session
 $env:Path = $env:Path + ";$InstallPath;$InstallPath\\bin;$InstallPath\\lib;$DownPath\\aria2c;$DownPath\\7zip"
 
-# Set up Python virtual environment for build dependencies
-Write-Host "Setting up Python virtual environment..."
-python -m venv "$BaseDir\\.venv"
-
-# Activate virtual environment
-& "$BaseDir\\.venv\\Scripts\\Activate.ps1"
-
-# Install Python dependencies
-Write-Host "Installing Python dependencies..."
-python -m pip install --upgrade pip
-python -m pip install pyyaml
-
-# Verify PyYAML is available
-python -c "import yaml; print('PyYAML is available in virtual environment')"
-
-Write-Host "Python environment setup complete."
-
 # x64 Architecture Builds
 cmd /c 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
 
@@ -190,6 +173,25 @@ cmake --build "$DepsPath\\creait\\Build" --config Release
 cmake --install "$DepsPath\\creait\\Build" --prefix "$InstallPath" --config Release
 Write-Host Build" & INSTALL creait... DONE"
 
+
+# Set up Python virtual environment for build dependencies
+Write-Host "Setting up Python virtual environment..."
+python -m venv "$BaseDir\\.venv"
+
+# Activate virtual environment
+& "$BaseDir\\.venv\\Scripts\\Activate.ps1"
+
+# Install Python dependencies
+Write-Host "Installing Python dependencies..."
+python -m pip install --upgrade pip
+python -m pip install pyyaml
+
+# Verify PyYAML is available
+python -c "import yaml; print('PyYAML is available in virtual environment')"
+
+Write-Host "Python environment setup complete."
+
+
 # Build reai-rz
 cmake -S "$DepsPath\\reai-rz" -A x64 `
     -B "$DepsPath\\reai-rz\\Build" `
@@ -202,8 +204,8 @@ cmake -S "$DepsPath\\reai-rz" -A x64 `
     -D CMAKE_INSTALL_PREFIX="$InstallPath" `
     -D BUILD_CUTTER_PLUGIN=ON `
     -D CUTTER_USE_QT6=ON `
-    -D CMAKE_C_FLAGS="/TC" `
-    -D CMAKE_CXX_FLAGS="/TC"
+    -D CMAKE_C_FLAGS="/TC /I$InstallPath\\include" `
+    -D CMAKE_CXX_FLAGS="/TC /I$InstallPath\\include"
 
 cmake --build "$DepsPath\\reai-rz\\Build" --config Release
 cmake --install "$DepsPath\\reai-rz\\Build" --prefix "$InstallPath" --config Release

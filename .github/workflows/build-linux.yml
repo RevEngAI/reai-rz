@@ -47,6 +47,8 @@ jobs:
           libqt6svg6 \
           libqt6opengl6-dev \
           libqt6opengl6 \
+          qt6-5compat-dev \
+          libqt6core5compat6 \
           libxkbcommon-dev
           
     - name: Install Cutter (contains bundled rizin)
@@ -61,6 +63,15 @@ jobs:
         # Install to system locations
         sudo cp -r squashfs-root/usr/* /usr/local/
         sudo ldconfig
+        
+        # Debug: Check what Cutter headers are available
+        echo "=== Checking Cutter installation ==="
+        echo "Cutter include directory:"
+        ls -la /usr/local/include/cutter/ 2>/dev/null || echo "No cutter headers found"
+        echo "Looking for CutterPlugin headers:"
+        find /usr/local/include -name "*Plugin*" -o -name "*plugin*" 2>/dev/null || echo "No plugin headers found"
+        echo "Cutter cmake modules:"
+        ls -la /usr/local/lib/cmake/Cutter/ 2>/dev/null || echo "No Cutter cmake modules found"
         
         # Verify installation
         rizin -v
@@ -108,6 +119,13 @@ jobs:
         
         InstallPath="${HOME}/.local"
         
+        # Debug: Check paths before building
+        echo "=== Build Configuration Debug ==="
+        echo "CMAKE_PREFIX_PATH will be: $InstallPath:/usr/local"
+        echo "Checking Cutter headers accessibility:"
+        echo "CutterPlugin.h: $(ls -la /usr/local/include/cutter/plugins/CutterPlugin.h 2>/dev/null || echo 'NOT FOUND')"
+        echo "Cutter cmake: $(ls -la /usr/local/lib/cmake/Cutter/ 2>/dev/null || echo 'NOT FOUND')"
+        
         # Build reai-rz with both rizin and cutter plugins enabled
         cmake -S "." \
             -B "Build" \
@@ -116,8 +134,13 @@ jobs:
             -D CMAKE_PREFIX_PATH="$InstallPath:/usr/local" \
             -D CMAKE_INSTALL_PREFIX="$InstallPath" \
             -D BUILD_CUTTER_PLUGIN=ON \
-            -D CUTTER_USE_QT6=ON
-        cmake --build "Build" --config Release
+            -D CUTTER_USE_QT6=ON \
+            -D CMAKE_VERBOSE_MAKEFILE=ON \
+            -D CMAKE_CXX_FLAGS="-I/usr/local/include" \
+            -D CMAKE_C_FLAGS="-I/usr/local/include"
+        
+        echo "=== Starting build ==="
+        cmake --build "Build" --config Release --verbose
         cmake --install "Build" --prefix "$InstallPath" --config Release
         
     - name: Collect runtime binaries

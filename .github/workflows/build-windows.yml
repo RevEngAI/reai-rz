@@ -25,18 +25,7 @@ jobs:
         
     - name: Build project with Python venv
       run: |
-        # Create and activate virtual environment
-        python -m venv .venv
-        .\.venv\Scripts\Activate.ps1
-        
-        # Install Python dependencies
-        python -m pip install --upgrade pip
-        python -m pip install pyyaml
-        
-        # Verify PyYAML is available
-        python -c "import yaml; print('PyYAML is available in venv')"
-        
-        # Run the build script
+        # Run the build script which now handles venv setup internally
         Set-ExecutionPolicy Bypass -Scope Process -Force
         .\Scripts\Build.ps1
       shell: powershell
