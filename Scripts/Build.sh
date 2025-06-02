@@ -23,7 +23,6 @@ cmake -S "/tmp/creait" \
     -D CMAKE_BUILD_TYPE=Release \
     -D CMAKE_PREFIX_PATH="$InstallPath" \
     -D CMAKE_INSTALL_PREFIX="$InstallPath"
-    -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
 cmake --build "/tmp/creait/Build" --config Release
 cmake --install "/tmp/creait/Build" --prefix "$InstallPath" --config Release
 
@@ -38,8 +37,7 @@ cmake -S "/tmp/reai-rz" \
     -G Ninja \
     -D CMAKE_BUILD_TYPE=Release \
     -D CMAKE_PREFIX_PATH="$InstallPath" \
-    -D CMAKE_INSTALL_PREFIX="$InstallPath" \
-    -D CMAKE_POLICY_VERSION_MINIMUM="3.5"
+    -D CMAKE_INSTALL_PREFIX="$InstallPath"
 cmake --build "/tmp/reai-rz/Build" --config Release
 cmake --install "/tmp/reai-rz/Build" --prefix "$InstallPath" --config Release
 
