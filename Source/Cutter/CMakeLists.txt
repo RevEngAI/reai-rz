@@ -11,6 +11,7 @@ set(CMAKE_AUTORCC ON) # Auto Resource Compile
 # Libraries needs to be searched here to be linked properly
 # Because MSVC obviously
 find_package(CURL REQUIRED)
+find_package(Creait REQUIRED)
 
 if(CUTTER_USE_QT6)
   find_package(Qt6 COMPONENTS Widgets REQUIRED)
@@ -27,14 +28,20 @@ set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c"
                            "Ui/BinarySearchDialog.cpp" "Ui/CollectionSearchDialog.cpp"
                            "Ui/RecentAnalysisDialog.cpp")
 add_library(reai_cutter STATIC MODULE ${ReaiCutterPluginSource})
+target_include_directories(reai_cutter PUBLIC ${CREAIT_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS})
 target_link_libraries(
   reai_cutter
   PUBLIC
   Cutter::Cutter
   Rizin::Core
-  reai
+  ${CREAIT_LIBRARIES}
   ${CURL_LIBRARIES}
   ${QT_LIBRARIES}
+)
+set_target_properties(
+    reai_cutter PROPERTIES
+    INSTALL_RPATH "$ENV{HOME}/.local/lib"
+    BUILD_RPATH "${CMAKE_BINARY_DIR}/Source/Radare"
 )
 
 # install the built binaries to cutter's plugin directory

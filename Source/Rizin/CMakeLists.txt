@@ -12,16 +12,23 @@ set(ReaiRzPluginSources "Rizin.c" "../Plugin.c" "CmdHandlers.c")
 # Libraries needs to be searched here to be linked properly
 # Because MSVC obviously
 find_package(CURL REQUIRED)
+find_package(Creait REQUIRED)
 
 # Rizin only accepts shared libraries for plugins
 add_library(reai_rizin MODULE SHARED ${ReaiRzPluginSources})
+target_include_directories(reai_rizin PUBLIC ${CREAIT_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS})
 target_link_libraries(
   reai_rizin
   PUBLIC
   Rizin::Core
   reai_cmdescs
-  reai
+  ${CREAIT_LIBRARIES}
   ${CURL_LIBRARIES}
+)
+set_target_properties(
+    reai_rizin PROPERTIES
+    INSTALL_RPATH "$ENV{HOME}/.local/lib"
+    BUILD_RPATH "${CMAKE_BINARY_DIR}/Source/Radare"
 )
 
 # install the built binaries to cutter's plugin directory

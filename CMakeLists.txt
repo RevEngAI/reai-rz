@@ -56,6 +56,19 @@ else()
     message(FATAL_ERROR "Unsupported system type: ${CMAKE_SYSTEM_NAME}")
 endif()
 
+if(APPLE)
+    list(APPEND CMAKE_INSTALL_RPATH "@executable_path/../lib")
+    list(APPEND CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+    list(APPEND CMAKE_MODULE_PATH "/Applications/Cutter.app/Contents/Resources/lib/cmake")
+    list(APPEND CMAKE_MODULE_PATH "$ENV{HOME}/.local/lib/cmake/Modules")
+    list(APPEND CMAKE_MODULE_PATH "/usr/local/lib/cmake/Modules")
+    list(APPEND CMAKE_MODULE_PATH "/usr/lib/cmake/Modules")
+elseif(UNIX)
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/../lib")
+    list(APPEND CMAKE_MODULE_PATH "$ENV{HOME}/.local/lib/cmake/Modules")
+    list(APPEND CMAKE_MODULE_PATH "/usr/local/lib/cmake/Modules")
+    list(APPEND CMAKE_MODULE_PATH "/usr/lib/cmake/Modules")
+endif()
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
 
 if (ENABLE_ASAN)
@@ -89,9 +102,24 @@ message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 
 # This will give us path where plugins are installed on this sytem, also libraries to be linked.
 find_package(Rizin REQUIRED)
-set(RIZIN_INSTALL_PLUGDIR "${Rizin_PLUGINDIR}" CACHE STRING "Directory to install Rizin plugins into")
 
-message("Rizin plugin will be installed at ${CMAKE_INSTALL_PREFIX}/${RIZIN_INSTALL_PLUGDIR}")
+# Get path of radare2 executable
+execute_process(
+    COMMAND where rizin
+    OUTPUT_VARIABLE RZ_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+message("Resolved path to rizin: ${RZ_PATH}")
+
+# Get user plugin storage path 
+execute_process(
+    COMMAND rizin -H RZ_USER_PLUGINS
+    OUTPUT_VARIABLE RIZIN_INSTALL_PLUGDIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+message("Rizin plugin will be installed at ${RIZIN_INSTALL_PLUGDIR}")
 
 link_directories(
     "${CMAKE_INSTALL_PREFIX}/lib"
@@ -101,22 +129,6 @@ link_directories(
 include_directories(
     "${CMAKE_INSTALL_PREFIX}/include"
 )
-
-set(LOCAL_INCLUDE "$ENV{HOME}/.local/include")
-if(EXISTS "${LOCAL_INCLUDE}")
-    include_directories("${LOCAL_INCLUDE}")
-endif()
-
-set(LOCAL_BIN "$ENV{HOME}/.local/bin")
-if(EXISTS "${LOCAL_BIN}")
-    link_directories("${LOCAL_BIN}")
-endif()
-
-set(LOCAL_LIB "$ENV{HOME}/.local/lib")
-if(EXISTS "${LOCAL_LIB}")
-    link_directories("${LOCAL_LIB}")
-endif()
-
 
 if(BUILD_CUTTER_PLUGIN)
     find_package(Cutter REQUIRED)
