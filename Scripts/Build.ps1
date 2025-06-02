@@ -30,6 +30,23 @@ md "$DepsPath"
 # Set environment variable for this powershell session
 $env:Path = $env:Path + ";$InstallPath;$InstallPath\\bin;$InstallPath\\lib;$DownPath\\aria2c;$DownPath\\7zip"
 
+# Set up Python virtual environment for build dependencies
+Write-Host "Setting up Python virtual environment..."
+python -m venv "$BaseDir\\.venv"
+
+# Activate virtual environment
+& "$BaseDir\\.venv\\Scripts\\Activate.ps1"
+
+# Install Python dependencies
+Write-Host "Installing Python dependencies..."
+python -m pip install --upgrade pip
+python -m pip install pyyaml
+
+# Verify PyYAML is available
+python -c "import yaml; print('PyYAML is available in virtual environment')"
+
+Write-Host "Python environment setup complete."
+
 # x64 Architecture Builds
 cmd /c 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat'
 
