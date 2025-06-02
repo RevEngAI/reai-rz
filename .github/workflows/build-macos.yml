@@ -43,10 +43,22 @@ jobs:
         # Download Cutter DMG which contains bundled rizin
         wget -O cutter.dmg "https://github.com/rizinorg/cutter/releases/download/v2.4.1/$DMG_NAME"
         
-        # Mount DMG and install
+        # Mount DMG and detect actual volume name
         hdiutil attach cutter.dmg
-        cp -R "/Volumes/Cutter/Cutter.app" /Applications/
-        hdiutil detach "/Volumes/Cutter"
+        
+        # Find the actual mounted volume (could be "Cutter" or "Cutter v2.4.1" etc.)
+        CUTTER_VOLUME=$(ls /Volumes/ | grep -i cutter | head -1)
+        if [ -z "$CUTTER_VOLUME" ]; then
+          echo "Error: Could not find Cutter volume after mounting"
+          ls /Volumes/
+          exit 1
+        fi
+        
+        echo "Found Cutter volume: $CUTTER_VOLUME"
+        
+        # Install Cutter app
+        cp -R "/Volumes/$CUTTER_VOLUME/Cutter.app" /Applications/
+        hdiutil detach "/Volumes/$CUTTER_VOLUME"
         
         # Check what's inside the Cutter bundle
         echo "=== Cutter bundle contents ==="
@@ -55,6 +67,15 @@ jobs:
         ls -la /Applications/Cutter.app/Contents/Resources/lib/ || echo "No lib directory found"
         echo "=== Cutter bin directory ==="
         ls -la /Applications/Cutter.app/Contents/Resources/bin/ || echo "No bin directory found"
+        echo "=== Cutter include directory ==="
+        ls -la /Applications/Cutter.app/Contents/Resources/include/ || echo "No include directory found"
+        echo "=== Looking for CutterPlugin header specifically ==="
+        find /Applications/Cutter.app -name "*Plugin*" -type f 2>/dev/null || echo "No plugin headers found"
+        find /Applications/Cutter.app -name "*plugin*" -type f 2>/dev/null || echo "No plugin headers found"
+        echo "=== Checking for cutter headers ==="
+        find /Applications/Cutter.app/Contents/Resources/include -name "*.h" 2>/dev/null | grep -i plugin || echo "No plugin headers in include dir"
+        echo "=== Checking CMake modules ==="
+        ls -la /Applications/Cutter.app/Contents/Resources/lib/cmake/ || echo "No cmake directory found"
         
         # Add rizin from Cutter bundle to PATH and set library paths
         echo "/Applications/Cutter.app/Contents/Resources/bin" >> $GITHUB_PATH
@@ -111,16 +132,32 @@ jobs:
         InstallPath="${HOME}/.local"
         CutterPath="/Applications/Cutter.app/Contents/Resources"
         
+        # Debug CMAKE paths
+        echo "=== CMake Configuration Debug ==="
+        echo "InstallPath: $InstallPath"
+        echo "CutterPath: $CutterPath"
+        echo "CMAKE_PREFIX_PATH will be: $InstallPath:$CutterPath"
+        echo "CMAKE_MODULE_PATH will include: $CutterPath/lib/cmake"
+        
+        # Check if critical paths exist
+        echo "=== Checking critical paths ==="
+        echo "Cutter headers: $(ls -la $CutterPath/include/cutter/plugins/CutterPlugin.h 2>/dev/null || echo 'NOT FOUND')"
+        echo "Cutter cmake: $(ls -la $CutterPath/lib/cmake/Cutter/ 2>/dev/null || echo 'NOT FOUND')"
+        
         # Build reai-rz with both rizin and cutter plugins enabled
         cmake -S "." \
             -B "Build" \
             -G Ninja \
             -D CMAKE_BUILD_TYPE=Release \
             -D CMAKE_PREFIX_PATH="$InstallPath:$CutterPath" \
+            -D CMAKE_MODULE_PATH="$CutterPath/lib/cmake" \
             -D CMAKE_INSTALL_PREFIX="$InstallPath" \
             -D BUILD_CUTTER_PLUGIN=ON \
-            -D CUTTER_USE_QT6=ON
-        cmake --build "Build" --config Release
+            -D CUTTER_USE_QT6=ON \
+            -D CMAKE_VERBOSE_MAKEFILE=ON
+        
+        echo "=== Starting build ==="
+        cmake --build "Build" --config Release --verbose
         cmake --install "Build" --prefix "$InstallPath" --config Release
         
     - name: Collect runtime binaries

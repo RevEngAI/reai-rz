@@ -36,9 +36,6 @@ jobs:
         # Verify PyYAML is available
         python -c "import yaml; print('PyYAML is available in venv')"
         
-        # Set Python path for Build.ps1 to use the venv Python
-        $env:PYTHON = "$PWD\.venv\Scripts\python.exe"
-        
         # Run the build script
         Set-ExecutionPolicy Bypass -Scope Process -Force
         .\Scripts\Build.ps1

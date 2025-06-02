@@ -42,7 +42,12 @@ jobs:
           qt6-tools-dev-tools \
           libqt6core6 \
           libqt6gui6 \
-          libqt6widgets6
+          libqt6widgets6 \
+          qt6-svg-dev \
+          libqt6svg6 \
+          qt6-opengl-dev \
+          libqt6opengl6 \
+          libxkbcommon-dev
           
     - name: Install Cutter (contains bundled rizin)
       run: |
