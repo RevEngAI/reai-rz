@@ -205,7 +205,8 @@ cmake -S "$DepsPath\\reai-rz" -A x64 `
     -D BUILD_CUTTER_PLUGIN=ON `
     -D CUTTER_USE_QT6=ON `
     -D CMAKE_C_FLAGS="/TC /I$InstallPath\\include" `
-    -D CMAKE_CXX_FLAGS="/TC /I$InstallPath\\include"
+    -D CMAKE_CXX_FLAGS="/TC /I$InstallPath\\include" `
+    -D Python3_EXECUTABLE="$BaseDir\\.venv\\Scripts\\python.exe"
 
 cmake --build "$DepsPath\\reai-rz\\Build" --config Release
 cmake --install "$DepsPath\\reai-rz\\Build" --prefix "$InstallPath" --config Release
