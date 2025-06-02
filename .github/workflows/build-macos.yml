@@ -44,8 +44,8 @@ jobs:
         
         # Mount DMG and install
         hdiutil attach cutter.dmg
-        cp -R "/Volumes/Cutter v2.4.1/Cutter.app" /Applications/
-        hdiutil detach "/Volumes/Cutter v2.4.1"
+        cp -R "/Volumes/Cutter/Cutter.app" /Applications/
+        hdiutil detach "/Volumes/Cutter"
         
         # Add rizin from Cutter bundle to PATH
         echo "/Applications/Cutter.app/Contents/Resources/bin" >> $GITHUB_PATH

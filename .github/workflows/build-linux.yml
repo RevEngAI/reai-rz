@@ -27,13 +27,16 @@ jobs:
           pkg-config \
           python3 \
           python3-pip \
+          python3-venv \
           python3-yaml \
           git \
           wget \
           curl \
           libcurl4-openssl-dev \
           fuse \
-          libfuse2
+          libfuse2 \
+          ca-certificates \
+          python3-dev
           
     - name: Install Cutter (contains bundled rizin)
       run: |
@@ -54,8 +57,13 @@ jobs:
         
     - name: Install Python dependencies
       run: |
-        python3 -m venv .venv
+        # Use system Python to avoid SSL issues from AppImage Python
+        /usr/bin/python3 -m venv .venv
         source .venv/bin/activate
+        
+        # Verify we have SSL support
+        python -c "import ssl; print('SSL support available')"
+        
         python -m pip install --upgrade pip
         python -m pip install pyyaml
         
