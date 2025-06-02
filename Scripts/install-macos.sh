@@ -77,19 +77,19 @@ fi
 
 # Find and install Cutter plugin
 echo "=== Installing Cutter plugin ==="
-CUTTER_PLUGIN="$ARTIFACT_DIR/libreai_cutter.dylib"
+CUTTER_PLUGIN="$ARTIFACT_DIR/libreai_cutter.so"
 if [ -f "$CUTTER_PLUGIN" ]; then
     # Cutter plugin directory
     CUTTER_PLUGIN_DIR="$HOME/Library/Application Support/rizin/cutter/plugins/native"
     mkdir -p "$CUTTER_PLUGIN_DIR"
     
-    echo "Installing Cutter plugin: libreai_cutter.dylib -> $CUTTER_PLUGIN_DIR/"
+    echo "Installing Cutter plugin: libreai_cutter.so -> $CUTTER_PLUGIN_DIR/"
     cp "$CUTTER_PLUGIN" "$CUTTER_PLUGIN_DIR/"
-    chmod 755 "$CUTTER_PLUGIN_DIR/libreai_cutter.dylib"
+    chmod 755 "$CUTTER_PLUGIN_DIR/libreai_cutter.so"
     
     # Fix rpath for Cutter plugin
     echo "Fixing rpath for Cutter plugin..."
-    CUTTER_INSTALLED_PLUGIN="$CUTTER_PLUGIN_DIR/libreai_cutter.dylib"
+    CUTTER_INSTALLED_PLUGIN="$CUTTER_PLUGIN_DIR/libreai_cutter.so"
     
     # Clear existing rpaths
     install_name_tool -delete_rpath "/Users/runner/.local/lib" "$CUTTER_INSTALLED_PLUGIN" 2>/dev/null || true
@@ -101,7 +101,7 @@ if [ -f "$CUTTER_PLUGIN" ]; then
     
     echo "✅ Cutter plugin installed and rpath fixed"
 else
-    echo "❌ Error: libreai_cutter.dylib not found in artifacts"
+    echo "❌ Error: libreai_cutter.so not found in artifacts"
     exit 1
 fi
 
@@ -136,7 +136,7 @@ echo "    - libreai.dylib"
 echo "  • Rizin plugin installed to: $RIZIN_PLUGIN_DIR"
 echo "    - libreai_rizin.dylib"
 echo "  • Cutter plugin installed to: $CUTTER_PLUGIN_DIR"
-echo "    - libreai_cutter.dylib"
+echo "    - libreai_cutter.so"
 echo "  • Environment script created: $ENV_SCRIPT"
 echo ""
 echo "🚀 To use the plugins:"

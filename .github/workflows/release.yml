@@ -123,7 +123,7 @@ jobs:
           
           **macOS:**
           - 🔌 `libreai_rizin.dylib` - Rizin plugin
-          - 🎨 `libreai_cutter.dylib` - Cutter plugin  
+          - 🎨 `libreai_cutter.so` - Cutter plugin (MODULE library uses .so extension)
           - 📚 `libreai.dylib` - RevEngAI runtime library
           - 🚀 `install-macos.sh` - Automated installer with rpath fixing
           
