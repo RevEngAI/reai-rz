@@ -156,7 +156,6 @@ cmake -S "$DepsPath\\curl" -A x64 `
     -D CURL_USE_LIBPSL=OFF `
     -D CMAKE_PREFIX_PATH="$InstallPath" `
     -D CMAKE_INSTALL_PREFIX="$InstallPath" `
-    -D BUILD_SHARED_LIBS=OFF `
     -D CURL_USE_SCHANNEL=ON
 cmake --build "$DepsPath\\curl\\Build" --config Release
 cmake --install "$DepsPath\\curl\\Build" --prefix "$InstallPath" --config Release
