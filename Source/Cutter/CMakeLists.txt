@@ -40,9 +40,22 @@ target_link_libraries(
 )
 set_target_properties(
     reai_cutter PROPERTIES
-    INSTALL_RPATH "$ENV{HOME}/.local/lib"
     BUILD_RPATH "${CMAKE_BINARY_DIR}/Source/Rizin"
 )
+
+# Set platform-specific INSTALL_RPATH
+if(APPLE)
+    # macOS: @loader_path is relative to the plugin location
+    set_target_properties(reai_cutter PROPERTIES
+        INSTALL_RPATH "@loader_path;@loader_path/../lib;@rpath;$ENV{HOME}/.local/lib;/usr/local/lib;/opt/homebrew/lib;/usr/lib;/lib"
+    )
+elseif(UNIX)
+    # Linux: $ORIGIN is relative to the plugin location  
+    set_target_properties(reai_cutter PROPERTIES
+        INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib:$ENV{HOME}/.local/lib:/usr/local/lib:/usr/lib:/lib"
+    )
+endif()
+# Windows: No rpath needed, DLLs are found via PATH or same directory
 
 # install the built binaries to cutter's plugin directory
 install(TARGETS reai_cutter DESTINATION "${CUTTER_INSTALL_PLUGDIR}")
