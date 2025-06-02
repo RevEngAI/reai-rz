@@ -135,9 +135,7 @@ jobs:
             -D CMAKE_INSTALL_PREFIX="$InstallPath" \
             -D BUILD_CUTTER_PLUGIN=ON \
             -D CUTTER_USE_QT6=ON \
-            -D CMAKE_VERBOSE_MAKEFILE=ON \
-            -D CMAKE_CXX_FLAGS="-I/usr/local/include" \
-            -D CMAKE_C_FLAGS="-I/usr/local/include"
+            -D CMAKE_VERBOSE_MAKEFILE=ON
         
         echo "=== Starting build ==="
         cmake --build "Build" --config Release --verbose

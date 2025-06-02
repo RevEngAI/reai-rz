@@ -40,165 +40,170 @@ jobs:
         if (Test-Path $InstallPath) {
           Get-ChildItem -Recurse $InstallPath | Select-Object -First 30 | ForEach-Object { Write-Host $_.FullName }
           
-          Write-Host "`n=== Collecting Our Built Libraries (.dll) ==="
-          # Collect only our built libraries (exclude rizin system DLLs)
-          Get-ChildItem -Recurse $InstallPath -Filter "*.dll" | Where-Object { 
-            $_.Name -notlike "rz_*.dll" -and $_.Name -notlike "rizin*.dll" 
-          } | ForEach-Object {
-            Copy-Item $_.FullName "artifacts\"
-            Write-Host "Copied DLL: $($_.Name)"
+          Write-Host "`n=== Collecting Essential Files Only ==="
+          
+          # Collect reai.dll from bin directory (as per CMakeLists.txt RUNTIME DESTINATION bin)
+          $ReaiDllPath = "$InstallPath\bin\reai.dll"
+          if (Test-Path $ReaiDllPath) {
+            Copy-Item $ReaiDllPath "artifacts\"
+            Write-Host "✅ Collected: reai.dll from bin/"
+          } else {
+            Write-Host "❌ reai.dll NOT FOUND at $ReaiDllPath"
+            # Fallback search
+            $ReaiDll = Get-ChildItem -Recurse $InstallPath -Filter "reai.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($ReaiDll) {
+              Copy-Item $ReaiDll.FullName "artifacts\"
+              Write-Host "✅ Collected: reai.dll from fallback search at $($ReaiDll.FullName)"
+            }
           }
           
-          Write-Host "`n=== Collecting Our Built Import Libraries (.lib) ==="
-          # Collect import libraries for our built libraries (exclude rizin system LIBs)
-          Get-ChildItem -Recurse $InstallPath -Filter "*.lib" | Where-Object { 
-            $_.Name -notlike "rz_*.lib" -and $_.Name -notlike "rizin*.lib" 
-          } | ForEach-Object {
-            Copy-Item $_.FullName "artifacts\"
-            Write-Host "Copied LIB: $($_.Name)"
+          # Collect reai.lib from lib directory (as per CMakeLists.txt ARCHIVE DESTINATION lib)
+          $ReaiLibPath = "$InstallPath\lib\reai.lib"
+          if (Test-Path $ReaiLibPath) {
+            Copy-Item $ReaiLibPath "artifacts\"
+            Write-Host "✅ Collected: reai.lib from lib/"
+          } else {
+            Write-Host "❌ reai.lib NOT FOUND at $ReaiLibPath"
+            # Fallback search
+            $ReaiLib = Get-ChildItem -Recurse $InstallPath -Filter "reai.lib" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($ReaiLib) {
+              Copy-Item $ReaiLib.FullName "artifacts\"
+              Write-Host "✅ Collected: reai.lib from fallback search at $($ReaiLib.FullName)"
+            }
           }
           
-          # Look specifically for the plugin in rizin plugin directory
+          # Look for rizin plugin using rizin command to get actual plugin directory
           Write-Host "`n=== Looking for reai_rizin plugin ==="
           $RizinPluginFound = $false
           
-          # Try to get plugin directory from rizin
+          # Try to get plugin directory from rizin (as done in CMakeLists.txt)
           try {
-            $RizinPluginDir = & "$InstallPath\bin\rizin.exe" -H RZ_USER_PLUGINS 2>$null
-            if ($RizinPluginDir -and (Test-Path $RizinPluginDir)) {
-              Write-Host "Rizin plugin directory: $RizinPluginDir"
-              Get-ChildItem $RizinPluginDir -Filter "*reai*" -ErrorAction SilentlyContinue | ForEach-Object {
-                Copy-Item $_.FullName "artifacts\"
-                Write-Host "Copied rizin plugin from RZ_USER_PLUGINS: $($_.Name)"
-                $RizinPluginFound = $true
+            $RizinCmd = "$InstallPath\bin\rizin.exe"
+            if (Test-Path $RizinCmd) {
+              $RizinPluginDir = & $RizinCmd -H RZ_USER_PLUGINS 2>$null
+              if ($RizinPluginDir -and (Test-Path $RizinPluginDir)) {
+                Write-Host "Rizin reports plugin directory: $RizinPluginDir"
+                $RizinPlugin = Get-ChildItem $RizinPluginDir -Filter "*reai_rizin*" -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($RizinPlugin) {
+                  Copy-Item $RizinPlugin.FullName "artifacts\"
+                  Write-Host "✅ Collected rizin plugin: $($RizinPlugin.Name) from $RizinPluginDir"
+                  $RizinPluginFound = $true
+                } else {
+                  Write-Host "No reai_rizin plugin found in reported directory: $RizinPluginDir"
+                }
+              } else {
+                Write-Host "Rizin plugin directory not accessible or empty: $RizinPluginDir"
               }
+            } else {
+              Write-Host "Rizin executable not found at: $RizinCmd"
             }
           } catch {
-            Write-Host "Could not get plugin directory from rizin command"
+            Write-Host "Could not get plugin directory from rizin command: $($_.Exception.Message)"
           }
           
-          # Look specifically for cutter plugin
+          # Additional search locations for rizin plugin if not found
+          if (-not $RizinPluginFound) {
+            Write-Host "Searching additional locations for reai_rizin plugin..."
+            $AdditionalRizinDirs = @(
+              "$InstallPath\lib\rizin\plugins",
+              "$InstallPath\share\rizin\plugins", 
+              "$env:APPDATA\rizin\plugins",
+              "$env:LOCALAPPDATA\rizin\plugins"
+            )
+            
+            foreach ($RizinDir in $AdditionalRizinDirs) {
+              if (Test-Path $RizinDir) {
+                Write-Host "Checking: $RizinDir"
+                $RizinPlugin = Get-ChildItem $RizinDir -Filter "*reai_rizin*" -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($RizinPlugin) {
+                  Copy-Item $RizinPlugin.FullName "artifacts\"
+                  Write-Host "✅ Collected rizin plugin: $($RizinPlugin.Name) from $RizinDir"
+                  $RizinPluginFound = $true
+                  break
+                }
+              }
+            }
+          }
+          
+          # Final fallback: search entire install path for rizin plugin
+          if (-not $RizinPluginFound) {
+            Write-Host "Searching entire install path for reai_rizin plugin..."
+            $RizinPlugin = Get-ChildItem -Recurse $InstallPath -Filter "*reai_rizin*" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($RizinPlugin) {
+              Copy-Item $RizinPlugin.FullName "artifacts\"
+              Write-Host "✅ Collected rizin plugin from install path: $($RizinPlugin.Name) at $($RizinPlugin.FullName)"
+              $RizinPluginFound = $true
+            } else {
+              Write-Host "❌ reai_rizin plugin NOT FOUND anywhere in install path"
+            }
+          }
+          
+          # Look for cutter plugin using similar approach
           Write-Host "`n=== Looking for reai_cutter plugin ==="
           $CutterPluginFound = $false
           
-          # Try common cutter plugin directories
+          # Try common cutter plugin directories (based on Cutter_USER_PLUGINDIR)
           $CutterPluginDirs = @(
             "$InstallPath\lib\cutter\plugins",
-            "$InstallPath\share\cutter\plugins",
-            "$env:APPDATA\cutter\plugins",
-            "$env:LOCALAPPDATA\cutter\plugins",
-            "$env:APPDATA\rizin\cutter\plugins\native"
+            "$InstallPath\share\cutter\plugins", 
+            "$env:APPDATA\cutter\plugins\native",
+            "$env:LOCALAPPDATA\cutter\plugins\native",
+            "$env:APPDATA\rizin\cutter\plugins\native",
+            "$env:LOCALAPPDATA\rizin\cutter\plugins\native"
           )
           
           foreach ($CutterDir in $CutterPluginDirs) {
             if (Test-Path $CutterDir) {
-              Write-Host "Checking cutter plugin directory: $CutterDir"
-              Get-ChildItem $CutterDir -Filter "*reai*" -ErrorAction SilentlyContinue | ForEach-Object {
-                Copy-Item $_.FullName "artifacts\"
-                Write-Host "Copied cutter plugin: $($_.Name)"
+              Write-Host "Checking: $CutterDir"
+              $CutterPlugin = Get-ChildItem $CutterDir -Filter "*reai_cutter*" -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($CutterPlugin) {
+                Copy-Item $CutterPlugin.FullName "artifacts\"
+                Write-Host "✅ Collected cutter plugin: $($CutterPlugin.Name) from $CutterDir"
                 $CutterPluginFound = $true
+                break
               }
             }
           }
           
-          # If plugins not found in standard locations, search install path thoroughly
-          if (-not $RizinPluginFound) {
-            Write-Host "Searching install path for reai_rizin plugin..."
-            Get-ChildItem -Recurse $InstallPath -Filter "*reai_rizin*" -ErrorAction SilentlyContinue | ForEach-Object {
-              Copy-Item $_.FullName "artifacts\"
-              Write-Host "Found rizin plugin in install path: $($_.Name)"
-              $RizinPluginFound = $true
-            }
-          }
-          
+          # Search entire install path for cutter plugin if not found
           if (-not $CutterPluginFound) {
-            Write-Host "Searching install path for reai_cutter plugin..."
-            Get-ChildItem -Recurse $InstallPath -Filter "*reai_cutter*" -ErrorAction SilentlyContinue | ForEach-Object {
-              Copy-Item $_.FullName "artifacts\"
-              Write-Host "Found cutter plugin in install path: $($_.Name)"
+            Write-Host "Searching entire install path for reai_cutter plugin..."
+            $CutterPlugin = Get-ChildItem -Recurse $InstallPath -Filter "*reai_cutter*" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($CutterPlugin) {
+              Copy-Item $CutterPlugin.FullName "artifacts\"
+              Write-Host "✅ Collected cutter plugin from install path: $($CutterPlugin.Name) at $($CutterPlugin.FullName)"
               $CutterPluginFound = $true
+            } else {
+              Write-Host "❌ reai_cutter plugin NOT FOUND anywhere in install path"
             }
           }
         } else {
-          Write-Host "Install path not found: $InstallPath"
+          Write-Host "❌ Install path not found: $InstallPath"
         }
         
-        # Search build directories for any missed plugin files (.dll and .lib)
-        Write-Host "`n=== Searching build directories for plugin files ==="
-        $BuildRizinPluginFound = $false
-        $BuildCutterPluginFound = $false
-        
-        # Search for rizin plugin in build directories
-        Get-ChildItem -Recurse . -Filter "*reai_rizin*" -ErrorAction SilentlyContinue | ForEach-Object {
-          if ($_.FullName -notlike "*artifacts*") {  # Don't copy from artifacts folder to itself
-            Copy-Item $_.FullName "artifacts\" -ErrorAction SilentlyContinue
-            Write-Host "Found rizin plugin in build: $($_.Name)"
-            $BuildRizinPluginFound = $true
-          }
-        }
-        
-        # Search for cutter plugin in build directories
-        Get-ChildItem -Recurse . -Filter "*reai_cutter*" -ErrorAction SilentlyContinue | ForEach-Object {
-          if ($_.FullName -notlike "*artifacts*") {  # Don't copy from artifacts folder to itself
-            Copy-Item $_.FullName "artifacts\" -ErrorAction SilentlyContinue
-            Write-Host "Found cutter plugin in build: $($_.Name)"
-            $BuildCutterPluginFound = $true
-          }
-        }
-        
-        # If still no plugins found, do a broader search
-        if (-not ($BuildRizinPluginFound -and $BuildCutterPluginFound)) {
-          Write-Host "Doing broader search for plugins in build directories..."
-          Get-ChildItem -Recurse . -Filter "*.dll" -ErrorAction SilentlyContinue | Where-Object {
-            ($_.Name -like "*reai*" -and ($_.Name -like "*rizin*" -or $_.Name -like "*cutter*" -or $_.Name -like "*plugin*")) -and
-            $_.FullName -notlike "*artifacts*" -and 
-            $_.FullName -notlike "*Dependencies*" -and
-            $_.Name -notlike "rz_*.dll"
-          } | ForEach-Object {
-            Copy-Item $_.FullName "artifacts\" -ErrorAction SilentlyContinue
-            Write-Host "Found potential plugin in build: $($_.Name)"
-          }
-        }
-        
-        # Search build directories for any missed reai library files
-        Write-Host "`n=== Searching build directories for reai library files ==="
-        @("*reai.dll", "*reai.lib") | ForEach-Object {
-          Get-ChildItem -Recurse . -Filter $_ -ErrorAction SilentlyContinue | ForEach-Object {
-            if ($_.FullName -notlike "*artifacts*") {  # Don't copy from artifacts folder to itself
-              Copy-Item $_.FullName "artifacts\" -ErrorAction SilentlyContinue
-              Write-Host "Found reai library: $($_.Name)"
-            }
-          }
-        }
-        
-        Write-Host "`n=== Final Runtime Binaries ==="
-        $files = Get-ChildItem "artifacts"
+        Write-Host "`n=== Final Essential Files ==="
+        $files = Get-ChildItem "artifacts" -ErrorAction SilentlyContinue
         if ($files) {
           $files | Sort-Object Name | ForEach-Object { Write-Host "$($_.Name) ($($_.Length) bytes)" }
           
-          # Check if we have the essential files
+          # Check what we have
           $hasReaiDll = $files | Where-Object { $_.Name -eq "reai.dll" }
-          $hasRizinPlugin = $files | Where-Object { $_.Name -like "*reai_rizin*" -or ($_.Name -like "*reai*" -and $_.Name -like "*rizin*") }
-          $hasCutterPlugin = $files | Where-Object { $_.Name -like "*reai_cutter*" -or ($_.Name -like "*reai*" -and $_.Name -like "*cutter*") }
+          $hasReaiLib = $files | Where-Object { $_.Name -eq "reai.lib" }
+          $hasRizinPlugin = $files | Where-Object { $_.Name -like "*reai_rizin*" }
+          $hasCutterPlugin = $files | Where-Object { $_.Name -like "*reai_cutter*" }
           
           Write-Host "`n=== Build Summary ==="
-          Write-Host "✅ reai.dll: $(if ($hasReaiDll) { 'Found' } else { 'MISSING' })"
+          Write-Host "$(if ($hasReaiDll) { '✅' } else { '❌' }) reai.dll: $(if ($hasReaiDll) { 'Found' } else { 'MISSING' })"
+          Write-Host "$(if ($hasReaiLib) { '✅' } else { '❌' }) reai.lib: $(if ($hasReaiLib) { 'Found' } else { 'MISSING' })"
           Write-Host "$(if ($hasRizinPlugin) { '✅' } else { '❌' }) Rizin Plugin: $(if ($hasRizinPlugin) { 'Found' } else { 'MISSING' })"
           Write-Host "$(if ($hasCutterPlugin) { '✅' } else { '❌' }) Cutter Plugin: $(if ($hasCutterPlugin) { 'Found' } else { 'MISSING' })"
           
           if (-not $hasRizinPlugin) {
-            Write-Host "WARNING: reai_rizin plugin was not found! This is a critical issue."
-          }
-          if (-not $hasCutterPlugin) {
-            Write-Host "WARNING: reai_cutter plugin was not found! This may be expected if BUILD_CUTTER_PLUGIN was OFF."
-          }
-          
-          # Only fail if rizin plugin is missing (cutter plugin is optional)
-          if (-not $hasRizinPlugin) {
+            Write-Host "❌ CRITICAL: reai_rizin plugin is missing!"
             exit 1
           }
         } else {
-          Write-Host "ERROR: No artifacts were collected!"
+          Write-Host "❌ ERROR: No artifacts were collected!"
           exit 1
         }
       shell: powershell
