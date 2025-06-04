@@ -1,5 +1,9 @@
 #!/bin/bash
 
+branchName=${1:-master}
+
+echo "Building from branch $branchName"
+
 InstallPath="${HOME}/.local"
 echo "Dependencies will be installed at prefix $InstallPath"
 
@@ -10,10 +14,8 @@ mkdir -pv "$InstallPath/include"
 
 rm -rf /tmp/reai-rz
 rm -rf /tmp/creait
-rm -rf /tmp/tomlc99
-rm -rf /tmp/cJSON
 
-git clone https://github.com/revengai/reai-rz
+git clone -b "$branchName" https://github.com/revengai/reai-rz
 git clone https://github.com/revengai/creait
 
 # Build and install creait

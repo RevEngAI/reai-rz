@@ -22,6 +22,7 @@
 
 /* plugin */
 #include <Plugin.h>
+#include "../PluginVersion.h"
 
 // TODO: some shortcuts like (Ctrl+A, Ctr+E) to apple existing analysis would be really nice
 
@@ -75,7 +76,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
         return "Siddharth Mishra";
     }
     QString getVersion() const override {
-        return "2";
+        return REAI_PLUGIN_VERSION;
     }
     QString getDescription() const override {
         return "AI based reverse engineering helper API & Toolkit";

@@ -7,3 +7,4 @@ compile_commands.json
 Source/Rizin/CmdGen/Yaml/Root.yaml
 Source/Rizin/CmdGen/Yaml/Reai.yaml
 Source/Rizin/CmdGen/Generators/__pycache__/
+Source/PluginVersion.h

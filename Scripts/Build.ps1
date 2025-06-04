@@ -10,6 +10,12 @@
 # Dependencies
 # - MSVC Compiler Toolchain
 
+param(
+    [string]$branchName = "master"
+)
+
+Write-Host "Building plugin from branch $branchName"
+
 $BaseDir = "$($HOME -replace '\\', '\\')\\.local\\RevEngAI\\Rizin"
 $BuildDir = "$BaseDir\\Build"
 $InstallPath = "$BaseDir\\Install"
@@ -105,42 +111,31 @@ Make-Available -pkgCmdName "ninja" `
 Write-Host "All system dependencies are satisfied."    
 Write-Host "Now fetching plugin dependencies, and then building and installing these..."
     
-# Setup a list of files to be downloaded
-$DepsList = @"
+# === 1. Download and extract curl ===
+aria2c "https://curl.se/download/curl-8.13.0.zip" -d "$DownPath" -o "curl-8.13.0.zip" -j 8
+$curlZipPath = "$DownPath\\curl-8.13.0.zip"
+$curlSubfolder = "curl-8.13.0"
+$curlInstallDir = "$DepsPath\\curl"
 
-https://curl.se/download/curl-8.13.0.zip
-https://github.com/RevEngAI/creait/archive/refs/heads/master.zip
-https://github.com/RevEngAI/reai-rz/archive/refs/heads/master.zip
-"@
+Write-Host "Extracting curl from $curlZipPath to $curlInstallDir..."
+7za x "$curlZipPath" -o"$curlInstallDir"
+Copy-Item "$curlInstallDir\\$curlSubfolder\\*" -Destination "$curlInstallDir\\" -Force -Recurse
+Remove-Item "$curlInstallDir\\$curlSubfolder" -Force -Recurse
 
-# Dump URL List to a text file for aria2c to use
-$DepsList | Out-File -FilePath "$DownPath\\DependenciesList.txt" -Encoding utf8 -Force
-
-# Download artifacts
-# List of files to download with URLs and destination paths
-aria2c -i "$DownPath\\DependenciesList.txt" -j8 -d "$DownPath"
-
-# These dependencies need to be built on the host machine, unlike installing the pre-compiled binaries above
-$pkgs = @(
-    # Final Destination         Downloaded archive name                Subfolder name where actually extracted
-    @{name = "curl";    path = "$DownPath\\curl-8.13.0.zip";           subfolderName="curl-8.13.0"},
-    @{name = "reai-rz"; path = "$DownPath\\reai-rz-master.zip";        subfolderName="reai-rz-master"},
-    @{name = "creait";  path = "$DownPath\\creait-master.zip";         subfolderName="creait-master"}
-)
-# Unpack a dependency to be built later on
-# These temporarily go into dependencies directory
-function Unpack-Dependency {
-      param ([string]$packageName, [string]$packagePath, [string]$subfolderName)
-      $packageInstallDir = "$DepsPath\\$packageName"  # -------------------------------------------------------> Path where package is expanded
-      Write-Host "Installing dependency $packagePath to $packageInstallDir..."
-      7za x "$packagePath" -o"$packageInstallDir" # -----------------------------------------------------------> Expand archive to this path
-      Copy-Item "$packageInstallDir\\$subfolderName\\*" -Destination "$packageInstallDir\\" -Force -Recurse # -> Copy contents of subfolder to expanded path
-      Remove-Item -LiteralPath "$packageInstallDir\\$subfolderName" -Force -Recurse # -------------------------> Remove subfolder where archive was originally extracted
+# === 2. Clone reai-rz ===
+$reaiRzDir = "$DepsPath\\reai-rz"
+Write-Host "Cloning reai-rz into $reaiRzDir..."
+git clone --depth=1 --branch $branchName https://github.com/RevEngAI/reai-rz.git $reaiRzDir
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to clone reai-rz"
 }
 
-foreach ($pkg in $pkgs) {
-    Write-Host "Extracting $($pkg.name)"        
-    Unpack-Dependency -packageName $pkg.name -packagePath $pkg.path -subfolderName $pkg.subfolderName
+# === 3. Clone creait ===
+$creaitDir = "$DepsPath\\creait"
+Write-Host "Cloning creait into $creaitDir..."
+git clone --depth=1 --branch master https://github.com/RevEngAI/creait.git $creaitDir
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to clone creait"
 }
 
 # Build and install libCURL

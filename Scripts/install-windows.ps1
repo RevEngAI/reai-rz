@@ -28,8 +28,8 @@ Write-Host "Script directory: $ScriptDir"
 Write-Host "Artifact directory: $ArtifactDir"
 
 # Detect user's local library directory
-$UserLibDir = "$env:USERPROFILE\.local\lib"
-$UserBinDir = "$env:USERPROFILE\.local\bin"
+$UserLibDir = "$env:USERPROFILE\\.local\\lib"
+$UserBinDir = "$env:USERPROFILE\\.local\\bin"
 New-Item -ItemType Directory -Force -Path $UserLibDir | Out-Null
 New-Item -ItemType Directory -Force -Path $UserBinDir | Out-Null
 
@@ -37,10 +37,10 @@ New-Item -ItemType Directory -Force -Path $UserBinDir | Out-Null
 Write-Host "=== Installing shared libraries ===" -ForegroundColor Yellow
 
 # Install reai.dll to bin directory
-$ReaiDllPath = "$ArtifactDir\reai.dll"
+$ReaiDllPath = "$ArtifactDir\\reai.dll"
 if (Test-Path $ReaiDllPath) {
-    Write-Host "Installing: reai.dll -> $UserBinDir\"
-    Copy-Item $ReaiDllPath $UserBinDir\
+    Write-Host "Installing: reai.dll -> $UserBinDir\\"
+    Copy-Item $ReaiDllPath $UserBinDir\\
     Write-Host "✅ reai.dll installed" -ForegroundColor Green
 } else {
     Write-Host "❌ Error: reai.dll not found in artifacts" -ForegroundColor Red
@@ -48,10 +48,10 @@ if (Test-Path $ReaiDllPath) {
 }
 
 # Install reai.lib to lib directory
-$ReaiLibPath = "$ArtifactDir\reai.lib"
+$ReaiLibPath = "$ArtifactDir\\reai.lib"
 if (Test-Path $ReaiLibPath) {
-    Write-Host "Installing: reai.lib -> $UserLibDir\"
-    Copy-Item $ReaiLibPath $UserLibDir\
+    Write-Host "Installing: reai.lib -> $UserLibDir\\"
+    Copy-Item $ReaiLibPath $UserLibDir\\
     Write-Host "✅ reai.lib installed" -ForegroundColor Green
 } else {
     Write-Host "❌ Error: reai.lib not found in artifacts" -ForegroundColor Red
@@ -59,10 +59,10 @@ if (Test-Path $ReaiLibPath) {
 }
 
 # Install libcurl.dll to bin directory
-$CurlDllPath = "$ArtifactDir\libcurl.dll"
+$CurlDllPath = "$ArtifactDir\\libcurl.dll"
 if (Test-Path $CurlDllPath) {
-    Write-Host "Installing: libcurl.dll -> $UserBinDir\"
-    Copy-Item $CurlDllPath $UserBinDir\
+    Write-Host "Installing: libcurl.dll -> $UserBinDir\\"
+    Copy-Item $CurlDllPath $UserBinDir\\
     Write-Host "✅ libcurl.dll installed" -ForegroundColor Green
 } else {
     Write-Host "❌ Error: libcurl.dll not found in artifacts" -ForegroundColor Red
@@ -70,10 +70,10 @@ if (Test-Path $CurlDllPath) {
 }
 
 # Install libcurl_imp.lib to lib directory
-$CurlLibPath = "$ArtifactDir\libcurl_imp.lib"
+$CurlLibPath = "$ArtifactDir\\libcurl_imp.lib"
 if (Test-Path $CurlLibPath) {
-    Write-Host "Installing: libcurl_imp.lib -> $UserLibDir\"
-    Copy-Item $CurlLibPath $UserLibDir\
+    Write-Host "Installing: libcurl_imp.lib -> $UserLibDir\\"
+    Copy-Item $CurlLibPath $UserLibDir\\
     Write-Host "✅ libcurl_imp.lib installed" -ForegroundColor Green
 } else {
     Write-Host "❌ Error: libcurl_imp.lib not found in artifacts" -ForegroundColor Red
@@ -99,8 +99,8 @@ if ($RizinPlugin) {
     
     New-Item -ItemType Directory -Force -Path $RizinPluginDir | Out-Null
     
-    Write-Host "Installing Rizin plugin: $($RizinPlugin.Name) -> $RizinPluginDir\"
-    Copy-Item $RizinPlugin.FullName $RizinPluginDir\
+    Write-Host "Installing Rizin plugin: $($RizinPlugin.Name) -> $RizinPluginDir\\"
+    Copy-Item $RizinPlugin.FullName $RizinPluginDir\\
     
     Write-Host "✅ Rizin plugin installed" -ForegroundColor Green
 }
@@ -116,9 +116,9 @@ $CutterPlugin = Get-ChildItem -Path $ArtifactDir -Filter "*reai_cutter*.dll" | S
 if ($CutterPlugin) {
     # Common Cutter plugin directories on Windows
     $CutterPluginDirs = @(
-        "$env:APPDATA\rizin\cutter\plugins\native",
-        "$env:LOCALAPPDATA\rizin\cutter\plugins\native",
-        "$env:USERPROFILE\.local\share\rizin\cutter\plugins\native"
+        "$env:APPDATA\\rizin\\cutter\\plugins\\native",
+        "$env:LOCALAPPDATA\\rizin\\cutter\\plugins\\native",
+        "$env:USERPROFILE\\.local\\share\\rizin\\cutter\\plugins\\native"
     )
     
     # Use first existing directory or create the first one
@@ -133,8 +133,8 @@ if ($CutterPlugin) {
     
     New-Item -ItemType Directory -Force -Path $CutterPluginDir | Out-Null
     
-    Write-Host "Installing Cutter plugin: $($CutterPlugin.Name) -> $CutterPluginDir\"
-    Copy-Item $CutterPlugin.FullName $CutterPluginDir\
+    Write-Host "Installing Cutter plugin: $($CutterPlugin.Name) -> $CutterPluginDir\\"
+    Copy-Item $CutterPlugin.FullName $CutterPluginDir\\
     
     Write-Host "✅ Cutter plugin installed" -ForegroundColor Green
 }
@@ -145,7 +145,7 @@ else {
 
 # Create environment setup script
 Write-Host "=== Creating environment setup ===" -ForegroundColor Yellow
-$EnvScript = "$UserBinDir\reai-env.ps1"
+$EnvScript = "$UserBinDir\\reai-env.ps1"
 
 $EnvScriptContent = @"
 # RevEngAI Environment Setup
@@ -182,8 +182,8 @@ Write-Host "🎉 Installation complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "📋 Summary:"
 Write-Host "  • Shared libraries installed to:"
-Write-Host "    - $UserBinDir: reai.dll, libcurl.dll"
-Write-Host "    - $UserLibDir: reai.lib, libcurl_imp.lib"
+Write-Host "    - $UserBinDir : reai.dll, libcurl.dll"
+Write-Host "    - $UserLibDir : reai.lib, libcurl_imp.lib"
 if ($RizinPlugin) {
     Write-Host "  • Rizin plugin installed to: $RizinPluginDir"
 }
@@ -195,5 +195,5 @@ Write-Host ""
 Write-Host "🚀 To use the plugins:"
 Write-Host "  1. Close and reopen your terminal/PowerShell"
 Write-Host "  2. The plugins should work automatically"
-Write-Host "  3. If needed, run: $EnvScript"
-Write-Host "" 
+Write-Host "  3. If needed, run: $EnvScript""
+Write-Host ""
