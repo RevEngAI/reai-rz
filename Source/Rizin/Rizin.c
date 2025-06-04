@@ -30,6 +30,7 @@
 /* local includes */
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
+#include "../PluginVersion.h"
 
 Str* getMsg() {
     static Str  s;
@@ -99,7 +100,7 @@ RzCorePlugin core_plugin_reai = {
     .author  = "Siddharth Mishra",
     .desc    = "RevEng.AI Rizin Analysis Plugin",
     .license = "Copyright (c) 2024 RevEngAI. All Rights Reserved.",
-    .version = "v2+ai_decomp:may21",
+    .version = REAI_PLUGIN_VERSION,
     .init    = (RzCorePluginCallback)rz_plugin_init,
     .fini    = (RzCorePluginCallback)rz_plugin_fini,
     // .analysis = (RzCorePluginCallback)reai_plugin_analysis,

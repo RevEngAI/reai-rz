@@ -1,10 +1,8 @@
 name: Build Windows
 
 on:
-  push:
-    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ "**" ]
   workflow_dispatch:
 
 jobs:
@@ -27,7 +25,7 @@ jobs:
       run: |
         # Run the build script which now handles venv setup internally
         Set-ExecutionPolicy Bypass -Scope Process -Force
-        .\Scripts\Build.ps1
+        .\Scripts\Build.ps1 "${{ github.head_ref }}"
       shell: powershell
       
     - name: Collect runtime binaries

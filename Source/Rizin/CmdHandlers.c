@@ -636,7 +636,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_time_asc_handler (RzCore* core, int 
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_LAST_UPDATED, true);
 }
 
@@ -648,7 +648,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_owner_asc_handler (RzCore* core, int
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_OWNER, true);
 }
 
@@ -660,7 +660,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_name_asc_handler (RzCore* core, int 
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_NAME, true);
 }
 
@@ -672,7 +672,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_model_asc_handler (RzCore* core, int
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_MODEL, true);
 }
 
@@ -684,7 +684,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_size_asc_handler (RzCore* core, int 
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_SIZE, true);
 }
 
@@ -696,7 +696,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_time_desc_handler (RzCore* core, int
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_LAST_UPDATED, false);
 }
 
@@ -708,7 +708,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_owner_desc_handler (RzCore* core, in
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_OWNER, false);
 }
 
@@ -720,7 +720,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_name_desc_handler (RzCore* core, int
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_NAME, false);
 }
 
@@ -732,7 +732,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_model_desc_handler (RzCore* core, in
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_MODEL, false);
 }
 
@@ -744,7 +744,7 @@ RZ_IPI RzCmdStatus rz_collection_basic_info_size_desc_handler (RzCore* core, int
 
     Str term = StrInit(), filters = StrInit();
     STR_ARG (term, 1);
-    STR_ARG (term, 2);
+    STR_ARG (filters, 2);
     return collectionFilteredSearch (term, filters, ORDER_BY_SIZE, false);
 }
 
