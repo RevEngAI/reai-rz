@@ -135,7 +135,7 @@ void CollectionSearchDialog::on_PerformCollectionSearch() {
 
 void CollectionSearchDialog::on_TableCellDoubleClick (int row, int column) {
     (void)column;
-    
+
     if (openPageOnDoubleClick) {
         // generate portal URL from host URL
         Str link = StrDup (&GetConnection()->host);

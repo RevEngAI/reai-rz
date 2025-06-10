@@ -11,7 +11,7 @@
 #ifndef REAI_RIZIN_PLUGIN
 #define REAI_RIZIN_PLUGIN
 
-    /* libc */
+/* libc */
 #include <stdio.h>
 
 /* revenai */
@@ -49,7 +49,7 @@ extern "C" {
     /// SUCCESS : Connection object filled with valid data.
     /// FAILURE : Empty object.
     ///
-    Connection *GetConnection();
+    Connection* GetConnection();
 
     ///
     /// Get current binary ID (if any set).
@@ -66,7 +66,7 @@ extern "C" {
     /// SUCCESS : Vector of ModelInfo objects filled with valid data.
     /// FAILURE : Empty vector otherwise.
     ///
-    ModelInfos *GetModels();
+    ModelInfos* GetModels();
 
     ///
     /// Check whether or not we can work with analysis associated with given binary ID.

@@ -115,11 +115,7 @@ void FunctionRenameDialog::getNameMapping (std::vector<std::pair<QString, QStrin
         const QString& newName = newNameMapTable->item (s, 1)->text();
         map.push_back ({oldName, newName});
 
-        LOG_INFO(
-            "oldName = \"%s\" \t newName \"%s\"",
-            oldName.toLatin1().constData(),
-            oldName.toLatin1().constData()
-        );
+        LOG_INFO ("oldName = \"%s\" \t newName \"%s\"", oldName.toLatin1().constData(), oldName.toLatin1().constData());
     }
 }
 

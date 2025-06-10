@@ -57,21 +57,21 @@ RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) 
 void RecentAnalysisDialog::on_GetRecentAnalysis() {
     RzCoreLocked core (Core());
 
-    RecentAnalysisRequest recents  = RecentAnalysisRequestInit();
-    
-    AnalysisInfos         recent_analyses = GetRecentAnalysis (GetConnection(), &recents);
+    RecentAnalysisRequest recents = RecentAnalysisRequestInit();
+
+    AnalysisInfos recent_analyses = GetRecentAnalysis (GetConnection(), &recents);
     RecentAnalysisRequestDeinit (&recents);
 
     table->clearContents();
     table->setRowCount (0);
 
-    VecForeachPtr(&recent_analyses, recent_analysis, {
+    VecForeachPtr (&recent_analyses, recent_analysis, {
         QStringList row;
         row << recent_analysis->binary_name.data;
         row << QString::number (recent_analysis->binary_id);
         row << QString::number (recent_analysis->analysis_id);
         Str status = StrInit();
-        StatusToStr(recent_analysis->status, &status);
+        StatusToStr (recent_analysis->status, &status);
         row << status.data;
         row << recent_analysis->username.data;
         row << recent_analysis->creation.data;
@@ -85,18 +85,18 @@ void RecentAnalysisDialog::on_GetRecentAnalysis() {
 
 void RecentAnalysisDialog::on_TableCellDoubleClick (int row, int column) {
     (void)column;
-    
+
     // generate portal URL from host URL
-    Str link = StrDup(&GetConnection()->host);
-    StrReplaceZstr(&link, "api", "portal", 1);
-    
+    Str link = StrDup (&GetConnection()->host);
+    StrReplaceZstr (&link, "api", "portal", 1);
+
     // fetch collection id and open url
     QString binaryId   = table->item (row, 1)->text();
     QString analysisId = table->item (row, 2)->text();
-    StrAppendf(&link, "/analyses/%llu?analysis-id=%llu", binaryId.toULongLong(), analysisId.toULongLong());
+    StrAppendf (&link, "/analyses/%llu?analysis-id=%llu", binaryId.toULongLong(), analysisId.toULongLong());
     QDesktopServices::openUrl (QUrl (link.data));
 
-    StrDeinit(&link);
+    StrDeinit (&link);
 }
 
 void RecentAnalysisDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {

@@ -89,8 +89,8 @@ void ReaiDec::pollAndSignalFinished (RVA rva_addr) {
 
                 // finally get ai-decompilation after finish
                 AiDecompilation aidec = GetAiDecompilation (GetConnection(), fn_id, true);
-                Str            *smry  = &aidec.summary;
-                Str            *dec   = &aidec.decompilation;
+                Str            *smry  = &aidec.raw_ai_summary;
+                Str            *dec   = &aidec.raw_decompilation;
 
                 // split summary into comments
                 static i32 SOFT_LIMIT = 120;
