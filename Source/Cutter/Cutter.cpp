@@ -116,7 +116,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
         return;
     }
 
-    LogInit(true);
+    LogInit (true);
 
     mainWindow = mainWin;
 

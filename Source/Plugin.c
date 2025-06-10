@@ -54,12 +54,12 @@ Plugin *getPlugin (bool reinit) {
     static bool   is_inited = false;
 
     if (reinit) {
-        if(!is_inited) {
+        if (!is_inited) {
             p.config             = ConfigInit();
             p.connection.host    = StrInit();
             p.connection.api_key = StrInit();
             p.binary_id          = 0;
-            p.models             = VecInitWithDeepCopy_T(&p.models, NULL, ModelInfoDeinit);
+            p.models             = VecInitWithDeepCopy_T (&p.models, NULL, ModelInfoDeinit);
         }
         pluginDeinit (&p);
         is_inited = false;
@@ -72,7 +72,7 @@ Plugin *getPlugin (bool reinit) {
         p.connection.host    = StrInit();
         p.connection.api_key = StrInit();
         p.binary_id          = 0;
-        p.models             = VecInitWithDeepCopy_T(&p.models, NULL, ModelInfoDeinit);
+        p.models             = VecInitWithDeepCopy_T (&p.models, NULL, ModelInfoDeinit);
 
         // Load config
         p.config = ConfigRead (NULL);
@@ -118,7 +118,7 @@ Config *GetConfig() {
     }
 }
 
-Connection* GetConnection() {
+Connection *GetConnection() {
     if (getPlugin (false)) {
         return &getPlugin (false)->connection;
     } else {
@@ -145,7 +145,7 @@ ModelInfos *GetModels() {
     if (getPlugin (false)) {
         return &getPlugin (false)->models;
     } else {
-        static ModelInfos empty_models_vec = VecInitWithDeepCopy(ModelInfoInitClone, ModelInfoDeinit);
+        static ModelInfos empty_models_vec = VecInitWithDeepCopy (ModelInfoInitClone, ModelInfoDeinit);
         return &empty_models_vec;
     }
 }
@@ -185,8 +185,10 @@ FunctionInfos getFunctionBoundaries (RzCore *core) {
     RzAnalysisFunction *fn      = NULL;
     rz_list_foreach (fns, fn_iter, fn) {
         FunctionInfo fi = {
-            .symbol = (SymbolInfo
-            ) {.name = StrInitFromZstr (fn->name), .is_external = false, .is_addr = true, .value = {.addr = fn->addr}},
+            .symbol = (SymbolInfo) {.name        = StrInitFromZstr (fn->name),
+                                    .is_external = false,
+                                    .is_addr     = true,
+                                    .value       = {.addr = fn->addr}},
             .size   = rz_analysis_function_linear_size (fn)
         };
         VecPushBack (&fv, fi);

@@ -101,9 +101,9 @@ void BinarySearchDialog::on_PerformBinarySearch() {
     QByteArray partialBinarySha256ByteArr = partialBinarySha256Input->text().toLatin1();
 
     SearchBinaryRequest search = SearchBinaryRequestInit();
-    search.partial_name   = StrInitFromZstr (partialBinaryNameByteArr.constData());
-    search.partial_sha256 = StrInitFromZstr (partialBinarySha256ByteArr.constData());
-    search.model_name     = StrInitFromZstr (modelNameByteArr.constData());
+    search.partial_name        = StrInitFromZstr (partialBinaryNameByteArr.constData());
+    search.partial_sha256      = StrInitFromZstr (partialBinarySha256ByteArr.constData());
+    search.model_name          = StrInitFromZstr (modelNameByteArr.constData());
 
     BinaryInfos binaries = SearchBinary (GetConnection(), &search);
     SearchBinaryRequestDeinit (&search);
@@ -129,14 +129,14 @@ void BinarySearchDialog::on_PerformBinarySearch() {
         addNewRowToResultsTable (table, row);
     });
 
-    VecDeinit(&binaries);
+    VecDeinit (&binaries);
 
     mainLayout->addWidget (table);
 }
 
 void BinarySearchDialog::on_TableCellDoubleClick (int row, int column) {
     (void)column;
-    
+
     if (openPageOnDoubleClick) {
         // fetch binary id an analysis id and open url
         QString binaryId   = table->item (row, 1)->text();

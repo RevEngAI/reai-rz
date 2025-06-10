@@ -57,9 +57,9 @@ AutoAnalysisDialog::AutoAnalysisDialog (QWidget* parent) : QDialog (parent) {
 void AutoAnalysisDialog::on_PerformAutoAnalysis() {
     RzCoreLocked core (Core());
 
-    f32 required_similarity = similaritySlider->value() / 100.f;
-    bool    debugFilter         = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
+    f32  required_similarity = similaritySlider->value() / 100.f;
+    bool debugFilter         = enableDebugFilterCheckBox->checkState() == Qt::CheckState::Checked;
     u32  maxResultCount      = 10;
 
-    rzAutoRenameFunctions(core, maxResultCount, required_similarity, debugFilter);
+    rzAutoRenameFunctions (core, maxResultCount, required_similarity, debugFilter);
 }
