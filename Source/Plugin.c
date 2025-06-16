@@ -29,6 +29,7 @@
 /* plugin includes */
 #include <Plugin.h>
 #include <stdlib.h>
+#include "PluginVersion.h"
 
 typedef struct Plugin {
     Config     config;
@@ -36,6 +37,15 @@ typedef struct Plugin {
     BinaryId   binary_id;
     ModelInfos models;
 } Plugin;
+
+#ifdef __cplusplus
+#    include <cutter/CutterConfig.h>
+#    define SRE_TOOL_NAME    "cutter"
+#    define SRE_TOOL_VERSION CUTTER_VERSION_FULL
+#else
+#    define SRE_TOOL_NAME    "rizin"
+#    define SRE_TOOL_VERSION RZ_VERSION
+#endif
 
 void pluginDeinit (Plugin *p) {
     if (!p) {
@@ -92,9 +102,11 @@ Plugin *getPlugin (bool reinit) {
         }
         p.connection.api_key = StrInitFromStr (api_key);
         p.connection.host    = StrInitFromStr (host);
+        p.connection.user_agent =
+            StrInitFromZstr ("reai_rz-" REAI_PLUGIN_VERSION " (" SRE_TOOL_NAME "-version = " SRE_TOOL_VERSION ")");
 
-        // Get AI models, this way we also perform an implicit auth-check
-        p.models = GetAiModelInfos (&p.connection);
+            // Get AI models, this way we also perform an implicit auth-check
+            p.models = GetAiModelInfos (&p.connection);
         if (!p.models.length) {
             DISPLAY_ERROR ("Failed to get AI models. Please check host and API key in config.");
             pluginDeinit (&p);
