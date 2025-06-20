@@ -419,7 +419,7 @@ RZ_IPI RzCmdStatus rz_ai_decompile_handler (RzCore* core, int argc, const char**
                     DISPLAY_INFO ("AI decompilation complete ;-)\n");
 
                     AiDecompilation aidec = GetAiDecompilation (GetConnection(), fn_id, true);
-                    Str*            smry  = &aidec.raw_ai_summary;
+                    Str*            smry  = &aidec.ai_summary;
                     Str*            dec   = &aidec.raw_decompilation;
 
                     Str code = StrInit();
