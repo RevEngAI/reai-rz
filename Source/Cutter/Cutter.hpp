@@ -59,6 +59,9 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actSetup                    = nullptr;
     QAction *actFunctionDiff             = nullptr;
 
+    /* context menu actions */
+    QAction *actFindSimilarFunctions = nullptr;
+
     BinaryId customAnalysisId = 0;
 
     bool isInitialized = false;
@@ -67,6 +70,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     InteractiveDiffWidget *diffWidget = nullptr;
 
     void renameFunctions (std::vector<std::pair<QString, QString>> nameMap);
+    void setupContextMenus();
 
    public:
     void setupPlugin() override;
@@ -98,6 +102,9 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     void on_RecentAnalysis();
     void on_Setup();
     void on_FunctionDiff();
+
+private slots:
+    void on_FindSimilarFunctions();
 };
 
 #endif // REAI_PLUGIN_CUTTER_CUTTER_HPP

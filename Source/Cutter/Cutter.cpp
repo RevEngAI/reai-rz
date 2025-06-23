@@ -5,13 +5,13 @@
  * @copyright : Copyright (c) 2024 RevEngAI. All Rights Reserved.
  * */
 
-
 /* rizin */
 #include <Cutter.h>
 #include <Reai/Util/Str.h>
 #include <Reai/Util/Vec.h>
 #include <rz_analysis.h>
 #include <rz_core.h>
+#include <rz_util.h>
 
 /* qt includes */
 #include <QAction>
@@ -20,12 +20,14 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMainWindow>
+#include <QMenu>
 #include <QMenuBar>
 #include <QObject>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QtPlugin>
 #include <QInputDialog>
+#include <QIcon>
 
 /* creait lib */
 #include <Reai/Api.h>
@@ -222,6 +224,9 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     diffWidget = new InteractiveDiffWidget (mainWin);
     mainWin->addDockWidget (Qt::BottomDockWidgetArea, diffWidget);
     diffWidget->hide(); // Initially hidden
+
+    // Setup context menus
+    setupContextMenus();
 }
 
 void ReaiCutterPlugin::registerDecompilers() {
@@ -463,4 +468,82 @@ void ReaiCutterPlugin::on_FunctionDiff() {
     diffWidget->show();
     diffWidget->raise();
     diffWidget->activateWindow();
+}
+
+void ReaiCutterPlugin::setupContextMenus() {
+    // Get the context menu extensions from MainWindow
+    QMenu *disassemblyContextMenu = mainWindow->getContextMenuExtensions(MainWindow::ContextMenuType::Disassembly);
+    QMenu *addressableContextMenu = mainWindow->getContextMenuExtensions(MainWindow::ContextMenuType::Addressable);
+    
+    if (disassemblyContextMenu) {
+        // Create the "Find Similar Functions" action
+        actFindSimilarFunctions = new QAction("Find Similar Functions", this);
+        actFindSimilarFunctions->setIcon(QIcon(":/img/icons/compare.svg")); // Use an appropriate icon
+        
+        // Add to disassembly context menu
+        disassemblyContextMenu->addAction(actFindSimilarFunctions);
+        
+        // Connect to our handler
+        connect(actFindSimilarFunctions, &QAction::triggered, this, &ReaiCutterPlugin::on_FindSimilarFunctions);
+    }
+    
+    if (addressableContextMenu) {
+        // Also add to addressable context menu for completeness
+        if (actFindSimilarFunctions) {
+            addressableContextMenu->addAction(actFindSimilarFunctions);
+        }
+    }
+}
+
+void ReaiCutterPlugin::on_FindSimilarFunctions() {
+    if (!GetConfig()->length) {
+        on_Setup();
+        return;
+    }
+    
+    // Get the action that triggered this (to access the function data)
+    QAction *action = qobject_cast<QAction*>(sender());
+    if (!action) {
+        return;
+    }
+    
+    // Get the address/offset from the action data
+    RVA offset = action->data().value<RVA>();
+    
+    // Get function name at the offset
+    QString functionName;
+    {
+        RzCoreLocked core(Core());
+        RzAnalysisFunction *func = rz_analysis_get_fcn_in(core->analysis, offset, RZ_ANALYSIS_FCN_TYPE_NULL);
+        if (func && func->name) {
+            functionName = QString(func->name);
+        }
+    }
+    
+    // If we couldn't get a function name from the offset, try to get current function
+    if (functionName.isEmpty()) {
+        RzCoreLocked core(Core());
+        RVA currentOffset = Core()->getOffset();
+        RzAnalysisFunction *func = rz_analysis_get_fcn_in(core->analysis, currentOffset, RZ_ANALYSIS_FCN_TYPE_NULL);
+        if (func && func->name) {
+            functionName = QString(func->name);
+        }
+    }
+    
+    if (functionName.isEmpty()) {
+        QMessageBox::warning(
+            (QWidget*)parent(),
+            "Error",
+            "No function found at the selected location."
+        );
+        return;
+    }
+    
+    // Show the diff widget and set the function name
+    diffWidget->show();
+    diffWidget->raise();
+    diffWidget->activateWindow();
+    
+    // Call the public slot to show diff for the function
+    diffWidget->showDiffForFunction(functionName, 90); // Default 90% similarity
 }
