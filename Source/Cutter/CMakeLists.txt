@@ -23,7 +23,6 @@ endif()
 
 # main plugin library and sources
 set(ReaiCutterPluginSource "Cutter.cpp" "Decompiler.cpp" "../Plugin.c"
-                           "Ui/FunctionRenameDialog.cpp" "Ui/FunctionSimilarityDialog.cpp"
                            "Ui/AutoAnalysisDialog.cpp" "Ui/CreateAnalysisDialog.cpp"
                            "Ui/BinarySearchDialog.cpp" "Ui/CollectionSearchDialog.cpp"
                            "Ui/RecentAnalysisDialog.cpp" "Ui/InteractiveDiffWidget.cpp")
