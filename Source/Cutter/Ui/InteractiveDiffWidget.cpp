@@ -25,9 +25,14 @@
 #include <Cutter/Ui/InteractiveDiffWidget.hpp>
 
 InteractiveDiffWidget::InteractiveDiffWidget (MainWindow *main)
-    : CutterDockWidget (main), functionCompleter (nullptr), currentSelectedIndex (-1) {
-    sourceDisassembly = StrInit();
-    currentDiffLines  = VecInit();
+    : CutterDockWidget (main),
+      functionCompleter (nullptr),
+      currentSelectedIndex (-1),
+      isDecompilationMode (false),
+      sourceHasDecompilation (false) {
+    sourceDisassembly   = StrInit();
+    sourceDecompilation = StrInit();
+    currentDiffLines    = VecInit();
 
     setWindowTitle ("Interactive Function Diff");
     setObjectName ("InteractiveFunctionDiff");
@@ -42,6 +47,7 @@ InteractiveDiffWidget::InteractiveDiffWidget (MainWindow *main)
 
 InteractiveDiffWidget::~InteractiveDiffWidget() {
     StrDeinit (&sourceDisassembly);
+    StrDeinit (&sourceDecompilation);
     VecDeinit (&currentDiffLines);
 }
 
@@ -130,6 +136,12 @@ void InteractiveDiffWidget::setupControlsArea() {
     renameButton->setMinimumWidth (120);
     renameButton->setEnabled (false); // Initially disabled
 
+    // Toggle button for assembly/decompilation
+    toggleButton = new QPushButton ("Show Decompilation");
+    toggleButton->setMinimumWidth (140);
+    toggleButton->setCheckable (true);
+    toggleButton->setChecked (false); // Default to assembly
+
     // Status label
     statusLabel = new QLabel ("Ready");
     statusLabel->setStyleSheet ("color: gray; font-style: italic;");
@@ -145,6 +157,8 @@ void InteractiveDiffWidget::setupControlsArea() {
     controlsLayout->addWidget (searchButton);
     controlsLayout->addSpacing (10);
     controlsLayout->addWidget (renameButton);
+    controlsLayout->addSpacing (10);
+    controlsLayout->addWidget (toggleButton);
     controlsLayout->addStretch(); // Push status to right
     controlsLayout->addWidget (statusLabel);
 }
@@ -162,6 +176,9 @@ void InteractiveDiffWidget::connectSignals() {
 
     // Rename button
     connect (renameButton, &QPushButton::clicked, this, &InteractiveDiffWidget::onRenameRequested);
+
+    // Toggle button
+    connect (toggleButton, &QPushButton::toggled, this, &InteractiveDiffWidget::onToggleRequested);
 
     // Function list selection
     connect (functionListPanel, &QTreeWidget::itemClicked, this, &InteractiveDiffWidget::onFunctionListItemClicked);
@@ -281,6 +298,11 @@ void InteractiveDiffWidget::searchSimilarFunctions() {
     clearPanels();
     renameButton->setEnabled (false); // Disable rename button
 
+    // Reset decompilation state
+    sourceHasDecompilation = false;
+    StrDeinit (&sourceDecompilation);
+    sourceDecompilation = StrInit();
+
     SimilarFunctionsRequest search = SimilarFunctionsRequestInit();
 
     /* check if function exists or not */
@@ -394,9 +416,21 @@ void InteractiveDiffWidget::updateDiffPanels() {
 
     showLoadingState ("Generating diff...");
 
-    // Generate diff between source and target
+    // Generate diff between source and target based on mode
     VecDeinit (&currentDiffLines);
-    currentDiffLines = GetDiff (&sourceDisassembly, &targetFunc.disassembly);
+
+    if (isDecompilationMode) {
+        // Check if decompilation is available for both functions
+        if (!sourceHasDecompilation || !targetFunc.hasDecompilation) {
+            showErrorState ("Decompilation not available for comparison");
+            return;
+        }
+        // Use decompilation content
+        currentDiffLines = GetDiff (&sourceDecompilation, &targetFunc.decompilation);
+    } else {
+        // Use assembly content (original behavior)
+        currentDiffLines = GetDiff (&sourceDisassembly, &targetFunc.disassembly);
+    }
 
     if (currentDiffLines.length == 0) {
         showErrorState ("Failed to generate diff");
@@ -407,9 +441,11 @@ void InteractiveDiffWidget::updateDiffPanels() {
     renderSourceDiff (currentDiffLines);
     renderTargetDiff (currentDiffLines);
 
-    updateStatusLabel (
-        QString ("Showing diff with %1 (%2%)").arg (targetFunc.name).arg (targetFunc.similarity, 0, 'f', 1)
-    );
+    QString mode = isDecompilationMode ? "decompilation" : "assembly";
+    updateStatusLabel (QString ("Showing %1 diff with %2 (%3%)")
+                           .arg (mode)
+                           .arg (targetFunc.name)
+                           .arg (targetFunc.similarity, 0, 'f', 1));
 }
 
 void InteractiveDiffWidget::renderSourceDiff (const DiffLines &diff) {
@@ -593,7 +629,103 @@ Str InteractiveDiffWidget::getFunctionDisassembly (FunctionId functionId) {
     return linear_disasm;
 }
 
+Str InteractiveDiffWidget::getFunctionDecompilation (FunctionId functionId) {
+    Str final_code = StrInit();
 
+    // Check decompilation status
+    Status status = GetAiDecompilationStatus (GetConnection(), functionId);
+
+    if ((status & STATUS_MASK) == STATUS_ERROR || (status & STATUS_MASK) == STATUS_UNINITIALIZED) {
+        // Try to begin decompilation
+        if (!BeginAiDecompilation (GetConnection(), functionId)) {
+            return final_code; // Return empty on failure
+        }
+        // Return empty for now - will be fetched in background
+        return final_code;
+    }
+
+    if ((status & STATUS_MASK) == STATUS_PENDING) {
+        // Still pending - return empty for now
+        return final_code;
+    }
+
+    if ((status & STATUS_MASK) == STATUS_SUCCESS) {
+        // Get the decompilation - skip summary for diff purposes
+        AiDecompilation aidec = GetAiDecompilation (GetConnection(), functionId, true);
+        final_code            = StrDup (&aidec.decompilation);
+        AiDecompilationDeinit (&aidec);
+    }
+
+    return final_code;
+}
+
+void InteractiveDiffWidget::onToggleRequested() {
+    isDecompilationMode = toggleButton->isChecked();
+
+    if (isDecompilationMode) {
+        toggleButton->setText ("Show Assembly");
+
+        // Fetch decompilation for current selection first
+        fetchDecompilationForCurrentSelection();
+
+        // Then fetch for other functions in background
+        for (int i = 0; i < similarFunctions.size(); ++i) {
+            if (i != currentSelectedIndex && !similarFunctions[i].hasDecompilation) {
+                fetchDecompilationForFunction (i);
+            }
+        }
+    } else {
+        toggleButton->setText ("Show Decompilation");
+    }
+
+    // Update diff panels with current mode
+    if (currentSelectedIndex >= 0) {
+        updateDiffPanels();
+    }
+}
+
+void InteractiveDiffWidget::fetchDecompilationForCurrentSelection() {
+    if (currentSelectedIndex < 0 || currentSelectedIndex >= similarFunctions.size()) {
+        return;
+    }
+
+    showLoadingState ("Fetching decompilation for selected function...");
+
+    // Fetch source decompilation if not already done
+    if (!sourceHasDecompilation) {
+        RzCoreLocked core (Core());
+        QByteArray   fnNameByteArr = currentSourceFunction.toLatin1();
+        FunctionId   sourceId      = rzLookupFunctionIdForFunctionWithName (core, fnNameByteArr.constData());
+        if (sourceId) {
+            StrDeinit (&sourceDecompilation);
+            sourceDecompilation    = getFunctionDecompilation (sourceId);
+            sourceHasDecompilation = (sourceDecompilation.length > 0);
+        }
+    }
+
+    // Fetch target decompilation
+    SimilarFunctionData &targetFunc = similarFunctions[currentSelectedIndex];
+    if (!targetFunc.hasDecompilation) {
+        StrDeinit (&targetFunc.decompilation);
+        targetFunc.decompilation    = getFunctionDecompilation (targetFunc.functionId);
+        targetFunc.hasDecompilation = (targetFunc.decompilation.length > 0);
+    }
+
+    updateStatusLabel ("Decompilation fetched");
+}
+
+void InteractiveDiffWidget::fetchDecompilationForFunction (int index) {
+    if (index < 0 || index >= similarFunctions.size()) {
+        return;
+    }
+
+    SimilarFunctionData &func = similarFunctions[index];
+    if (!func.hasDecompilation) {
+        StrDeinit (&func.decompilation);
+        func.decompilation    = getFunctionDecompilation (func.functionId);
+        func.hasDecompilation = (func.decompilation.length > 0);
+    }
+}
 
 void InteractiveDiffWidget::onRenameRequested() {
     if (currentSelectedIndex < 0 || currentSelectedIndex >= similarFunctions.size()) {

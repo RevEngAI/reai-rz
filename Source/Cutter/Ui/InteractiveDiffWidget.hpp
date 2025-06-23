@@ -43,14 +43,18 @@ struct SimilarFunctionData {
     FunctionId functionId;
     BinaryId   binaryId;
     float      similarity;
-    Str        disassembly; // Cached disassembly content
+    Str        disassembly;      // Cached disassembly content
+    Str        decompilation;    // Cached decompilation content
+    bool       hasDecompilation; // Whether decompilation has been fetched
 
-    SimilarFunctionData() : functionId (0), binaryId (0), similarity (0.0f) {
-        disassembly = StrInit();
+    SimilarFunctionData() : functionId (0), binaryId (0), similarity (0.0f), hasDecompilation (false) {
+        disassembly   = StrInit();
+        decompilation = StrInit();
     }
 
     ~SimilarFunctionData() {
         StrDeinit (&disassembly);
+        StrDeinit (&decompilation);
     }
 
     // Copy constructor
@@ -60,7 +64,9 @@ struct SimilarFunctionData {
           functionId (other.functionId),
           binaryId (other.binaryId),
           similarity (other.similarity) {
-        disassembly = StrDup (&other.disassembly);
+        disassembly      = StrDup (&other.disassembly);
+        decompilation    = StrDup (&other.decompilation);
+        hasDecompilation = other.hasDecompilation;
     }
 
     // Assignment operator
@@ -72,7 +78,10 @@ struct SimilarFunctionData {
             binaryId   = other.binaryId;
             similarity = other.similarity;
             StrDeinit (&disassembly);
-            disassembly = StrDup (&other.disassembly);
+            StrDeinit (&decompilation);
+            disassembly      = StrDup (&other.disassembly);
+            decompilation    = StrDup (&other.decompilation);
+            hasDecompilation = other.hasDecompilation;
         }
         return *this;
     }
@@ -94,6 +103,7 @@ class InteractiveDiffWidget : public CutterDockWidget {
     void onSearchRequested();
     void onFunctionListItemClicked (QTreeWidgetItem *item, int column);
     void onRenameRequested();
+    void onToggleRequested();
 
    private:
     // Main layout components
@@ -113,15 +123,19 @@ class InteractiveDiffWidget : public CutterDockWidget {
     QLabel      *similarityLabel;   // Shows current similarity value
     QPushButton *searchButton;      // Trigger search
     QPushButton *renameButton;      // Rename to selected function
+    QPushButton *toggleButton;      // Toggle between assembly/decompilation
     QLabel      *statusLabel;       // Status information
 
     // Data management
     QString                    currentSourceFunction;
     QList<SimilarFunctionData> similarFunctions;
     int                        currentSelectedIndex;
-    DiffLines                  currentDiffLines;  // Current diff data
-    Str                        sourceDisassembly; // Source function disassembly
-    QStringList                functionNameList;  // All function names for autocomplete
+    DiffLines                  currentDiffLines;       // Current diff data
+    Str                        sourceDisassembly;      // Source function disassembly
+    Str                        sourceDecompilation;    // Source function decompilation
+    QStringList                functionNameList;       // All function names for autocomplete
+    bool                       isDecompilationMode;    // Whether showing decompilation or assembly
+    bool                       sourceHasDecompilation; // Whether source decompilation is fetched
 
     // Setup methods
     void setupUI();
@@ -149,8 +163,11 @@ class InteractiveDiffWidget : public CutterDockWidget {
     void clearPanels();
     void updateStatusLabel (const QString &status);
 
-    // Helper to get function disassembly
-    Str getFunctionDisassembly (FunctionId functionId);
+    // Helper to get function disassembly and decompilation
+    Str  getFunctionDisassembly (FunctionId functionId);
+    Str  getFunctionDecompilation (FunctionId functionId);
+    void fetchDecompilationForFunction (int index); // Background decompilation fetching
+    void fetchDecompilationForCurrentSelection();   // Priority decompilation fetching
 };
 
-#endif // REAI_PLUGIN_CUTTER_UI_INTERACTIVE_DIFF_WIDGET_HPP
+#endif                                              // REAI_PLUGIN_CUTTER_UI_INTERACTIVE_DIFF_WIDGET_HPP
