@@ -103,155 +103,135 @@ jobs:
         body: |
           ## RevEngAI Rizin Plugin Release ${{ steps.tag_name.outputs.tag_name }}
           
-          This release contains the RevEngAI plugin for both **Rizin** and **Cutter** with automated install scripts.
+          This release contains the RevEngAI plugin for both Rizin and Cutter with automated install scripts.
           
-          ### 📦 Downloads
+          ### Downloads
           
           | Platform | Download | Contents |
           |----------|----------|----------|
-          | 🐧 **Linux** | `reai-rz-linux.tar.gz` | Rizin + Cutter plugins + install script |
-          | 🍎 **macOS** | `reai-rz-macos.tar.gz` | Rizin + Cutter plugins + install script |
-          | 🪟 **Windows** | `reai-rz-windows.zip` | Rizin + Cutter plugins + install script |
+          | Linux | `reai-rz-linux.tar.gz` | Rizin + Cutter plugins + install script |
+          | macOS | `reai-rz-macos.tar.gz` | Rizin + Cutter plugins + install script |
+          | Windows | `reai-rz-windows.zip` | Rizin + Cutter plugins + install script |
           
-          ### 📋 What's Included
+          ### Installation (Recommended)
           
-          **Linux:**
-          - 🔌 `libreai_rizin.so` - Rizin plugin  
-          - 🎨 `libreai_cutter.so` - Cutter plugin
-          - 📚 `libreai.so` - RevEngAI runtime library
-          - 🚀 `install-linux.sh` - Automated installer with rpath fixing
-          
-          **macOS:**
-          - 🔌 `libreai_rizin.dylib` - Rizin plugin
-          - 🎨 `libreai_cutter.so` - Cutter plugin (MODULE library uses .so extension)
-          - 📚 `libreai.dylib` - RevEngAI runtime library
-          - 🚀 `install-macos.sh` - Automated installer with rpath fixing
-          
-          **Windows:**
-          - 🔌 `libreai_rizin.dll` - Rizin plugin
-          - 🎨 `libreai_cutter.dll` - Cutter plugin
-          - 📚 `reai.dll` + `reai.lib` - RevEngAI runtime library
-          - 🌐 `libcurl.dll` + `libcurl_imp.lib` - HTTP client library
-          - 🚀 `install-windows.ps1` - Automated installer with PATH setup
-          
-          ### 🚀 Installation (Recommended)
-          
-          **🎯 Use the included install scripts for best results:**
+          Use the included install scripts for automatic installation:
           
           #### Linux
           ```bash
-          # Download and extract
           wget https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-linux.tar.gz
           tar -xzf reai-rz-linux.tar.gz
           cd reai-rz-linux
           
-          # Run automated installer (requires patchelf)
-          sudo apt install patchelf  # Ubuntu/Debian
+          # Install dependencies (Ubuntu/Debian)
+          sudo apt install patchelf
+          
+          # Run installer
           chmod +x install-linux.sh
           ./install-linux.sh
           ```
           
           #### macOS  
           ```bash
-          # Download and extract
           curl -L -O https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-macos.tar.gz
           tar -xzf reai-rz-macos.tar.gz
           cd reai-rz-macos
           
-          # Run automated installer (requires Xcode tools)
-          xcode-select --install  # if not already installed
+          # Install dependencies
+          xcode-select --install
+          
+          # Run installer
           chmod +x install-macos.sh
           ./install-macos.sh
           ```
           
           #### Windows
           ```powershell
-          # Download and extract (PowerShell)
+          # Download and extract
           Invoke-WebRequest "https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-windows.zip" -OutFile "reai-rz-windows.zip"
           Expand-Archive "reai-rz-windows.zip" -Force
           cd reai-rz-windows
           
-          # Run automated installer
-          .\install-windows.ps1
+          # Run installer with execution policy bypass
+          Set-ExecutionPolicy Bypass -Scope Process -Force; .\install-windows.ps1
           ```
           
-          ### 🛠️ What The Install Scripts Do
+          ### What The Install Scripts Do
           
-          The install scripts provide **intelligent, platform-specific installation**:
+          - Install libraries to user directories (`~/.local/lib/`)
+          - Install Rizin plugin to `$(rizin -H RZ_USER_PLUGINS)`
+          - Install Cutter plugin to platform-specific Cutter plugin directory
+          - Fix library paths so plugins can find dependencies
+          - Set up environment variables
+          - Verify installation and provide status messages
           
-          - ✅ **Install libraries** to proper user directories (`~/.local/lib/`)
-          - ✅ **Install Rizin plugin** to `$(rizin -H RZ_USER_PLUGINS)`
-          - ✅ **Install Cutter plugin** to platform-specific Cutter plugin directory
-          - ✅ **Fix rpath/library paths** so plugins can find dependencies
-          - ✅ **Set up environment** with helper scripts for easy usage
-          - ✅ **Verify installation** and provide clear success/error messages
+          ### Manual Installation
           
-          ### 📋 Manual Installation (Advanced)
+          If the automated scripts don't work:
           
-          If you prefer manual installation or the scripts don't work:
+          **File Locations:**
+          - Linux: `~/.local/lib/libreai.so` + plugins to respective directories
+          - macOS: `~/.local/lib/libreai.dylib` + plugins to respective directories
+          - Windows: `%USERPROFILE%\.local\bin\reai.dll` + plugins to respective directories
           
-          #### Exact File Locations
+          **Plugin Directories:**
+          - Rizin: `$(rizin -H RZ_USER_PLUGINS)`
+          - Cutter Linux: `~/.local/share/rizin/cutter/plugins/native/`
+          - Cutter macOS: `~/Library/Application Support/rizin/cutter/plugins/native/`
+          - Cutter Windows: `%APPDATA%\rizin\cutter\plugins\native\`
           
-          **Shared Libraries:**
-          - Linux: `~/.local/lib/libreai.so`
-          - macOS: `~/.local/lib/libreai.dylib`  
-          - Windows: `%USERPROFILE%\.local\bin\reai.dll` + `%USERPROFILE%\.local\lib\reai.lib`
-          
-          **Rizin Plugin:**
-          - All platforms: Copy to `$(rizin -H RZ_USER_PLUGINS)`
-          
-          **Cutter Plugin:**
-          - Linux: `~/.local/share/rizin/cutter/plugins/native/`
-          - macOS: `~/Library/Application Support/rizin/cutter/plugins/native/`
-          - Windows: `%APPDATA%\rizin\cutter\plugins\native\`
-          
-          **⚠️ Important:** On Unix systems, you may need to set environment variables:
+          **Environment Variables (Unix):**
           ```bash
           export LD_LIBRARY_PATH="$HOME/.local/lib:$LD_LIBRARY_PATH"  # Linux
           export DYLD_LIBRARY_PATH="$HOME/.local/lib:$DYLD_LIBRARY_PATH"  # macOS
           ```
           
-          ### ✅ Verification
+          ### Configuration
           
-          After installation, verify both plugins work:
-          
-          **Rizin:**
-          ```bash
-          rizin -
-          [0x00000000]> REh
-          # Should display RevEngAI plugin help
-          ```
-          
-          **Cutter:**
-          - Launch Cutter
-          - Check **Plugins** menu for RevEngAI options
-          - Or check **Edit** → **Preferences** → **Plugins** for loaded plugins
-          
-          ### 📝 Configuration
-          
-          Create a configuration file at `~/.creait` in `key=value` per line format:
+          Create `~/.creait`:
           ```
           api_key = YOUR_REVENGAI_API_KEY
           host = https://api.reveng.ai
           ```
           
-          ### 🔧 Requirements
+          ### Verification
           
-          - **Rizin 0.8.0** or compatible version
-          - **Cutter 2.4.0+** (optional, for GUI plugin)
-          - **Internet connection** for RevEngAI API access
-          - **Valid RevEngAI API key** from https://portal.reveng.ai
+          **Rizin:**
+          ```bash
+          rizin -AA /bin/ls
+          [0x00000000]> RE?
+          # Should display RevEngAI plugin help
+          ```
           
-          **Platform-specific:**
-          - **Linux:** `patchelf` tool for rpath fixing
-          - **macOS:** Xcode command line tools for rpath fixing  
-          - **Windows:** PowerShell (included with Windows)
+          **Cutter:**
+          - Launch Cutter
+          - Check Plugins menu for RevEngAI options
+          - Or check Edit → Preferences → Plugins for loaded plugins
           
-          ### 🐛 Issues & Support
+          ### Requirements
           
-          - 📋 **Installation issues:** Check the install script output for detailed error messages
-          - 🔧 **Plugin not loading:** Verify environment variables are set (see install script output)
-          - 🌐 **API issues:** Verify your API key and configuration file
-          - 🐛 **Bug reports:** https://github.com/RevEngAI/reai-rz/issues
+          **Runtime Requirements:**
+          - Rizin 0.8.0 or compatible
+          - Cutter 2.4.0+ (optional, for GUI plugin)
+          - Valid RevEngAI API key from https://portal.reveng.ai
+          
+          **Platform-specific Installation Tools:**
+          - Linux: `patchelf` tool for rpath fixing (`sudo apt install patchelf`)
+          - macOS: Xcode command line tools for rpath fixing (`xcode-select --install`)
+          - Windows: PowerShell with script execution enabled
+          
+          **Build Requirements (if building from source):**
+          - CMake 3.5 or higher
+          - C/C++ compiler (GCC/Clang on Unix, MSVC on Windows)
+          - Python 3 with PyYAML (`pip install pyyaml`)
+          - pkg-config
+          - libcurl development headers
+          - Qt5/Qt6 (for Cutter plugin)
+          - Git (for version information)
+          
+          ### Support
+          
+          - Bug reports: https://github.com/RevEngAI/reai-rz/issues
+          - Discord: [![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da?logo=discord&logoColor=white)](https://discord.com/invite/ZwQTvzfSbA)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

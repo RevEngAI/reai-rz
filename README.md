@@ -7,6 +7,10 @@
 
 RevEng.AI plugins for Rizin & Cutter.
 
+## Support
+
+Need help? Join our Discord server: [![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da?logo=discord&logoColor=white)](https://discord.com/invite/ZwQTvzfSbA)
+
 ## Installation
 
 ### Docker
