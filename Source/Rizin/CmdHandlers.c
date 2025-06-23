@@ -1870,6 +1870,36 @@ Str getFunctionLinearDisasm (FunctionId function_id) {
     return linear_disasm;
 }
 
+Str getFunctionDecompilation (FunctionId function_id) {
+    Str final_code = StrInit();
+
+    // Check decompilation status
+    Status status = GetAiDecompilationStatus (GetConnection(), function_id);
+
+    if ((status & STATUS_MASK) == STATUS_ERROR || (status & STATUS_MASK) == STATUS_UNINITIALIZED) {
+        // Try to begin decompilation
+        if (!BeginAiDecompilation (GetConnection(), function_id)) {
+            return final_code; // Return empty on failure
+        }
+        // Return empty for now - will be fetched in background
+        return final_code;
+    }
+
+    if ((status & STATUS_MASK) == STATUS_PENDING) {
+        // Still pending - return empty for now
+        return final_code;
+    }
+
+    if ((status & STATUS_MASK) == STATUS_SUCCESS) {
+        // Get the decompilation - skip summary for diff purposes
+        AiDecompilation aidec = GetAiDecompilation (GetConnection(), function_id, true);
+        final_code            = StrDup (&aidec.decompilation);
+        AiDecompilationDeinit (&aidec);
+    }
+
+    return final_code;
+}
+
 RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, const char** argv) {
     // Parse arguments: function_name and optional similarity_level
     const char* function_name  = NULL;
@@ -2221,6 +2251,410 @@ RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, co
                           "SIMILAR FUNCTIONS",
                           "SOURCE",
                           "TARGET",
+                          &items,
+                          selected_idx,
+                          &diff,
+                          false
+                      ))) {
+                    rz_cons_canvas_free (c);
+                    c = NULL;
+                    break;
+                }
+            }
+        }
+
+        // Wait for actual user input (blocking)
+        ch = rz_cons_readchar();
+    }
+
+cleanup:
+    // Cleanup
+    if (c) {
+        rz_cons_canvas_free (c);
+    }
+
+    // Lazy cleanup - free help canvas only at exit
+    if (help_canvas) {
+        rz_cons_canvas_free (help_canvas);
+        help_canvas = NULL;
+    }
+
+    VecDeinit (&diff);
+    StrDeinit (&src);
+
+    // Clean up similar functions data
+    VecDeinit (&similar_functions);
+    SimilarFunctionsRequestDeinit (&search);
+
+    // Clean up list items
+    VecForeachPtr (&items, item, { DiffListItemDeinit (item); });
+    VecDeinit (&items);
+
+    return RZ_CMD_STATUS_OK;
+}
+
+RZ_IPI RzCmdStatus rz_function_decompilation_diff_handler (RzCore* core, int argc, const char** argv) {
+    // Parse arguments: function_name and optional similarity_level
+    const char* function_name  = NULL;
+    u32         min_similarity = 90; // Default 90% similarity
+
+    if (!ZSTR_ARG (function_name, 1)) {
+        DISPLAY_ERROR ("Usage: REfdf <function_name> [similarity_level]");
+        DISPLAY_ERROR ("Example: REfdf main 85");
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
+
+    // Optional similarity level argument
+    if (argc > 2) {
+        NUM_ARG (min_similarity, 2);
+        min_similarity = CLAMP (min_similarity, 50, 99); // Reasonable range for diffs
+    }
+
+    // Check if we can work with current analysis
+    if (!rzCanWorkWithAnalysis (GetBinaryId(), true)) {
+        DISPLAY_ERROR (
+            "Current session has no completed analysis attached to it.\n"
+            "Please create a new analysis and wait for it's completion or\n"
+            "       apply an existing analysis that is already complete."
+        );
+        return RZ_CMD_STATUS_OK;
+    }
+
+    // Get function ID for the source function
+    FunctionId source_fn_id = rzLookupFunctionIdForFunctionWithName (core, function_name);
+    if (!source_fn_id) {
+        DISPLAY_ERROR (
+            "A function with that name does not exist in current Rizin session.\n"
+            "Please provide a name from output of `afl` command."
+        );
+        return RZ_CMD_STATUS_WRONG_ARGS;
+    }
+
+    // Get decompilation for source function
+    Str src = getFunctionDecompilation (source_fn_id);
+    if (src.length == 0) {
+        DISPLAY_ERROR (
+            "Failed to get decompilation for function '%s'. Function may not be decompiled yet.",
+            function_name
+        );
+        StrDeinit (&src);
+        return RZ_CMD_STATUS_OK;
+    }
+
+    // Find similar functions
+    SimilarFunctionsRequest search        = SimilarFunctionsRequestInit();
+    search.function_id                    = source_fn_id;
+    search.limit                          = 10; // Get up to 10 similar functions for diff
+    search.distance                       = 1. - (min_similarity / 100.);
+    search.debug_include.user_symbols     = false;
+    search.debug_include.system_symbols   = false;
+    search.debug_include.external_symbols = false;
+
+    SimilarFunctions similar_functions = GetSimilarFunctions (GetConnection(), &search);
+
+    if (similar_functions.length == 0) {
+        DISPLAY_ERROR ("No similar functions found for '%s' with %u%% similarity", function_name, min_similarity);
+        StrDeinit (&src);
+        SimilarFunctionsRequestDeinit (&search);
+        return RZ_CMD_STATUS_OK;
+    }
+
+    rz_cons_printf (
+        "Found %llu similar functions for '%s' (>= %u%% similarity)\n",
+        (u64)similar_functions.length,
+        function_name,
+        min_similarity
+    );
+
+    // Create list of similar functions with their decompilation
+    DiffListItems items = VecInit();
+
+    VecForeachPtr (&similar_functions, similar_fn, {
+        DiffListItem item = {0};
+
+        // Create display name with similarity percentage
+        item.name = StrInit();
+        StrPrintf (
+            &item.name,
+            "%s (%.1f%% - %s)",
+            similar_fn->name.data,
+            (1. - similar_fn->distance) * 100.,
+            similar_fn->binary_name.data
+        );
+
+        // Get decompilation for this similar function
+        item.target_content = getFunctionDecompilation (similar_fn->id);
+
+        // Only add if we successfully got decompilation
+        if (item.target_content.length > 0) {
+            VecPushBack (&items, item);
+        } else {
+            LOG_ERROR ("Failed to get decompilation for function ID %llu", similar_fn->id);
+            DiffListItemDeinit (&item);
+        }
+    });
+
+    // Check if we have any valid similar functions with decompilation
+    if (items.length == 0) {
+        DISPLAY_ERROR ("No similar functions with valid decompilation found for '%s'", function_name);
+        StrDeinit (&src);
+        VecDeinit (&similar_functions);
+        SimilarFunctionsRequestDeinit (&search);
+        VecDeinit (&items);
+        return RZ_CMD_STATUS_OK;
+    }
+
+    int selected_idx = 0; // Start with first item selected
+
+    // Generate initial diff
+    DiffListItem* current_item = VecPtrAt (&items, selected_idx);
+    DiffLines     diff         = GetDiff (&src, &current_item->target_content);
+
+    // Create initial canvas
+    RzConsCanvas* c = drawInteractiveDiff (
+        NULL,
+        "SIMILAR FUNCTIONS",
+        "SOURCE DECOMPILATION",
+        "TARGET DECOMPILATION",
+        &items,
+        selected_idx,
+        &diff,
+        false
+    );
+
+    if (!c) {
+        DISPLAY_ERROR ("Failed to create interactive diff viewer");
+        VecDeinit (&diff);
+        StrDeinit (&src);
+        VecDeinit (&similar_functions);
+        SimilarFunctionsRequestDeinit (&search);
+        VecForeachPtr (&items, item, { DiffListItemDeinit (item); });
+        VecDeinit (&items);
+        return RZ_CMD_STATUS_OK;
+    }
+
+    // Lazy help canvas - created once, reused multiple times
+    static RzConsCanvas* help_canvas = NULL;
+
+    int ch = 0; // Start with no input
+    while (true) {
+        // Only process and re-render when we have actual input
+        if (ch != 0) {
+            bool need_redraw   = false;
+            bool need_new_diff = false;
+
+            switch (ch) {
+                case 'q' :
+                case 'Q' :
+                    goto cleanup;
+
+                case 'k' : // Up
+                    if (selected_idx > 0) {
+                        selected_idx--;
+                        need_redraw   = true;
+                        need_new_diff = true;
+                    }
+                    break;
+
+                case 'j' : // Down
+                    if (selected_idx < (int)items.length - 1) {
+                        selected_idx++;
+                        need_redraw   = true;
+                        need_new_diff = true;
+                    }
+                    break;
+
+                case 'h' : // Help
+                case '?' : {
+                    // Get current terminal size
+                    int help_h, help_w = rz_cons_get_size (&help_h);
+
+                    // Lazy initialization - create help canvas only once
+                    if (!help_canvas) {
+                        help_canvas = rz_cons_canvas_new (help_w, help_h);
+
+                        // Calculate center position for help box
+                        int box_width  = 60;
+                        int box_height = 16;
+                        int box_x      = (help_w - box_width) / 2;
+                        int box_y      = (help_h - box_height) / 2;
+
+                        rz_cons_canvas_clear (help_canvas);
+
+                        // Draw the help box (only once)
+                        rz_cons_canvas_box (help_canvas, box_x, box_y, box_width, box_height, Color_RESET);
+
+                        // Write help content (only once)
+                        rz_cons_canvas_write_at (
+                            help_canvas,
+                            "Interactive Decompilation Diff Viewer - Help",
+                            box_x + 2,
+                            box_y + 1
+                        );
+                        rz_cons_canvas_write_at (
+                            help_canvas,
+                            "============================================",
+                            box_x + 2,
+                            box_y + 2
+                        );
+
+                        rz_cons_canvas_write_at (help_canvas, "Navigation Controls:", box_x + 2, box_y + 4);
+                        rz_cons_canvas_write_at (help_canvas, "  k       : Move selection up", box_x + 4, box_y + 5);
+                        rz_cons_canvas_write_at (help_canvas, "  j       : Move selection down", box_x + 4, box_y + 6);
+                        rz_cons_canvas_write_at (help_canvas, "  q / ESC : Quit viewer", box_x + 4, box_y + 7);
+                        rz_cons_canvas_write_at (help_canvas, "  h / ?   : Show this help", box_x + 4, box_y + 8);
+                        rz_cons_canvas_write_at (
+                            help_canvas,
+                            "  r       : Rename source function",
+                            box_x + 4,
+                            box_y + 9
+                        );
+
+                        rz_cons_canvas_write_at (help_canvas, "Usage:", box_x + 2, box_y + 11);
+                        rz_cons_canvas_write_at (
+                            help_canvas,
+                            "• Left panel shows similar functions",
+                            box_x + 4,
+                            box_y + 12
+                        );
+                        rz_cons_canvas_write_at (
+                            help_canvas,
+                            "• Right panels show decompilation diff",
+                            box_x + 4,
+                            box_y + 13
+                        );
+                        rz_cons_canvas_write_at (
+                            help_canvas,
+                            "• Use k/j to compare similar functions",
+                            box_x + 4,
+                            box_y + 14
+                        );
+
+                        rz_cons_canvas_write_at (
+                            help_canvas,
+                            "Press any key to continue...",
+                            box_x + (box_width - 28) / 2,
+                            box_y + box_height - 2
+                        );
+                    } else {
+                        // Handle window resize - recreate canvas if size changed
+                        if (help_canvas->w != help_w || help_canvas->h != help_h) {
+                            rz_cons_canvas_resize (help_canvas, help_w, help_h);
+                            // Note: Content remains the same, just canvas size adjusted
+                        }
+                    }
+
+                    rz_cons_canvas_print (help_canvas);
+                    rz_cons_flush();
+                    rz_cons_readchar();
+                    need_redraw = true;
+                } break;
+
+                case 'r' : // Rename
+                case 'R' : {
+                    // Get current terminal size
+                    int rename_h, rename_w = rz_cons_get_size (&rename_h);
+
+                    // Get target function name (extract from display name)
+                    current_item    = VecPtrAt (&items, selected_idx);
+                    Str target_name = StrInit();
+
+                    // Parse the display name to extract target function name
+                    // Format: "target_name (XX.X% - binary_name)"
+                    const char* open_paren = strchr (current_item->name.data, '(');
+                    if (open_paren) {
+                        // Calculate length of target name (everything before the first space + parenthesis)
+                        int name_len = open_paren - current_item->name.data;
+                        // Remove trailing spaces
+                        while (name_len > 0 && current_item->name.data[name_len - 1] == ' ') {
+                            name_len--;
+                        }
+
+                        // Create target name using Str
+                        StrAppendf (&target_name, "%.*s", name_len, current_item->name.data);
+                    }
+
+                    if (target_name.length == 0) {
+                        StrAppendf (&target_name, "unknown_function");
+                    }
+
+                    // Show rename dialog first - pass pointer to target_name
+                    if (drawRenameDialog (c, rename_w, rename_h, target_name.data, &target_name)) {
+                        // User confirmed with Enter, now ask for final confirmation
+                        Str confirm_message = StrInit();
+                        StrPrintf (
+                            &confirm_message,
+                            "Are you sure you want to rename '%s' to '%s'?",
+                            function_name,
+                            target_name.data
+                        );
+
+                        drawConfirmationDialog (c, rename_w, rename_h, confirm_message.data);
+                        rz_cons_canvas_print (c);
+                        rz_cons_flush();
+
+                        // Wait for y/n response
+                        int confirm_ch = rz_cons_readchar();
+                        if (confirm_ch == 'y' || confirm_ch == 'Y') {
+                            rz_cons_printf ("Renaming function '%s' to '%s'...\n", function_name, target_name.data);
+
+                            // Perform the actual rename using the existing rename function
+                            Str old_name_str = StrInitFromZstr (function_name);
+
+                            if (RenameFunction (GetConnection(), source_fn_id, target_name)) {
+                                rz_analysis_function_rename (
+                                    rz_analysis_get_function_byname (core->analysis, function_name),
+                                    target_name.data
+                                );
+                                rz_cons_printf (
+                                    "Successfully renamed function '%s' to '%s'\n",
+                                    function_name,
+                                    target_name.data
+                                );
+                            } else {
+                                rz_cons_printf (
+                                    "Failed to rename function '%s' to '%s'\n",
+                                    function_name,
+                                    target_name.data
+                                );
+                            }
+
+                            StrDeinit (&old_name_str);
+
+                            rz_cons_flush();
+                            rz_sys_sleep (2); // Show result for 2 seconds
+                        }
+                        // If user pressed 'n', do nothing (cancelled)
+
+                        StrDeinit (&confirm_message);
+                    }
+                    // If user pressed ESC in rename dialog, do nothing (cancelled)
+
+                    StrDeinit (&target_name);
+
+                    need_redraw = true;
+                } break;
+
+                default :
+                    // Ignore unknown keys - no action needed
+                    break;
+            }
+
+            if (need_new_diff) {
+                // Clean up old diff
+                VecDeinit (&diff);
+
+                // Generate new diff with selected item
+                current_item = VecPtrAt (&items, selected_idx);
+                diff         = GetDiff (&src, &current_item->target_content);
+            }
+
+            if (need_redraw) {
+                if (!(c = drawInteractiveDiff (
+                          c,
+                          "SIMILAR FUNCTIONS",
+                          "SOURCE DECOMPILATION",
+                          "TARGET DECOMPILATION",
                           &items,
                           selected_idx,
                           &diff,

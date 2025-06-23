@@ -74,17 +74,46 @@ commands:
     details:
       - name: Usage
         entries:
-          - text: "REfad main"
+          - text: "REfaf main"
             comment: "Show interactive diff for function 'main' with similar functions (default 90% similarity)"
-          - text: "REfad parse_header 85"
+          - text: "REfaf parse_header 85"
             comment: "Show interactive diff for 'parse_header' with minimum 85% similarity"
       - name: Controls
         entries:
-          - text: "j/k or ↑/↓"
+          - text: "j/k"
             comment: "Navigate through similar functions list"
           - text: "h or ?"
             comment: "Show help overlay"
-          - text: "q or ESC"
+          - text: "r"
+            comment: "Rename source function based on selected similar function"
+          - text: "q"
+            comment: "Exit interactive diff viewer"
+  - name: REfdf
+    cname: function_decompilation_diff
+    summary: Interactive diff viewer for decompilation code of similar functions.
+    args:
+      - name: function_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: min_similarity
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 90
+    details:
+      - name: Usage
+        entries:
+          - text: "REfdf main"
+            comment: "Show interactive diff for function 'main' decompilation with similar functions (default 90% similarity)"
+          - text: "REfdf parse_header 85"
+            comment: "Show interactive diff for 'parse_header' decompilation with minimum 85% similarity"
+      - name: Controls
+        entries:
+          - text: "j/k"
+            comment: "Navigate through similar functions list"
+          - text: "h or ?"
+            comment: "Show help overlay"
+          - text: "r"
+            comment: "Rename source function based on selected similar function"
+          - text: "q"
             comment: "Exit interactive diff viewer"
   - name: REfsd
     cname: function_similarity_search_debug
