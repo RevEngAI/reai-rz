@@ -1022,7 +1022,7 @@ RZ_IPI RzCmdStatus rz_get_recent_analyses_handler (RzCore* core, int argc, const
 static inline void rz_cons_canvas_write_at (RzConsCanvas* c, const char* text, int x, int y) {
     int _x = c->x;
     int _y = c->y;
-    
+
     rz_cons_canvas_gotoxy (c, x, y);
     rz_cons_canvas_write (c, text);
     rz_cons_canvas_gotoxy (c, _x, _y);
@@ -1078,8 +1078,7 @@ Strs wrapText (const char* text, int width, int max_lines) {
         if (line_len < remaining && line_len > 0) {
             int break_pos = line_len;
             // Look backwards for a space to break on
-            while (break_pos > 0 && pos + break_pos < text_len &&
-                   stripped_str.data[pos + break_pos] != ' ' &&
+            while (break_pos > 0 && pos + break_pos < text_len && stripped_str.data[pos + break_pos] != ' ' &&
                    stripped_str.data[pos + break_pos] != '\t') {
                 break_pos--;
             }
@@ -1101,8 +1100,7 @@ Strs wrapText (const char* text, int width, int max_lines) {
 
         pos += line_len;
         // Skip whitespace at start of next line
-        while (pos < text_len &&
-               (stripped_str.data[pos] == ' ' || stripped_str.data[pos] == '\t')) {
+        while (pos < text_len && (stripped_str.data[pos] == ' ' || stripped_str.data[pos] == '\t')) {
             pos++;
         }
     }
@@ -1148,13 +1146,7 @@ bool drawInteractiveList (RzConsCanvas* c, const char* header, int w, int h, Dif
 
     // Show selection counter with boundary check
     char selection_info[64];
-    snprintf (
-        selection_info,
-        sizeof (selection_info),
-        "(%d/%d)",
-        selected_idx + 1,
-        (int)items->length
-    );
+    snprintf (selection_info, sizeof (selection_info), "(%d/%d)", selected_idx + 1, (int)items->length);
     int counter_len = strlen (selection_info);
     int counter_x   = x + list_width - counter_len - 2;
 
@@ -1191,8 +1183,7 @@ bool drawInteractiveList (RzConsCanvas* c, const char* header, int w, int h, Dif
             LOG_FATAL ("UI rendering failed: invalid display width or null item name");
         }
 
-        Strs wrapped_lines =
-            wrapText (item.name.data, wrap_width, max_lines - current_display_line);
+        Strs wrapped_lines = wrapText (item.name.data, wrap_width, max_lines - current_display_line);
 
         VecForeachIdx (&wrapped_lines, wrapped_line, i, {
             if (current_display_line >= max_lines)
@@ -1248,10 +1239,10 @@ bool drawInteractiveList (RzConsCanvas* c, const char* header, int w, int h, Dif
 bool drawInteractiveSourceDiff (
     RzConsCanvas* c,
     const char*   header,
-    int          w,
-    int          h,
-    DiffLines*   diff,
-    bool         show_line_numbers
+    int           w,
+    int           h,
+    DiffLines*    diff,
+    bool          show_line_numbers
 ) {
     int x          = (w * 2) / 8 + sep / 2;      // Start after the list panel (2/8)
     int y          = sep / 2;
@@ -1333,8 +1324,7 @@ bool drawInteractiveSourceDiff (
             }
 
             // Wrap the content text
-            int wrap_width =
-                show_line_numbers ? content_width - 4 : content_width; // Account for line numbers
+            int wrap_width = show_line_numbers ? content_width - 4 : content_width; // Account for line numbers
 
             // Validate UI parameters
             if (wrap_width <= 0) {
@@ -1362,12 +1352,7 @@ bool drawInteractiveSourceDiff (
 
                 if (show_line_numbers && i == 0) {
                     // Show line number only on first wrapped line
-                    StrPrintf (
-                        &line_str,
-                        "%3llu %s",
-                        (unsigned long long)line_number,
-                        line_content
-                    );
+                    StrPrintf (&line_str, "%3llu %s", (unsigned long long)line_number, line_content);
                 } else if (show_line_numbers) {
                     // Indent continuation lines
                     StrPrintf (&line_str, "    %s", line_content);
@@ -1402,10 +1387,10 @@ bool drawInteractiveSourceDiff (
 bool drawInteractiveTargetDiff (
     RzConsCanvas* c,
     const char*   header,
-    int          w,
-    int          h,
-    DiffLines*   diff,
-    bool         show_line_numbers
+    int           w,
+    int           h,
+    DiffLines*    diff,
+    bool          show_line_numbers
 ) {
     int x          = (w * 5) / 8 + sep / 2;      // Start after the source panel (2/8 + 3/8 = 5/8)
     int y          = sep / 2;
@@ -1487,8 +1472,7 @@ bool drawInteractiveTargetDiff (
             }
 
             // Wrap the content text
-            int wrap_width =
-                show_line_numbers ? content_width - 4 : content_width; // Account for line numbers
+            int wrap_width = show_line_numbers ? content_width - 4 : content_width; // Account for line numbers
 
             // Validate UI parameters
             if (wrap_width <= 0) {
@@ -1516,12 +1500,7 @@ bool drawInteractiveTargetDiff (
 
                 if (show_line_numbers && i == 0) {
                     // Show line number only on first wrapped line
-                    StrPrintf (
-                        &line_str,
-                        "%3llu %s",
-                        (unsigned long long)line_number,
-                        line_content
-                    );
+                    StrPrintf (&line_str, "%3llu %s", (unsigned long long)line_number, line_content);
                 } else if (show_line_numbers) {
                     // Indent continuation lines
                     StrPrintf (&line_str, "    %s", line_content);
@@ -1770,10 +1749,10 @@ bool drawRenameDialog (RzConsCanvas* c, int w, int h, const char* initial_name, 
 }
 
 RzConsCanvas* drawInteractiveDiff (
-    RzConsCanvas*   c,
-    const char*     list_header,
-    const char*     source_header,
-    const char*     target_header,
+    RzConsCanvas*  c,
+    const char*    list_header,
+    const char*    source_header,
+    const char*    target_header,
     DiffListItems* items,
     int            selected_idx,
     DiffLines*     diff,
@@ -1852,19 +1831,11 @@ Str getFunctionLinearDisasm (FunctionId function_id) {
                 block->comment.data
             );
         } else {
-            StrAppendf (
-                &linear_disasm,
-                "; Block %llu (0x%llx-0x%llx)\n",
-                block->id,
-                block->min_addr,
-                block->max_addr
-            );
+            StrAppendf (&linear_disasm, "; Block %llu (0x%llx-0x%llx)\n", block->id, block->min_addr, block->max_addr);
         }
 
         // Add all assembly lines from this block
-        VecForeachPtr (&block->asm_lines, asm_line, {
-            StrAppendf (&linear_disasm, "%s\n", asm_line->data);
-        });
+        VecForeachPtr (&block->asm_lines, asm_line, { StrAppendf (&linear_disasm, "%s\n", asm_line->data); });
 
         // Add destination info if available
         if (block->destinations.length > 0) {
@@ -1873,12 +1844,7 @@ Str getFunctionLinearDisasm (FunctionId function_id) {
                 if (idx > 0) {
                     StrAppendf (&linear_disasm, ", ");
                 }
-                StrAppendf (
-                    &linear_disasm,
-                    "Block_%llu(%s)",
-                    dest.destination_block_id,
-                    dest.flowtype.data
-                );
+                StrAppendf (&linear_disasm, "Block_%llu(%s)", dest.destination_block_id, dest.flowtype.data);
             });
             StrAppendf (&linear_disasm, "\n");
         }
@@ -1890,12 +1856,7 @@ Str getFunctionLinearDisasm (FunctionId function_id) {
     // Add overview comment if available
     if (cfg.overview_comment.length > 0) {
         Str header = StrInit();
-        StrPrintf (
-            &header,
-            "; Function Overview: %s\n\n%s",
-            cfg.overview_comment.data,
-            linear_disasm.data
-        );
+        StrPrintf (&header, "; Function Overview: %s\n\n%s", cfg.overview_comment.data, linear_disasm.data);
         StrDeinit (&linear_disasm);
         linear_disasm = header;
     }
@@ -1966,11 +1927,7 @@ RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, co
     SimilarFunctions similar_functions = GetSimilarFunctions (GetConnection(), &search);
 
     if (similar_functions.length == 0) {
-        DISPLAY_ERROR (
-            "No similar functions found for '%s' with %u%% similarity",
-            function_name,
-            min_similarity
-        );
+        DISPLAY_ERROR ("No similar functions found for '%s' with %u%% similarity", function_name, min_similarity);
         StrDeinit (&src);
         SimilarFunctionsRequestDeinit (&search);
         return RZ_CMD_STATUS_OK;
@@ -2028,16 +1985,8 @@ RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, co
     DiffLines     diff         = GetDiff (&src, &current_item->target_content);
 
     // Create initial canvas
-    RzConsCanvas* c = drawInteractiveDiff (
-        NULL,
-        "SIMILAR FUNCTIONS",
-        "SOURCE",
-        "TARGET",
-        &items,
-        selected_idx,
-        &diff,
-        false
-    );
+    RzConsCanvas* c =
+        drawInteractiveDiff (NULL, "SIMILAR FUNCTIONS", "SOURCE", "TARGET", &items, selected_idx, &diff, false);
 
     if (!c) {
         DISPLAY_ERROR ("Failed to create interactive diff viewer");
@@ -2099,14 +2048,7 @@ RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, co
                         rz_cons_canvas_clear (help_canvas);
 
                         // Draw the help box (only once)
-                        rz_cons_canvas_box (
-                            help_canvas,
-                            box_x,
-                            box_y,
-                            box_width,
-                            box_height,
-                            Color_RESET
-                        );
+                        rz_cons_canvas_box (help_canvas, box_x, box_y, box_width, box_height, Color_RESET);
 
                         // Write help content (only once)
                         rz_cons_canvas_write_at (
@@ -2122,42 +2064,17 @@ RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, co
                             box_y + 2
                         );
 
-                        rz_cons_canvas_write_at (
-                            help_canvas,
-                            "Navigation Controls:",
-                            box_x + 2,
-                            box_y + 4
-                        );
-                        rz_cons_canvas_write_at (
-                            help_canvas,
-                            "  k       : Move selection up",
-                            box_x + 4,
-                            box_y + 5
-                        );
-                        rz_cons_canvas_write_at (
-                            help_canvas,
-                            "  j       : Move selection down",
-                            box_x + 4,
-                            box_y + 6
-                        );
+                        rz_cons_canvas_write_at (help_canvas, "Navigation Controls:", box_x + 2, box_y + 4);
+                        rz_cons_canvas_write_at (help_canvas, "  k       : Move selection up", box_x + 4, box_y + 5);
+                        rz_cons_canvas_write_at (help_canvas, "  j       : Move selection down", box_x + 4, box_y + 6);
                         rz_cons_canvas_write_at (
                             help_canvas,
                             "  r       : Rename source function",
                             box_x + 4,
                             box_y + 9
                         );
-                        rz_cons_canvas_write_at (
-                            help_canvas,
-                            "  q / ESC : Quit viewer",
-                            box_x + 4,
-                            box_y + 7
-                        );
-                        rz_cons_canvas_write_at (
-                            help_canvas,
-                            "  h / ?   : Show this help",
-                            box_x + 4,
-                            box_y + 8
-                        );
+                        rz_cons_canvas_write_at (help_canvas, "  q / ESC : Quit viewer", box_x + 4, box_y + 7);
+                        rz_cons_canvas_write_at (help_canvas, "  h / ?   : Show this help", box_x + 4, box_y + 8);
 
                         rz_cons_canvas_write_at (help_canvas, "Usage:", box_x + 2, box_y + 11);
                         rz_cons_canvas_write_at (
@@ -2245,11 +2162,7 @@ RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, co
                         // Wait for y/n response
                         int confirm_ch = rz_cons_readchar();
                         if (confirm_ch == 'y' || confirm_ch == 'Y') {
-                            rz_cons_printf (
-                                "Renaming function '%s' to '%s'...\n",
-                                function_name,
-                                target_name.data
-                            );
+                            rz_cons_printf ("Renaming function '%s' to '%s'...\n", function_name, target_name.data);
 
                             // Perform the actual rename using the existing rename function
                             Str old_name_str = StrInitFromZstr (function_name);
@@ -2304,12 +2217,15 @@ RZ_IPI RzCmdStatus rz_function_assembly_diff_handler (RzCore* core, int argc, co
 
             if (need_redraw) {
                 if (!(c = drawInteractiveDiff (
-                        c,
-                        "SIMILAR FUNCTIONS",
-                        "SOURCE",
-                        "TARGET",
-                        &items,
-                        selected_idx, &diff, false))) {
+                          c,
+                          "SIMILAR FUNCTIONS",
+                          "SOURCE",
+                          "TARGET",
+                          &items,
+                          selected_idx,
+                          &diff,
+                          false
+                      ))) {
                     rz_cons_canvas_free (c);
                     c = NULL;
                     break;

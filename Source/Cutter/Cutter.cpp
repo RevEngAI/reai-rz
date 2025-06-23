@@ -40,6 +40,7 @@
 #include <Cutter/Ui/AutoAnalysisDialog.hpp>
 #include <Cutter/Ui/CreateAnalysisDialog.hpp>
 #include <Cutter/Ui/RecentAnalysisDialog.hpp>
+#include <Cutter/Ui/InteractiveDiffWidget.hpp>
 #include <Plugin.h>
 #include <Cutter/Cutter.hpp>
 #include <Cutter/Decompiler.hpp>
@@ -199,6 +200,7 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     actRenameFns                = reaiMenu->addAction ("Rename Functions");
     actAutoAnalyzeBin           = reaiMenu->addAction ("Auto Analyze Binary");
     actFunctionSimilaritySearch = reaiMenu->addAction ("Function Similarity Search");
+    actFunctionDiff             = reaiMenu->addAction ("Interactive Function Diff");
     actCollectionSearch         = reaiMenu->addAction ("Collection Search");
     actBinarySearch             = reaiMenu->addAction ("Binary Search");
     actRecentAnalysis           = reaiMenu->addAction ("Recent Analysis");
@@ -208,12 +210,18 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
     connect (actApplyExistingAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_ApplyExistingAnalysis);
     connect (actAutoAnalyzeBin, &QAction::triggered, this, &ReaiCutterPlugin::on_AutoAnalyzeBin);
     connect (actFunctionSimilaritySearch, &QAction::triggered, this, &ReaiCutterPlugin::on_FunctionSimilaritySearch);
+    connect (actFunctionDiff, &QAction::triggered, this, &ReaiCutterPlugin::on_FunctionDiff);
     connect (actCollectionSearch, &QAction::triggered, this, &ReaiCutterPlugin::on_CollectionSearch);
     connect (actBinarySearch, &QAction::triggered, this, &ReaiCutterPlugin::on_BinarySearch);
     connect (actRecentAnalysis, &QAction::triggered, this, &ReaiCutterPlugin::on_RecentAnalysis);
 
     connect (actRenameFns, &QAction::triggered, this, &ReaiCutterPlugin::on_RenameFns);
     connect (actSetup, &QAction::triggered, this, &ReaiCutterPlugin::on_Setup);
+
+    // Create and add the interactive diff widget as a dockable panel
+    diffWidget = new InteractiveDiffWidget (mainWin);
+    mainWin->addDockWidget (Qt::BottomDockWidgetArea, diffWidget);
+    diffWidget->hide(); // Initially hidden
 }
 
 void ReaiCutterPlugin::registerDecompilers() {
@@ -443,4 +451,16 @@ void ReaiCutterPlugin::on_BinarySearch() {
 
     BinarySearchDialog *searchDlg = new BinarySearchDialog ((QWidget *)this->parent(), true);
     searchDlg->exec();
+}
+
+void ReaiCutterPlugin::on_FunctionDiff() {
+    if (!GetConfig()->length) {
+        on_Setup();
+        return;
+    }
+
+    // Simply show the widget - no separate dialog needed
+    diffWidget->show();
+    diffWidget->raise();
+    diffWidget->activateWindow();
 }

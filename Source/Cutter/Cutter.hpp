@@ -24,6 +24,9 @@
 #include <Plugin.h>
 #include "../PluginVersion.h"
 
+// Forward declarations
+class InteractiveDiffWidget;
+
 // TODO: some shortcuts like (Ctrl+A, Ctr+E) to apple existing analysis would be really nice
 
 /**
@@ -54,12 +57,14 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     QAction *actBinarySearch             = nullptr;
     QAction *actRecentAnalysis           = nullptr;
     QAction *actSetup                    = nullptr;
+    QAction *actFunctionDiff             = nullptr;
 
     BinaryId customAnalysisId = 0;
 
     bool isInitialized = false;
 
-    MainWindow *mainWindow = NULL;
+    MainWindow            *mainWindow = NULL;
+    InteractiveDiffWidget *diffWidget = nullptr;
 
     void renameFunctions (std::vector<std::pair<QString, QString>> nameMap);
 
@@ -92,6 +97,7 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     void on_BinarySearch();
     void on_RecentAnalysis();
     void on_Setup();
+    void on_FunctionDiff();
 };
 
 #endif // REAI_PLUGIN_CUTTER_CUTTER_HPP

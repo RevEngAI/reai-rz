@@ -105,8 +105,8 @@ Plugin *getPlugin (bool reinit) {
         p.connection.user_agent =
             StrInitFromZstr ("reai_rz-" REAI_PLUGIN_VERSION " (" SRE_TOOL_NAME "-version = " SRE_TOOL_VERSION ")");
 
-            // Get AI models, this way we also perform an implicit auth-check
-            p.models = GetAiModelInfos (&p.connection);
+        // Get AI models, this way we also perform an implicit auth-check
+        p.models = GetAiModelInfos (&p.connection);
         if (!p.models.length) {
             DISPLAY_ERROR ("Failed to get AI models. Please check host and API key in config.");
             pluginDeinit (&p);
