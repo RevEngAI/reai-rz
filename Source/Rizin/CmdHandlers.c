@@ -1621,7 +1621,7 @@ bool drawConfirmationDialog (RzConsCanvas* c, int w, int h, const char* message)
     int msg_y = box_y + 2;
 
     VecForeachIdx (&wrapped_lines, line, idx, {
-        if (idx < box_height - 4) { // Leave space for options
+        if ((i64)idx < box_height - 4) { // Leave space for options
             rz_cons_canvas_write_at (c, line.data, msg_x, msg_y + idx);
         }
     });
