@@ -31,40 +31,42 @@
 class CreateAnalysisWorker;
 
 struct CreateAnalysisRequest {
-    QString aiModelName;
-    QString progName;
-    QString cmdLineArgs;
-    bool isPrivate;
-    QString binaryPath;
-    u64 baseAddr;
+    QString       aiModelName;
+    QString       progName;
+    QString       cmdLineArgs;
+    bool          isPrivate;
+    QString       binaryPath;
+    u64           baseAddr;
     FunctionInfos functions;
 };
 
 struct CreateAnalysisResult {
-    bool success;
+    bool     success;
     BinaryId binaryId;
-    QString errorMessage;
+    QString  errorMessage;
 };
 
 class CreateAnalysisWorker : public QObject {
     Q_OBJECT
 
-public:
-    CreateAnalysisWorker(QObject *parent = nullptr) : QObject(parent), m_cancelled(false) {}
-    
-    void performCreateAnalysis(const CreateAnalysisRequest &request);
-    void cancel() { m_cancelled = true; }
+   public:
+    CreateAnalysisWorker (QObject* parent = nullptr) : QObject (parent), m_cancelled (false) {}
 
-signals:
-    void progress(int percentage, const QString &message);
-    void analysisFinished(const CreateAnalysisResult &result);
-    void analysisError(const QString &error);
+    void performCreateAnalysis (const CreateAnalysisRequest& request);
+    void cancel() {
+        m_cancelled = true;
+    }
 
-private:
+   signals:
+    void progress (int percentage, const QString& message);
+    void analysisFinished (const CreateAnalysisResult& result);
+    void analysisError (const QString& error);
+
+   private:
     bool m_cancelled;
-    void emitProgress(int percentage, const QString &message) {
+    void emitProgress (int percentage, const QString& message) {
         if (!m_cancelled) {
-            emit progress(percentage, message);
+            emit progress (percentage, message);
         }
     }
 };
@@ -79,9 +81,9 @@ class CreateAnalysisDialog : public QDialog {
    private slots:
     void on_CreateAnalysis();
     void on_CancelAnalysis();
-    void onAnalysisProgress(int percentage, const QString &message);
-    void onAnalysisFinished(const CreateAnalysisResult &result);
-    void onAnalysisError(const QString &error);
+    void onAnalysisProgress (int percentage, const QString& message);
+    void onAnalysisFinished (const CreateAnalysisResult& result);
+    void onAnalysisError (const QString& error);
 
    private:
     QVBoxLayout* mainLayout;
@@ -89,23 +91,23 @@ class CreateAnalysisDialog : public QDialog {
     QLineEdit*   progNameInput;
     QLineEdit*   cmdLineArgsInput;
     QCheckBox*   isAnalysisPrivateCheckBox;
-    
+
     // Async operation UI elements
     QProgressBar* progressBar;
-    QPushButton* cancelButton;
-    QLabel* statusLabel;
-    QPushButton* okButton;
-    QPushButton* cancelDialogButton;
-    
+    QPushButton*  cancelButton;
+    QLabel*       statusLabel;
+    QPushButton*  okButton;
+    QPushButton*  cancelDialogButton;
+
     // Worker thread management
-    QThread* workerThread;
+    QThread*              workerThread;
     CreateAnalysisWorker* worker;
-    
+
     void startAsyncCreateAnalysis();
     void cancelAsyncCreateAnalysis();
     void setupProgressUI();
     void hideProgressUI();
-    void setUIEnabled(bool enabled);
+    void setUIEnabled (bool enabled);
 };
 
 #endif // REAI_PLUGIN_CUTTER_UI_CREATE_ANALYSIS_DIALOG_HPP

@@ -98,27 +98,25 @@ class DecompilationWorker;
 // Search result structure (now only contains function list, no disassembly)
 struct SearchResult {
     QList<SimilarFunctionData> similarFunctions;
-    QString sourceFunctionName;
-    bool success;
-    QString errorMessage;
-    
-    SearchResult() : success(false) {
-    }
-    
+    QString                    sourceFunctionName;
+    bool                       success;
+    QString                    errorMessage;
+
+    SearchResult() : success (false) {}
+
     // Copy constructor and assignment operator for Qt containers
-    SearchResult(const SearchResult &other) 
-        : similarFunctions(other.similarFunctions),
-          sourceFunctionName(other.sourceFunctionName),
-          success(other.success),
-          errorMessage(other.errorMessage) {
-    }
-    
-    SearchResult &operator=(const SearchResult &other) {
+    SearchResult (const SearchResult &other)
+        : similarFunctions (other.similarFunctions),
+          sourceFunctionName (other.sourceFunctionName),
+          success (other.success),
+          errorMessage (other.errorMessage) {}
+
+    SearchResult &operator= (const SearchResult &other) {
         if (this != &other) {
-            similarFunctions = other.similarFunctions;
+            similarFunctions   = other.similarFunctions;
             sourceFunctionName = other.sourceFunctionName;
-            success = other.success;
-            errorMessage = other.errorMessage;
+            success            = other.success;
+            errorMessage       = other.errorMessage;
         }
         return *this;
     }
@@ -126,38 +124,40 @@ struct SearchResult {
 
 // Disassembly result structure
 struct DisassemblyResult {
-    bool success;
+    bool       success;
     FunctionId functionId;
-    Str disassembly;
-    bool isSourceFunction;  // true if this is the source function, false if target
-    int targetIndex;        // if isSourceFunction=false, this is the index in similarFunctions
-    QString errorMessage;
-    
-    DisassemblyResult() : success(false), functionId(0), isSourceFunction(false), targetIndex(-1) {
+    Str        disassembly;
+    bool       isSourceFunction; // true if this is the source function, false if target
+    int        targetIndex;      // if isSourceFunction=false, this is the index in similarFunctions
+    QString    errorMessage;
+
+    DisassemblyResult() : success (false), functionId (0), isSourceFunction (false), targetIndex (-1) {
         disassembly = StrInit();
     }
-    
+
     ~DisassemblyResult() {
-        StrDeinit(&disassembly);
+        StrDeinit (&disassembly);
     }
-    
-    // Copy constructor  
-    DisassemblyResult(const DisassemblyResult& other) 
-        : success(other.success), functionId(other.functionId), 
-          isSourceFunction(other.isSourceFunction), targetIndex(other.targetIndex),
-          errorMessage(other.errorMessage) {
-        disassembly = StrDup(&other.disassembly);
+
+    // Copy constructor
+    DisassemblyResult (const DisassemblyResult &other)
+        : success (other.success),
+          functionId (other.functionId),
+          isSourceFunction (other.isSourceFunction),
+          targetIndex (other.targetIndex),
+          errorMessage (other.errorMessage) {
+        disassembly = StrDup (&other.disassembly);
     }
-    
+
     // Assignment operator
-    DisassemblyResult& operator=(const DisassemblyResult& other) {
+    DisassemblyResult &operator= (const DisassemblyResult &other) {
         if (this != &other) {
-            success = other.success;
-            functionId = other.functionId;
+            success          = other.success;
+            functionId       = other.functionId;
             isSourceFunction = other.isSourceFunction;
-            targetIndex = other.targetIndex;
-            StrDeinit(&disassembly);
-            disassembly = StrDup(&other.disassembly);
+            targetIndex      = other.targetIndex;
+            StrDeinit (&disassembly);
+            disassembly  = StrDup (&other.disassembly);
             errorMessage = other.errorMessage;
         }
         return *this;
@@ -166,39 +166,41 @@ struct DisassemblyResult {
 
 // Decompilation result structure
 struct DecompilationResult {
-    bool success;
+    bool       success;
     FunctionId functionId;
-    Str decompilation;
-    bool isSourceFunction;  // true if this is the source function, false if target
-    int targetIndex;        // if isSourceFunction=false, this is the index in similarFunctions
-    QString errorMessage;
-    
-    DecompilationResult() : success(false), functionId(0), isSourceFunction(false), targetIndex(-1) {
+    Str        decompilation;
+    bool       isSourceFunction; // true if this is the source function, false if target
+    int        targetIndex;      // if isSourceFunction=false, this is the index in similarFunctions
+    QString    errorMessage;
+
+    DecompilationResult() : success (false), functionId (0), isSourceFunction (false), targetIndex (-1) {
         decompilation = StrInit();
     }
-    
+
     ~DecompilationResult() {
-        StrDeinit(&decompilation);
+        StrDeinit (&decompilation);
     }
-    
-    // Copy constructor  
-    DecompilationResult(const DecompilationResult& other) 
-        : success(other.success), functionId(other.functionId), 
-          isSourceFunction(other.isSourceFunction), targetIndex(other.targetIndex),
-          errorMessage(other.errorMessage) {
-        decompilation = StrDup(&other.decompilation);
+
+    // Copy constructor
+    DecompilationResult (const DecompilationResult &other)
+        : success (other.success),
+          functionId (other.functionId),
+          isSourceFunction (other.isSourceFunction),
+          targetIndex (other.targetIndex),
+          errorMessage (other.errorMessage) {
+        decompilation = StrDup (&other.decompilation);
     }
-    
+
     // Assignment operator
-    DecompilationResult& operator=(const DecompilationResult& other) {
+    DecompilationResult &operator= (const DecompilationResult &other) {
         if (this != &other) {
-            success = other.success;
-            functionId = other.functionId;
+            success          = other.success;
+            functionId       = other.functionId;
             isSourceFunction = other.isSourceFunction;
-            targetIndex = other.targetIndex;
-            StrDeinit(&decompilation);
-            decompilation = StrDup(&other.decompilation);
-            errorMessage = other.errorMessage;
+            targetIndex      = other.targetIndex;
+            StrDeinit (&decompilation);
+            decompilation = StrDup (&other.decompilation);
+            errorMessage  = other.errorMessage;
         }
         return *this;
     }
@@ -221,15 +223,15 @@ class InteractiveDiffWidget : public CutterDockWidget {
     void onFunctionListItemClicked (QTreeWidgetItem *item, int column);
     void onRenameRequested();
     void onToggleRequested();
-    
+
     // Async slots
-    void onSearchFinished(const SearchResult &result);
-    void onSearchError(const QString &error);
-    void onProgressUpdate(int percentage, const QString &status);
-    void onDisassemblyFinished(const DisassemblyResult &result);
-    void onDisassemblyError(const QString &error);
-    void onDecompilationFinished(const DecompilationResult &result);
-    void onDecompilationError(const QString &error);
+    void onSearchFinished (const SearchResult &result);
+    void onSearchError (const QString &error);
+    void onProgressUpdate (int percentage, const QString &status);
+    void onDisassemblyFinished (const DisassemblyResult &result);
+    void onDisassemblyError (const QString &error);
+    void onDecompilationFinished (const DecompilationResult &result);
+    void onDecompilationError (const QString &error);
 
    private:
     // Main layout components
@@ -243,16 +245,16 @@ class InteractiveDiffWidget : public CutterDockWidget {
     QTextEdit   *targetDiffPanel;   // Right: Target function diff
 
     // Bottom control area
-    QLineEdit   *functionNameInput; // Function name with autocomplete
-    QCompleter  *functionCompleter; // Autocomplete for function names
-    QSlider     *similaritySlider;  // Similarity level (50-100)
-    QLabel      *similarityLabel;   // Shows current similarity value
-    QPushButton *searchButton;      // Trigger search
-    QPushButton *renameButton;      // Rename to selected function
-    QPushButton *toggleButton;      // Toggle between assembly/decompilation
-    QLabel      *statusLabel;       // Status information
-    QProgressBar *progressBar;      // Progress indicator for async operations
-    QPushButton *cancelButton;      // Cancel ongoing search
+    QLineEdit    *functionNameInput; // Function name with autocomplete
+    QCompleter   *functionCompleter; // Autocomplete for function names
+    QSlider      *similaritySlider;  // Similarity level (50-100)
+    QLabel       *similarityLabel;   // Shows current similarity value
+    QPushButton  *searchButton;      // Trigger search
+    QPushButton  *renameButton;      // Rename to selected function
+    QPushButton  *toggleButton;      // Toggle between assembly/decompilation
+    QLabel       *statusLabel;       // Status information
+    QProgressBar *progressBar;       // Progress indicator for async operations
+    QPushButton  *cancelButton;      // Cancel ongoing search
 
     // Data management
     QString                    currentSourceFunction;
@@ -267,11 +269,11 @@ class InteractiveDiffWidget : public CutterDockWidget {
 
     // Async operation management
     SimilarFunctionsWorker *searchWorker;
-    QThread *workerThread;
-    DisassemblyWorker *disassemblyWorker;
-    QThread *disassemblyThread;
-    DecompilationWorker *decompilationWorker;
-    QThread *decompilationThread;
+    QThread                *workerThread;
+    DisassemblyWorker      *disassemblyWorker;
+    QThread                *disassemblyThread;
+    DecompilationWorker    *decompilationWorker;
+    QThread                *decompilationThread;
 
     // Setup methods
     void setupUI();
@@ -308,7 +310,7 @@ class InteractiveDiffWidget : public CutterDockWidget {
     void startAsyncDecompilation();
     void startAsyncDecompilationForCurrent();
     void cancelAsyncDecompilation();
-    void showProgress(int percentage, const QString &status);
+    void showProgress (int percentage, const QString &status);
     void hideProgress();
 
     // Helper to get function disassembly and decompilation
@@ -322,84 +324,84 @@ class InteractiveDiffWidget : public CutterDockWidget {
 class SimilarFunctionsWorker : public QObject {
     Q_OBJECT
 
-public:
-    explicit SimilarFunctionsWorker(QObject *parent = nullptr);
-    
+   public:
+    explicit SimilarFunctionsWorker (QObject *parent = nullptr);
+
     struct SearchRequest {
-        QString functionName;
+        QString    functionName;
         FunctionId functionId;
-        int similarityThreshold;
-        int maxResults;
+        int        similarityThreshold;
+        int        maxResults;
     };
 
-public slots:
-    void performSearch(const SearchRequest &request);
+   public slots:
+    void performSearch (const SearchRequest &request);
     void cancelSearch();
 
-signals:
-    void searchFinished(const SearchResult &result);
-    void searchError(const QString &error);
-    void progressUpdate(int percentage, const QString &status);
+   signals:
+    void searchFinished (const SearchResult &result);
+    void searchError (const QString &error);
+    void progressUpdate (int percentage, const QString &status);
 
-private:
+   private:
     bool m_cancelled;
-    void emitProgress(int percentage, const QString &status);
+    void emitProgress (int percentage, const QString &status);
 };
 
 // Async worker class for disassembly
 class DisassemblyWorker : public QObject {
     Q_OBJECT
 
-public:
-    explicit DisassemblyWorker(QObject *parent = nullptr);
-    
+   public:
+    explicit DisassemblyWorker (QObject *parent = nullptr);
+
     struct DisassemblyRequest {
         FunctionId functionId;
-        bool isSourceFunction;
-        int targetIndex;
-        QString functionName;
+        bool       isSourceFunction;
+        int        targetIndex;
+        QString    functionName;
     };
 
-public slots:
-    void performDisassembly(const DisassemblyRequest &request);
+   public slots:
+    void performDisassembly (const DisassemblyRequest &request);
     void cancelDisassembly();
 
-signals:
-    void disassemblyFinished(const DisassemblyResult &result);
-    void disassemblyError(const QString &error);
-    void progressUpdate(int percentage, const QString &status);
+   signals:
+    void disassemblyFinished (const DisassemblyResult &result);
+    void disassemblyError (const QString &error);
+    void progressUpdate (int percentage, const QString &status);
 
-private:
+   private:
     bool m_cancelled;
-    void emitProgress(int percentage, const QString &status);
+    void emitProgress (int percentage, const QString &status);
 };
 
 // Async worker class for decompilation
 class DecompilationWorker : public QObject {
     Q_OBJECT
 
-public:
-    explicit DecompilationWorker(QObject *parent = nullptr);
-    
+   public:
+    explicit DecompilationWorker (QObject *parent = nullptr);
+
     struct DecompilationRequest {
         FunctionId functionId;
-        bool isSourceFunction;
-        int targetIndex;
-        QString functionName;
+        bool       isSourceFunction;
+        int        targetIndex;
+        QString    functionName;
     };
 
-public slots:
-    void performDecompilation(const DecompilationRequest &request);
+   public slots:
+    void performDecompilation (const DecompilationRequest &request);
     void cancelDecompilation();
 
-signals:
-    void decompilationFinished(const DecompilationResult &result);
-    void decompilationError(const QString &error);
-    void progressUpdate(int percentage, const QString &status);
+   signals:
+    void decompilationFinished (const DecompilationResult &result);
+    void decompilationError (const QString &error);
+    void progressUpdate (int percentage, const QString &status);
 
-private:
+   private:
     bool m_cancelled;
-    void emitProgress(int percentage, const QString &status);
+    void emitProgress (int percentage, const QString &status);
 };
 
-#endif                                              // REAI_PLUGIN_CUTTER_UI_INTERACTIVE_DIFF_WIDGET_HPP
+#endif // REAI_PLUGIN_CUTTER_UI_INTERACTIVE_DIFF_WIDGET_HPP

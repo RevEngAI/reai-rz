@@ -39,10 +39,10 @@ InteractiveDiffWidget::InteractiveDiffWidget (MainWindow *main)
     currentDiffLines    = VecInit();
 
     // Initialize async components
-    searchWorker = nullptr;
-    workerThread = nullptr;
-    disassemblyWorker = nullptr;
-    disassemblyThread = nullptr;
+    searchWorker        = nullptr;
+    workerThread        = nullptr;
+    disassemblyWorker   = nullptr;
+    disassemblyThread   = nullptr;
     decompilationWorker = nullptr;
     decompilationThread = nullptr;
 
@@ -60,38 +60,38 @@ InteractiveDiffWidget::~InteractiveDiffWidget() {
         if (searchWorker) {
             searchWorker->cancelSearch();
         }
-        
+
         workerThread->quit();
-        if (!workerThread->wait(2000)) { // Wait 2 seconds max
+        if (!workerThread->wait (2000)) { // Wait 2 seconds max
             workerThread->terminate();
-            workerThread->wait(500); // Wait another 500ms after terminate
+            workerThread->wait (500);     // Wait another 500ms after terminate
         }
     }
-    
+
     if (disassemblyThread && disassemblyThread->isRunning()) {
         if (disassemblyWorker) {
             disassemblyWorker->cancelDisassembly();
         }
-        
+
         disassemblyThread->quit();
-        if (!disassemblyThread->wait(2000)) { // Wait 2 seconds max
+        if (!disassemblyThread->wait (2000)) { // Wait 2 seconds max
             disassemblyThread->terminate();
-            disassemblyThread->wait(500); // Wait another 500ms after terminate
+            disassemblyThread->wait (500);     // Wait another 500ms after terminate
         }
     }
-    
+
     if (decompilationThread && decompilationThread->isRunning()) {
         if (decompilationWorker) {
             decompilationWorker->cancelDecompilation();
         }
-        
+
         decompilationThread->quit();
-        if (!decompilationThread->wait(2000)) { // Wait 2 seconds max
+        if (!decompilationThread->wait (2000)) { // Wait 2 seconds max
             decompilationThread->terminate();
-            decompilationThread->wait(500); // Wait another 500ms after terminate
+            decompilationThread->wait (500);     // Wait another 500ms after terminate
         }
     }
-    
+
     // Clean up string containers
     StrDeinit (&sourceDisassembly);
     StrDeinit (&sourceDecompilation);
@@ -113,14 +113,14 @@ void InteractiveDiffWidget::setupUI() {
     mainLayout->addWidget (controlsWidget, 0); // Fixed size at bottom
 
     // Set flexible size policies for the main widget
-    mainWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
+    mainWidget->setSizePolicy (QSizePolicy::Expanding, QSizePolicy::Expanding);
+
     // Set reasonable minimum and maximum sizes
-    setMinimumSize(400, 300); // Much smaller minimum than before
-    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX); // No maximum constraint
-    
+    setMinimumSize (400, 300);                         // Much smaller minimum than before
+    setMaximumSize (QWIDGETSIZE_MAX, QWIDGETSIZE_MAX); // No maximum constraint
+
     // Set preferred size to be reasonable but not overwhelming
-    resize(600, 400);
+    resize (600, 400);
 
     setWidget (mainWidget);
 }
@@ -133,8 +133,8 @@ void InteractiveDiffWidget::setupThreePanelLayout() {
     functionListPanel = new QTreeWidget();
     functionListPanel->setHeaderLabels ({"Function Name", "Binary", "Similarity"});
     functionListPanel->header()->setSectionResizeMode (QHeaderView::ResizeToContents);
-    functionListPanel->setMinimumWidth (120); 
-    functionListPanel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    functionListPanel->setMinimumWidth (120);
+    functionListPanel->setSizePolicy (QSizePolicy::Preferred, QSizePolicy::Expanding);
     functionListPanel->setSortingEnabled (true);
     functionListPanel->sortByColumn (2, Qt::DescendingOrder); // Sort by similarity desc
 
@@ -144,15 +144,15 @@ void InteractiveDiffWidget::setupThreePanelLayout() {
     sourceDiffPanel->setFont (QFont ("Consolas", 10));
     sourceDiffPanel->setPlaceholderText ("Source function disassembly will appear here...");
     sourceDiffPanel->setMinimumWidth (150);
-    sourceDiffPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    sourceDiffPanel->setSizePolicy (QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // Right panel: Target diff
     targetDiffPanel = new QTextEdit();
     targetDiffPanel->setReadOnly (true);
     targetDiffPanel->setFont (QFont ("Consolas", 10));
     targetDiffPanel->setPlaceholderText ("Target function disassembly will appear here...");
-    targetDiffPanel->setMinimumWidth (150); 
-    targetDiffPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    targetDiffPanel->setMinimumWidth (150);
+    targetDiffPanel->setSizePolicy (QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     // Add panels to splitter
     mainSplitter->addWidget (functionListPanel);
@@ -161,52 +161,52 @@ void InteractiveDiffWidget::setupThreePanelLayout() {
 
     // Set proportional sizes with smaller initial values for flexibility
     mainSplitter->setSizes ({120, 200, 200});
-    mainSplitter->setStretchFactor (0, 1); 
-    mainSplitter->setStretchFactor (1, 2); 
-    mainSplitter->setStretchFactor (2, 2); 
-    
+    mainSplitter->setStretchFactor (0, 1);
+    mainSplitter->setStretchFactor (1, 2);
+    mainSplitter->setStretchFactor (2, 2);
+
     // Make splitter collapsible for better flexibility
-    mainSplitter->setChildrenCollapsible(true);
+    mainSplitter->setChildrenCollapsible (true);
 }
 
 void InteractiveDiffWidget::setupControlsArea() {
     controlsWidget              = new QWidget();
     QHBoxLayout *controlsLayout = new QHBoxLayout (controlsWidget);
     controlsLayout->setContentsMargins (0, 5, 0, 0);
-    
+
     // Set flexible size policy for controls widget
-    controlsWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    controlsWidget->setSizePolicy (QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     // Function name input with autocomplete
     QLabel *fnLabel   = new QLabel ("Function:");
     functionNameInput = new QLineEdit();
     functionNameInput->setPlaceholderText ("Start typing for suggestions...");
-    functionNameInput->setMinimumWidth (150); 
-    functionNameInput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    functionNameInput->setMinimumWidth (150);
+    functionNameInput->setSizePolicy (QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     // Similarity slider with label
     QLabel *simLabel = new QLabel ("Min Similarity:");
     similaritySlider = new QSlider (Qt::Horizontal);
     similaritySlider->setRange (50, 100);
     similaritySlider->setValue (90);
-    similaritySlider->setMinimumWidth (100); 
-    similaritySlider->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    similaritySlider->setMinimumWidth (100);
+    similaritySlider->setSizePolicy (QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     similarityLabel = new QLabel ("90%");
-    similarityLabel->setMinimumWidth (30); 
+    similarityLabel->setMinimumWidth (30);
 
     // Search button
     searchButton = new QPushButton ("Search");
-    searchButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    searchButton->setSizePolicy (QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     // Rename button
     renameButton = new QPushButton ("Rename to Selected");
-    renameButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    renameButton->setSizePolicy (QSizePolicy::Fixed, QSizePolicy::Fixed);
     renameButton->setEnabled (false); // Initially disabled
 
     // Toggle button for assembly/decompilation
     toggleButton = new QPushButton ("Show Decompilation");
-    toggleButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    toggleButton->setSizePolicy (QSizePolicy::Fixed, QSizePolicy::Fixed);
     toggleButton->setCheckable (true);
     toggleButton->setChecked (false); // Default to assembly
 
@@ -216,13 +216,13 @@ void InteractiveDiffWidget::setupControlsArea() {
 
     // Progress bar for async operations
     progressBar = new QProgressBar();
-    progressBar->setVisible(false);
-    progressBar->setMaximumWidth(200);
-    
+    progressBar->setVisible (false);
+    progressBar->setMaximumWidth (200);
+
     // Cancel button for async operations
-    cancelButton = new QPushButton("Cancel");
-    cancelButton->setVisible(false);
-    cancelButton->setMaximumWidth(60);
+    cancelButton = new QPushButton ("Cancel");
+    cancelButton->setVisible (false);
+    cancelButton->setMaximumWidth (60);
 
     // Layout controls
     controlsLayout->addWidget (fnLabel);
@@ -298,7 +298,7 @@ void InteractiveDiffWidget::loadFunctionNames() {
         functionNameList << fn->name;
     }
 
-    // Setup autocomplete exactly like FunctionSimilarityDialog
+    // Setup autocomplete for function names
     functionCompleter = new QCompleter (functionNameList);
     functionCompleter->setCaseSensitivity (Qt::CaseInsensitive);
     functionNameInput->setCompleter (functionCompleter);
@@ -347,13 +347,13 @@ void InteractiveDiffWidget::onFunctionListItemClicked (QTreeWidgetItem *item, in
 
     // Find the corresponding similar function
     QString displayedFunctionName = item->text (0);
-    QString binaryName   = item->text (1);
-    int     index        = -1;
+    QString binaryName            = item->text (1);
+    int     index                 = -1;
 
     // Extract the actual function name (remove decompilation indicators)
     QString functionName = displayedFunctionName;
-    if (functionName.endsWith(" ✓")) {
-        functionName = functionName.left(functionName.length() - 2);
+    if (functionName.endsWith (" ✓")) {
+        functionName = functionName.left (functionName.length() - 2);
     }
 
     for (int i = 0; i < similarFunctions.size(); ++i) {
@@ -366,14 +366,14 @@ void InteractiveDiffWidget::onFunctionListItemClicked (QTreeWidgetItem *item, in
     if (index >= 0 && index != currentSelectedIndex) {
         currentSelectedIndex = index;
         renameButton->setEnabled (true); // Enable rename button when function is selected
-        
+
         if (isDecompilationMode) {
             // In decompilation mode, check if decompilation is available
             SimilarFunctionData &targetFunc = similarFunctions[currentSelectedIndex];
             if (!sourceHasDecompilation || !targetFunc.hasDecompilation) {
-                updateStatusLabel(QString("Fetching decompilation for %1...").arg(targetFunc.name));
+                updateStatusLabel (QString ("Fetching decompilation for %1...").arg (targetFunc.name));
                 clearPanels();
-                
+
                 // Cancel any existing decompilation work and start fresh for this function
                 cancelAsyncDecompilation();
                 startAsyncDecompilationForCurrent();
@@ -383,23 +383,23 @@ void InteractiveDiffWidget::onFunctionListItemClicked (QTreeWidgetItem *item, in
             // In assembly mode, check if disassembly is available
             SimilarFunctionData &targetFunc = similarFunctions[currentSelectedIndex];
             if (sourceDisassembly.length == 0 || targetFunc.disassembly.length == 0) {
-                updateStatusLabel(QString("Fetching disassembly for %1...").arg(targetFunc.name));
+                updateStatusLabel (QString ("Fetching disassembly for %1...").arg (targetFunc.name));
                 clearPanels();
-                
+
                 // Cancel any existing disassembly work and start fresh for this function
                 cancelAsyncDisassembly();
                 startAsyncDisassemblyForCurrent();
                 return;
             }
         }
-        
+
         updateDiffPanels();
     }
 }
 
 void InteractiveDiffWidget::searchSimilarFunctions() {
     rzClearMsg();
-    
+
     if (!rzCanWorkWithAnalysis (GetBinaryId(), true)) {
         showErrorState ("No RevEngAI analysis available");
         return;
@@ -420,9 +420,9 @@ void InteractiveDiffWidget::updateFunctionList() {
     QString selectedBinaryName;
     if (currentSelectedIndex >= 0 && currentSelectedIndex < similarFunctions.size()) {
         selectedFunctionName = similarFunctions[currentSelectedIndex].name;
-        selectedBinaryName = similarFunctions[currentSelectedIndex].binaryName;
+        selectedBinaryName   = similarFunctions[currentSelectedIndex].binaryName;
     }
-    
+
     functionListPanel->clear();
 
     int minSimilarity = similaritySlider->value();
@@ -430,13 +430,13 @@ void InteractiveDiffWidget::updateFunctionList() {
     for (const auto &func : similarFunctions) {
         if (func.similarity >= minSimilarity) {
             QTreeWidgetItem *item = new QTreeWidgetItem();
-            
+
             // Add decompilation indicator if in decompilation mode
             QString functionName = func.name;
             if (isDecompilationMode && func.hasDecompilation) {
-                functionName += " ✓";  // Checkmark for available decompilation
+                functionName += " ✓"; // Checkmark for available decompilation
             }
-            
+
             item->setText (0, functionName);
             item->setText (1, func.binaryName);
             item->setText (2, QString ("%1%").arg (func.similarity, 0, 'f', 1));
@@ -451,20 +451,19 @@ void InteractiveDiffWidget::updateFunctionList() {
                 color = QColor (128, 128, 128); // Gray
 
             item->setForeground (2, color);
-            
+
             // Dim functions without decompilation in decompilation mode
             if (isDecompilationMode && !func.hasDecompilation) {
-                item->setForeground(0, QColor(128, 128, 128));
-                item->setForeground(1, QColor(128, 128, 128));
+                item->setForeground (0, QColor (128, 128, 128));
+                item->setForeground (1, QColor (128, 128, 128));
             }
-            
+
             functionListPanel->addTopLevelItem (item);
-            
+
             // Restore selection if this was the previously selected item
-            if (!selectedFunctionName.isEmpty() && 
-                func.name == selectedFunctionName && 
+            if (!selectedFunctionName.isEmpty() && func.name == selectedFunctionName &&
                 func.binaryName == selectedBinaryName) {
-                functionListPanel->setCurrentItem(item);
+                functionListPanel->setCurrentItem (item);
             }
         }
     }
@@ -487,7 +486,9 @@ void InteractiveDiffWidget::updateDiffPanels() {
     if (isDecompilationMode) {
         // Check if decompilation is available for both functions
         if (!sourceHasDecompilation || !targetFunc.hasDecompilation) {
-            updateStatusLabel(QString("Decompilation not yet available for %1 - fetching in background...").arg(targetFunc.name));
+            updateStatusLabel (
+                QString ("Decompilation not yet available for %1 - fetching in background...").arg (targetFunc.name)
+            );
             clearPanels();
             return;
         }
@@ -496,7 +497,7 @@ void InteractiveDiffWidget::updateDiffPanels() {
     } else {
         // Check if disassembly is available for both functions
         if (sourceDisassembly.length == 0 || targetFunc.disassembly.length == 0) {
-            updateStatusLabel(QString("Disassembly not yet available for %1 - fetching...").arg(targetFunc.name));
+            updateStatusLabel (QString ("Disassembly not yet available for %1 - fetching...").arg (targetFunc.name));
             clearPanels();
             return;
         }
@@ -736,15 +737,15 @@ void InteractiveDiffWidget::onToggleRequested() {
 
     if (isDecompilationMode) {
         toggleButton->setText ("Show Assembly");
-        
+
         // Cancel any existing decompilation operations
         cancelAsyncDecompilation();
-        
+
         // Start async decompilation
         startAsyncDecompilation();
     } else {
         toggleButton->setText ("Show Decompilation");
-        
+
         // Update diff panels with current mode (assembly)
         if (currentSelectedIndex >= 0) {
             updateDiffPanels();
@@ -752,8 +753,8 @@ void InteractiveDiffWidget::onToggleRequested() {
     }
 }
 
-// Note: fetchDecompilationForCurrentSelection and fetchDecompilationForFunction 
-// have been replaced with async versions startAsyncDecompilation() and the 
+// Note: fetchDecompilationForCurrentSelection and fetchDecompilationForFunction
+// have been replaced with async versions startAsyncDecompilation() and the
 // DecompilationWorker class to prevent UI freezing
 
 void InteractiveDiffWidget::onRenameRequested() {
@@ -790,6 +791,16 @@ void InteractiveDiffWidget::onRenameRequested() {
 
     // Rename the function
     bool success = rz_analysis_function_rename (func, targetFunc.name.toUtf8().constData());
+
+    FunctionId fn_id = rzLookupFunctionIdForFunctionWithName (core, targetFunc.name.toUtf8().constData());
+    if (fn_id) {
+        Str new_name = StrInit();
+        StrPushBackZstr (&new_name, targetFunc.name.toUtf8().constData());
+        RenameFunction (GetConnection(), fn_id, new_name);
+        StrDeinit (&new_name);
+    } else {
+        QMessageBox::critical (this, "Error", "Failed to rename function : Function not found in RevEngAI analysis");
+    }
 
     if (success) {
         QMessageBox::information (
@@ -834,18 +845,18 @@ void InteractiveDiffWidget::startAsyncSearch() {
     sourceDecompilation = StrInit();
 
     // Show progress
-    showProgress(0, "Preparing search...");
+    showProgress (0, "Preparing search...");
 
     // Get function ID for the search
     FunctionId functionId = 0;
     {
         RzCoreLocked core (Core());
-        QByteArray fnNameByteArr = currentSourceFunction.toLatin1();
-        functionId = rzLookupFunctionIdForFunctionWithName (core, fnNameByteArr.constData());
-        
+        QByteArray   fnNameByteArr = currentSourceFunction.toLatin1();
+        functionId                 = rzLookupFunctionIdForFunctionWithName (core, fnNameByteArr.constData());
+
         if (!functionId) {
             hideProgress();
-            showErrorState("Failed to get function ID for selected function");
+            showErrorState ("Failed to get function ID for selected function");
             return;
         }
     }
@@ -853,31 +864,31 @@ void InteractiveDiffWidget::startAsyncSearch() {
     // Create worker and thread (don't parent the thread to this widget)
     workerThread = new QThread();
     searchWorker = new SimilarFunctionsWorker();
-    searchWorker->moveToThread(workerThread);
+    searchWorker->moveToThread (workerThread);
 
     // Connect signals with Qt::QueuedConnection for thread safety
-    connect(workerThread, &QThread::started, [this, functionId]() {
+    connect (workerThread, &QThread::started, [this, functionId]() {
         if (searchWorker) {
             SimilarFunctionsWorker::SearchRequest request;
-            request.functionName = currentSourceFunction;
-            request.functionId = functionId;
+            request.functionName        = currentSourceFunction;
+            request.functionId          = functionId;
             request.similarityThreshold = similaritySlider->value();
-            request.maxResults = 20;
-            
-            searchWorker->performSearch(request);
+            request.maxResults          = 20;
+
+            searchWorker->performSearch (request);
         }
     });
-    
-    connect(searchWorker, &SimilarFunctionsWorker::searchFinished, this, &InteractiveDiffWidget::onSearchFinished);
-    connect(searchWorker, &SimilarFunctionsWorker::searchError, this, &InteractiveDiffWidget::onSearchError);
-    connect(searchWorker, &SimilarFunctionsWorker::progressUpdate, this, &InteractiveDiffWidget::onProgressUpdate);
-    
+
+    connect (searchWorker, &SimilarFunctionsWorker::searchFinished, this, &InteractiveDiffWidget::onSearchFinished);
+    connect (searchWorker, &SimilarFunctionsWorker::searchError, this, &InteractiveDiffWidget::onSearchError);
+    connect (searchWorker, &SimilarFunctionsWorker::progressUpdate, this, &InteractiveDiffWidget::onProgressUpdate);
+
     // Clean up worker when thread finishes
-    connect(workerThread, &QThread::finished, searchWorker, &QObject::deleteLater);
-    connect(workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
-    
+    connect (workerThread, &QThread::finished, searchWorker, &QObject::deleteLater);
+    connect (workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
+
     // Reset pointers when thread finishes to avoid dangling pointers
-    connect(workerThread, &QThread::finished, [this]() {
+    connect (workerThread, &QThread::finished, [this]() {
         searchWorker = nullptr;
         workerThread = nullptr;
     });
@@ -890,161 +901,159 @@ void InteractiveDiffWidget::cancelAsyncSearch() {
     if (searchWorker) {
         searchWorker->cancelSearch();
     }
-    
+
     if (workerThread && workerThread->isRunning()) {
         // First try to quit gracefully
         workerThread->quit();
-        
+
         // Wait for the thread to finish, but don't wait forever
-        if (!workerThread->wait(3000)) { // Wait up to 3 seconds
+        if (!workerThread->wait (3000)) { // Wait up to 3 seconds
             // If it doesn't finish gracefully, force terminate
             qWarning() << "Worker thread didn't quit gracefully, terminating...";
             workerThread->terminate();
-            workerThread->wait(1000); // Give it another second to clean up
+            workerThread->wait (1000); // Give it another second to clean up
         }
     }
-    
+
     // Reset pointers after termination
     searchWorker = nullptr;
     workerThread = nullptr;
-    
+
     hideProgress();
-    updateStatusLabel("Search cancelled");
+    updateStatusLabel ("Search cancelled");
 }
 
-void InteractiveDiffWidget::showProgress(int percentage, const QString &status) {
-    progressBar->setVisible(true);
-    progressBar->setValue(percentage);
-    cancelButton->setVisible(true);
-    searchButton->setEnabled(false);
-    updateStatusLabel(status);
+void InteractiveDiffWidget::showProgress (int percentage, const QString &status) {
+    progressBar->setVisible (true);
+    progressBar->setValue (percentage);
+    cancelButton->setVisible (true);
+    searchButton->setEnabled (false);
+    updateStatusLabel (status);
 }
 
 void InteractiveDiffWidget::hideProgress() {
-    progressBar->setVisible(false);
-    cancelButton->setVisible(false);
-    searchButton->setEnabled(true);
+    progressBar->setVisible (false);
+    cancelButton->setVisible (false);
+    searchButton->setEnabled (true);
 }
 
-void InteractiveDiffWidget::onSearchFinished(const SearchResult &result) {
+void InteractiveDiffWidget::onSearchFinished (const SearchResult &result) {
     hideProgress();
-    
+
     if (!result.success) {
-        showErrorState("Search failed");
+        showErrorState ("Search failed");
         return;
     }
-    
+
     // Update the widget with search results
     similarFunctions = result.similarFunctions;
-    
+
     if (similarFunctions.isEmpty()) {
-        showErrorState("No similar functions found");
+        showErrorState ("No similar functions found");
         return;
     }
-    
+
     updateFunctionList();
-    updateStatusLabel(QString("Found %1 similar functions").arg(similarFunctions.size()));
-    
+    updateStatusLabel (QString ("Found %1 similar functions").arg (similarFunctions.size()));
+
     // Auto-select first item and start fetching disassembly for it
     if (functionListPanel->topLevelItemCount() > 0) {
-        functionListPanel->setCurrentItem(functionListPanel->topLevelItem(0));
+        functionListPanel->setCurrentItem (functionListPanel->topLevelItem (0));
         currentSelectedIndex = 0;
-        renameButton->setEnabled(true);
-        
+        renameButton->setEnabled (true);
+
         // Start async disassembly for the first selected function
         startAsyncDisassemblyForCurrent();
     }
-    
+
     // Note: worker references will be cleaned up by the QThread::finished lambda
 }
 
-void InteractiveDiffWidget::onSearchError(const QString &error) {
+void InteractiveDiffWidget::onSearchError (const QString &error) {
     hideProgress();
-    showErrorState(error);
-    
+    showErrorState (error);
+
     // Note: worker references will be cleaned up by the QThread::finished lambda
 }
 
-void InteractiveDiffWidget::onProgressUpdate(int percentage, const QString &status) {
-    showProgress(percentage, status);
+void InteractiveDiffWidget::onProgressUpdate (int percentage, const QString &status) {
+    showProgress (percentage, status);
 }
 
 // SimilarFunctionsWorker implementation
-SimilarFunctionsWorker::SimilarFunctionsWorker(QObject *parent) 
-    : QObject(parent), m_cancelled(false) {
-}
+SimilarFunctionsWorker::SimilarFunctionsWorker (QObject *parent) : QObject (parent), m_cancelled (false) {}
 
-void SimilarFunctionsWorker::performSearch(const SimilarFunctionsWorker::SearchRequest &request) {
+void SimilarFunctionsWorker::performSearch (const SimilarFunctionsWorker::SearchRequest &request) {
     m_cancelled = false;
     SearchResult result;
-    result.success = false;
+    result.success            = false;
     result.sourceFunctionName = request.functionName;
-    
+
     try {
-        emitProgress(20, "Setting up search request...");
-        
+        emitProgress (20, "Setting up search request...");
+
         if (m_cancelled) {
-            emit searchError("Search cancelled");
+            emit searchError ("Search cancelled");
             return;
         }
-        
-        SimilarFunctionsRequest search = SimilarFunctionsRequestInit();
-        search.function_id = request.functionId;
-        search.distance = 1.0f - (request.similarityThreshold / 100.0f);
-        search.limit = request.maxResults;
+
+        SimilarFunctionsRequest search        = SimilarFunctionsRequestInit();
+        search.function_id                    = request.functionId;
+        search.distance                       = 1.0f - (request.similarityThreshold / 100.0f);
+        search.limit                          = request.maxResults;
         search.debug_include.external_symbols = false;
-        search.debug_include.system_symbols = false;
-        search.debug_include.user_symbols = false;
-        
-        emitProgress(50, "Searching for similar functions...");
-        
+        search.debug_include.system_symbols   = false;
+        search.debug_include.user_symbols     = false;
+
+        emitProgress (50, "Searching for similar functions...");
+
         if (m_cancelled) {
-            SimilarFunctionsRequestDeinit(&search);
-            emit searchError("Search cancelled");
+            SimilarFunctionsRequestDeinit (&search);
+            emit searchError ("Search cancelled");
             return;
         }
-        
+
         // Make the actual API call
-        SimilarFunctions similar_functions = GetSimilarFunctions(GetConnection(), &search);
-        SimilarFunctionsRequestDeinit(&search);
-        
+        SimilarFunctions similar_functions = GetSimilarFunctions (GetConnection(), &search);
+        SimilarFunctionsRequestDeinit (&search);
+
         if (similar_functions.length == 0) {
-            VecDeinit(&similar_functions);
-            emit searchError("No similar functions found");
+            VecDeinit (&similar_functions);
+            emit searchError ("No similar functions found");
             return;
         }
-        
-        emitProgress(80, "Processing results...");
-        
+
+        emitProgress (80, "Processing results...");
+
         // Convert results to our format (without disassembly - that will be fetched on-demand)
-        VecForeachPtr(&similar_functions, similar_function, {
+        VecForeachPtr (&similar_functions, similar_function, {
             if (m_cancelled) {
-                VecDeinit(&similar_functions);
-                emit searchError("Search cancelled");
+                VecDeinit (&similar_functions);
+                emit searchError ("Search cancelled");
                 return;
             }
-            
+
             SimilarFunctionData data;
-            data.name = QString::fromUtf8(similar_function->name.data);
-            data.binaryName = QString::fromUtf8(similar_function->binary_name.data);
+            data.name       = QString::fromUtf8 (similar_function->name.data);
+            data.binaryName = QString::fromUtf8 (similar_function->binary_name.data);
             data.functionId = similar_function->id;
-            data.binaryId = similar_function->binary_id;
+            data.binaryId   = similar_function->binary_id;
             data.similarity = (1.0f - similar_function->distance) * 100.0f;
-            
+
             // Note: disassembly and decompilation will be fetched on-demand
             // data.disassembly and data.decompilation remain empty (StrInit())
-            
-            result.similarFunctions.append(data);
+
+            result.similarFunctions.append (data);
         });
-        
-        VecDeinit(&similar_functions);
-        
-        emitProgress(100, "Search completed");
+
+        VecDeinit (&similar_functions);
+
+        emitProgress (100, "Search completed");
         result.success = true;
-        emit searchFinished(result);
-        
+        emit searchFinished (result);
+
     } catch (...) {
-        emit searchError("Unexpected error during search");
+        emit searchError ("Unexpected error during search");
     }
 }
 
@@ -1052,8 +1061,8 @@ void SimilarFunctionsWorker::cancelSearch() {
     m_cancelled = true;
 }
 
-void SimilarFunctionsWorker::emitProgress(int percentage, const QString &status) {
-    emit progressUpdate(percentage, status);
+void SimilarFunctionsWorker::emitProgress (int percentage, const QString &status) {
+    emit progressUpdate (percentage, status);
 }
 
 // Async decompilation methods for InteractiveDiffWidget
@@ -1065,58 +1074,68 @@ void InteractiveDiffWidget::startAsyncDecompilation() {
 
 void InteractiveDiffWidget::startAsyncDecompilationForCurrent() {
     if (currentSelectedIndex < 0 || currentSelectedIndex >= similarFunctions.size()) {
-        showErrorState("No function selected for decompilation");
+        showErrorState ("No function selected for decompilation");
         return;
     }
 
     // Show progress
-    showProgress(0, "Starting decompilation...");
+    showProgress (0, "Starting decompilation...");
 
     // Create worker and thread for decompilation
     decompilationThread = new QThread();
     decompilationWorker = new DecompilationWorker();
-    decompilationWorker->moveToThread(decompilationThread);
+    decompilationWorker->moveToThread (decompilationThread);
 
     // Connect signals
-    connect(decompilationThread, &QThread::started, [this]() {
+    connect (decompilationThread, &QThread::started, [this]() {
         if (decompilationWorker) {
             // First request source decompilation if needed
             if (!sourceHasDecompilation) {
-                RzCoreLocked core(Core());
-                QByteArray fnNameByteArr = currentSourceFunction.toLatin1();
-                FunctionId sourceId = rzLookupFunctionIdForFunctionWithName(core, fnNameByteArr.constData());
-                
+                RzCoreLocked core (Core());
+                QByteArray   fnNameByteArr = currentSourceFunction.toLatin1();
+                FunctionId   sourceId      = rzLookupFunctionIdForFunctionWithName (core, fnNameByteArr.constData());
+
                 if (sourceId) {
                     DecompilationWorker::DecompilationRequest request;
-                    request.functionId = sourceId;
+                    request.functionId       = sourceId;
                     request.isSourceFunction = true;
-                    request.targetIndex = -1;
-                    request.functionName = currentSourceFunction;
-                    
-                    decompilationWorker->performDecompilation(request);
+                    request.targetIndex      = -1;
+                    request.functionName     = currentSourceFunction;
+
+                    decompilationWorker->performDecompilation (request);
                     return;
                 }
             }
-            
+
             // Otherwise start with target decompilation
             SimilarFunctionData &targetFunc = similarFunctions[currentSelectedIndex];
             if (!targetFunc.hasDecompilation) {
                 DecompilationWorker::DecompilationRequest request;
-                request.functionId = targetFunc.functionId;
+                request.functionId       = targetFunc.functionId;
                 request.isSourceFunction = false;
-                request.targetIndex = currentSelectedIndex;
-                request.functionName = targetFunc.name;
-                
-                decompilationWorker->performDecompilation(request);
+                request.targetIndex      = currentSelectedIndex;
+                request.functionName     = targetFunc.name;
+
+                decompilationWorker->performDecompilation (request);
             }
         }
     });
-    
-    connect(decompilationWorker, &DecompilationWorker::decompilationFinished, this, &InteractiveDiffWidget::onDecompilationFinished);
-    connect(decompilationWorker, &DecompilationWorker::decompilationError, this, &InteractiveDiffWidget::onDecompilationError);
-    connect(decompilationWorker, &DecompilationWorker::progressUpdate, this, &InteractiveDiffWidget::onProgressUpdate);
-    
-    connect(decompilationThread, &QThread::finished, [this]() {
+
+    connect (
+        decompilationWorker,
+        &DecompilationWorker::decompilationFinished,
+        this,
+        &InteractiveDiffWidget::onDecompilationFinished
+    );
+    connect (
+        decompilationWorker,
+        &DecompilationWorker::decompilationError,
+        this,
+        &InteractiveDiffWidget::onDecompilationError
+    );
+    connect (decompilationWorker, &DecompilationWorker::progressUpdate, this, &InteractiveDiffWidget::onProgressUpdate);
+
+    connect (decompilationThread, &QThread::finished, [this]() {
         if (decompilationWorker) {
             decompilationWorker->deleteLater();
             decompilationWorker = nullptr;
@@ -1133,39 +1152,39 @@ void InteractiveDiffWidget::startAsyncDecompilationForCurrent() {
 void InteractiveDiffWidget::cancelAsyncDecompilation() {
     if (decompilationWorker && decompilationThread && decompilationThread->isRunning()) {
         decompilationWorker->cancelDecompilation();
-        
+
         decompilationThread->quit();
-        if (!decompilationThread->wait(3000)) {
+        if (!decompilationThread->wait (3000)) {
             decompilationThread->terminate();
-            decompilationThread->wait(1000);
+            decompilationThread->wait (1000);
         }
     }
 }
 
-void InteractiveDiffWidget::onDecompilationFinished(const DecompilationResult &result) {
+void InteractiveDiffWidget::onDecompilationFinished (const DecompilationResult &result) {
     if (!result.success) {
-        onDecompilationError(result.errorMessage);
+        onDecompilationError (result.errorMessage);
         return;
     }
-    
+
     if (result.isSourceFunction) {
         // Update source decompilation
-        StrDeinit(&sourceDecompilation);
-        sourceDecompilation = StrDup(&result.decompilation);
+        StrDeinit (&sourceDecompilation);
+        sourceDecompilation    = StrDup (&result.decompilation);
         sourceHasDecompilation = true;
-        
+
         // Now fetch target decompilation if needed
         if (currentSelectedIndex >= 0 && currentSelectedIndex < similarFunctions.size()) {
             SimilarFunctionData &targetFunc = similarFunctions[currentSelectedIndex];
             if (!targetFunc.hasDecompilation) {
                 DecompilationWorker::DecompilationRequest request;
-                request.functionId = targetFunc.functionId;
+                request.functionId       = targetFunc.functionId;
                 request.isSourceFunction = false;
-                request.targetIndex = currentSelectedIndex;
-                request.functionName = targetFunc.name;
-                
+                request.targetIndex      = currentSelectedIndex;
+                request.functionName     = targetFunc.name;
+
                 if (decompilationWorker) {
-                    decompilationWorker->performDecompilation(request);
+                    decompilationWorker->performDecompilation (request);
                     return;
                 }
             } else {
@@ -1178,15 +1197,15 @@ void InteractiveDiffWidget::onDecompilationFinished(const DecompilationResult &r
         // Update target decompilation
         if (result.targetIndex >= 0 && result.targetIndex < similarFunctions.size()) {
             SimilarFunctionData &targetFunc = similarFunctions[result.targetIndex];
-            StrDeinit(&targetFunc.decompilation);
-            targetFunc.decompilation = StrDup(&result.decompilation);
+            StrDeinit (&targetFunc.decompilation);
+            targetFunc.decompilation    = StrDup (&result.decompilation);
             targetFunc.hasDecompilation = true;
-            
+
             // Update function list to show decompilation status
             if (isDecompilationMode) {
                 updateFunctionList();
             }
-            
+
             // Update diff panels if this is the currently selected function
             if (result.targetIndex == currentSelectedIndex) {
                 // Current function is ready - show diff
@@ -1195,19 +1214,19 @@ void InteractiveDiffWidget::onDecompilationFinished(const DecompilationResult &r
                     updateDiffPanels();
                 } else {
                     hideProgress();
-                    updateStatusLabel("Decompilation completed - ready for diff");
+                    updateStatusLabel ("Decompilation completed - ready for diff");
                 }
             }
         }
     }
 }
 
-void InteractiveDiffWidget::onDecompilationError(const QString &error) {
+void InteractiveDiffWidget::onDecompilationError (const QString &error) {
     hideProgress();
-    showErrorState("Decompilation failed: " + error);
+    showErrorState ("Decompilation failed: " + error);
 }
 
-// Note: continueBackgroundDecompilation() method removed - we now fetch decompilation 
+// Note: continueBackgroundDecompilation() method removed - we now fetch decompilation
 // on-demand only for the currently selected function to avoid UI blocking
 
 // Async disassembly methods for InteractiveDiffWidget
@@ -1218,58 +1237,63 @@ void InteractiveDiffWidget::startAsyncDisassembly() {
 
 void InteractiveDiffWidget::startAsyncDisassemblyForCurrent() {
     if (currentSelectedIndex < 0 || currentSelectedIndex >= similarFunctions.size()) {
-        showErrorState("No function selected for disassembly");
+        showErrorState ("No function selected for disassembly");
         return;
     }
 
     // Show progress
-    showProgress(0, "Starting disassembly...");
+    showProgress (0, "Starting disassembly...");
 
     // Create worker and thread for disassembly
     disassemblyThread = new QThread();
     disassemblyWorker = new DisassemblyWorker();
-    disassemblyWorker->moveToThread(disassemblyThread);
+    disassemblyWorker->moveToThread (disassemblyThread);
 
     // Connect signals
-    connect(disassemblyThread, &QThread::started, [this]() {
+    connect (disassemblyThread, &QThread::started, [this]() {
         if (disassemblyWorker) {
             // First request source disassembly if not already done
             if (sourceDisassembly.length == 0) {
-                RzCoreLocked core(Core());
-                QByteArray fnNameByteArr = currentSourceFunction.toLatin1();
-                FunctionId sourceId = rzLookupFunctionIdForFunctionWithName(core, fnNameByteArr.constData());
-                
+                RzCoreLocked core (Core());
+                QByteArray   fnNameByteArr = currentSourceFunction.toLatin1();
+                FunctionId   sourceId      = rzLookupFunctionIdForFunctionWithName (core, fnNameByteArr.constData());
+
                 if (sourceId) {
                     DisassemblyWorker::DisassemblyRequest request;
-                    request.functionId = sourceId;
+                    request.functionId       = sourceId;
                     request.isSourceFunction = true;
-                    request.targetIndex = -1;
-                    request.functionName = currentSourceFunction;
-                    
-                    disassemblyWorker->performDisassembly(request);
+                    request.targetIndex      = -1;
+                    request.functionName     = currentSourceFunction;
+
+                    disassemblyWorker->performDisassembly (request);
                     return;
                 }
             }
-            
+
             // Otherwise start with target disassembly
             SimilarFunctionData &targetFunc = similarFunctions[currentSelectedIndex];
             if (targetFunc.disassembly.length == 0) {
                 DisassemblyWorker::DisassemblyRequest request;
-                request.functionId = targetFunc.functionId;
+                request.functionId       = targetFunc.functionId;
                 request.isSourceFunction = false;
-                request.targetIndex = currentSelectedIndex;
-                request.functionName = targetFunc.name;
-                
-                disassemblyWorker->performDisassembly(request);
+                request.targetIndex      = currentSelectedIndex;
+                request.functionName     = targetFunc.name;
+
+                disassemblyWorker->performDisassembly (request);
             }
         }
     });
-    
-    connect(disassemblyWorker, &DisassemblyWorker::disassemblyFinished, this, &InteractiveDiffWidget::onDisassemblyFinished);
-    connect(disassemblyWorker, &DisassemblyWorker::disassemblyError, this, &InteractiveDiffWidget::onDisassemblyError);
-    connect(disassemblyWorker, &DisassemblyWorker::progressUpdate, this, &InteractiveDiffWidget::onProgressUpdate);
-    
-    connect(disassemblyThread, &QThread::finished, [this]() {
+
+    connect (
+        disassemblyWorker,
+        &DisassemblyWorker::disassemblyFinished,
+        this,
+        &InteractiveDiffWidget::onDisassemblyFinished
+    );
+    connect (disassemblyWorker, &DisassemblyWorker::disassemblyError, this, &InteractiveDiffWidget::onDisassemblyError);
+    connect (disassemblyWorker, &DisassemblyWorker::progressUpdate, this, &InteractiveDiffWidget::onProgressUpdate);
+
+    connect (disassemblyThread, &QThread::finished, [this]() {
         if (disassemblyWorker) {
             disassemblyWorker->deleteLater();
             disassemblyWorker = nullptr;
@@ -1286,38 +1310,38 @@ void InteractiveDiffWidget::startAsyncDisassemblyForCurrent() {
 void InteractiveDiffWidget::cancelAsyncDisassembly() {
     if (disassemblyWorker && disassemblyThread && disassemblyThread->isRunning()) {
         disassemblyWorker->cancelDisassembly();
-        
+
         disassemblyThread->quit();
-        if (!disassemblyThread->wait(3000)) {
+        if (!disassemblyThread->wait (3000)) {
             disassemblyThread->terminate();
-            disassemblyThread->wait(1000);
+            disassemblyThread->wait (1000);
         }
     }
 }
 
-void InteractiveDiffWidget::onDisassemblyFinished(const DisassemblyResult &result) {
+void InteractiveDiffWidget::onDisassemblyFinished (const DisassemblyResult &result) {
     if (!result.success) {
-        onDisassemblyError(result.errorMessage);
+        onDisassemblyError (result.errorMessage);
         return;
     }
-    
+
     if (result.isSourceFunction) {
         // Update source disassembly
-        StrDeinit(&sourceDisassembly);
-        sourceDisassembly = StrDup(&result.disassembly);
-        
+        StrDeinit (&sourceDisassembly);
+        sourceDisassembly = StrDup (&result.disassembly);
+
         // Now fetch target disassembly if needed
         if (currentSelectedIndex >= 0 && currentSelectedIndex < similarFunctions.size()) {
             SimilarFunctionData &targetFunc = similarFunctions[currentSelectedIndex];
             if (targetFunc.disassembly.length == 0) {
                 DisassemblyWorker::DisassemblyRequest request;
-                request.functionId = targetFunc.functionId;
+                request.functionId       = targetFunc.functionId;
                 request.isSourceFunction = false;
-                request.targetIndex = currentSelectedIndex;
-                request.functionName = targetFunc.name;
-                
+                request.targetIndex      = currentSelectedIndex;
+                request.functionName     = targetFunc.name;
+
                 if (disassemblyWorker) {
-                    disassemblyWorker->performDisassembly(request);
+                    disassemblyWorker->performDisassembly (request);
                     return;
                 }
             } else {
@@ -1330,9 +1354,9 @@ void InteractiveDiffWidget::onDisassemblyFinished(const DisassemblyResult &resul
         // Update target disassembly
         if (result.targetIndex >= 0 && result.targetIndex < similarFunctions.size()) {
             SimilarFunctionData &targetFunc = similarFunctions[result.targetIndex];
-            StrDeinit(&targetFunc.disassembly);
-            targetFunc.disassembly = StrDup(&result.disassembly);
-            
+            StrDeinit (&targetFunc.disassembly);
+            targetFunc.disassembly = StrDup (&result.disassembly);
+
             // Update diff panels if this is the currently selected function
             if (result.targetIndex == currentSelectedIndex) {
                 // Current function is ready - show diff
@@ -1341,138 +1365,136 @@ void InteractiveDiffWidget::onDisassemblyFinished(const DisassemblyResult &resul
                     updateDiffPanels();
                 } else {
                     hideProgress();
-                    updateStatusLabel("Disassembly completed - ready for diff");
+                    updateStatusLabel ("Disassembly completed - ready for diff");
                 }
             }
         }
     }
 }
 
-void InteractiveDiffWidget::onDisassemblyError(const QString &error) {
+void InteractiveDiffWidget::onDisassemblyError (const QString &error) {
     hideProgress();
-    showErrorState("Disassembly failed: " + error);
+    showErrorState ("Disassembly failed: " + error);
 }
 
 // DecompilationWorker implementation
-DecompilationWorker::DecompilationWorker(QObject *parent) 
-    : QObject(parent), m_cancelled(false) {
-}
+DecompilationWorker::DecompilationWorker (QObject *parent) : QObject (parent), m_cancelled (false) {}
 
-void DecompilationWorker::performDecompilation(const DecompilationRequest &request) {
+void DecompilationWorker::performDecompilation (const DecompilationRequest &request) {
     m_cancelled = false;
-    
+
     DecompilationResult result;
-    result.functionId = request.functionId;
+    result.functionId       = request.functionId;
     result.isSourceFunction = request.isSourceFunction;
-    result.targetIndex = request.targetIndex;
-    
+    result.targetIndex      = request.targetIndex;
+
     try {
-        emitProgress(10, QString("Checking decompilation status for %1...").arg(request.functionName));
-        
+        emitProgress (10, QString ("Checking decompilation status for %1...").arg (request.functionName));
+
         if (m_cancelled) {
-            emit decompilationError("Decompilation cancelled");
+            emit decompilationError ("Decompilation cancelled");
             return;
         }
-        
+
         // Check decompilation status
-        Status status = GetAiDecompilationStatus(GetConnection(), request.functionId);
-        
+        Status status = GetAiDecompilationStatus (GetConnection(), request.functionId);
+
         if ((status & STATUS_MASK) == STATUS_ERROR || (status & STATUS_MASK) == STATUS_UNINITIALIZED) {
-            emitProgress(30, QString("Starting decompilation for %1...").arg(request.functionName));
-            
+            emitProgress (30, QString ("Starting decompilation for %1...").arg (request.functionName));
+
             if (m_cancelled) {
-                emit decompilationError("Decompilation cancelled");
+                emit decompilationError ("Decompilation cancelled");
                 return;
             }
-            
+
             // Try to begin decompilation
-            if (!BeginAiDecompilation(GetConnection(), request.functionId)) {
-                result.errorMessage = QString("Failed to start decompilation for %1").arg(request.functionName);
-                emit decompilationError(result.errorMessage);
+            if (!BeginAiDecompilation (GetConnection(), request.functionId)) {
+                result.errorMessage = QString ("Failed to start decompilation for %1").arg (request.functionName);
+                emit decompilationError (result.errorMessage);
                 return;
             }
-            
+
             // Wait for decompilation to complete with periodic status checks
-            emitProgress(50, QString("Waiting for decompilation of %1...").arg(request.functionName));
-            
-            int attempts = 0;
+            emitProgress (50, QString ("Waiting for decompilation of %1...").arg (request.functionName));
+
+            int       attempts    = 0;
             const int maxAttempts = 30; // 30 seconds timeout
-            
+
             while (attempts < maxAttempts) {
                 if (m_cancelled) {
-                    emit decompilationError("Decompilation cancelled");
+                    emit decompilationError ("Decompilation cancelled");
                     return;
                 }
-                
-                QThread::msleep(1000); // Wait 1 second
-                status = GetAiDecompilationStatus(GetConnection(), request.functionId);
-                
+
+                QThread::msleep (1000); // Wait 1 second
+                status = GetAiDecompilationStatus (GetConnection(), request.functionId);
+
                 if ((status & STATUS_MASK) == STATUS_SUCCESS) {
                     break;
                 } else if ((status & STATUS_MASK) == STATUS_ERROR) {
-                    result.errorMessage = QString("Decompilation failed for %1").arg(request.functionName);
-                    emit decompilationError(result.errorMessage);
+                    result.errorMessage = QString ("Decompilation failed for %1").arg (request.functionName);
+                    emit decompilationError (result.errorMessage);
                     return;
                 }
-                
+
                 attempts++;
                 int progress = 50 + (attempts * 40 / maxAttempts);
-                emitProgress(progress, QString("Decompiling %1... (%2s)").arg(request.functionName).arg(attempts));
+                emitProgress (progress, QString ("Decompiling %1... (%2s)").arg (request.functionName).arg (attempts));
             }
-            
+
             if (attempts >= maxAttempts) {
-                result.errorMessage = QString("Decompilation timeout for %1").arg(request.functionName);
-                emit decompilationError(result.errorMessage);
+                result.errorMessage = QString ("Decompilation timeout for %1").arg (request.functionName);
+                emit decompilationError (result.errorMessage);
                 return;
             }
         }
-        
+
         if ((status & STATUS_MASK) == STATUS_PENDING) {
             // Still pending - wait a bit more
-            emitProgress(70, QString("Decompilation pending for %1...").arg(request.functionName));
-            
-            int attempts = 0;
+            emitProgress (70, QString ("Decompilation pending for %1...").arg (request.functionName));
+
+            int       attempts    = 0;
             const int maxAttempts = 10; // 10 seconds additional wait
-            
+
             while (attempts < maxAttempts && (status & STATUS_MASK) == STATUS_PENDING) {
                 if (m_cancelled) {
-                    emit decompilationError("Decompilation cancelled");
+                    emit decompilationError ("Decompilation cancelled");
                     return;
                 }
-                
-                QThread::msleep(1000);
-                status = GetAiDecompilationStatus(GetConnection(), request.functionId);
+
+                QThread::msleep (1000);
+                status = GetAiDecompilationStatus (GetConnection(), request.functionId);
                 attempts++;
             }
         }
-        
+
         if ((status & STATUS_MASK) == STATUS_SUCCESS) {
-            emitProgress(90, QString("Fetching decompilation for %1...").arg(request.functionName));
-            
+            emitProgress (90, QString ("Fetching decompilation for %1...").arg (request.functionName));
+
             if (m_cancelled) {
-                emit decompilationError("Decompilation cancelled");
+                emit decompilationError ("Decompilation cancelled");
                 return;
             }
-            
+
             // Get the decompilation
-            AiDecompilation aidec = GetAiDecompilation(GetConnection(), request.functionId, true);
-            result.decompilation = StrDup(&aidec.decompilation);
-            AiDecompilationDeinit(&aidec);
-            
+            AiDecompilation aidec = GetAiDecompilation (GetConnection(), request.functionId, true);
+            result.decompilation  = StrDup (&aidec.decompilation);
+            AiDecompilationDeinit (&aidec);
+
             result.success = true;
-            emitProgress(100, QString("Decompilation completed for %1").arg(request.functionName));
-            emit decompilationFinished(result);
+            emitProgress (100, QString ("Decompilation completed for %1").arg (request.functionName));
+            emit decompilationFinished (result);
         } else {
-            result.errorMessage = QString("Decompilation not available for %1").arg(request.functionName);
-            emit decompilationError(result.errorMessage);
+            result.errorMessage = QString ("Decompilation not available for %1").arg (request.functionName);
+            emit decompilationError (result.errorMessage);
         }
-        
+
     } catch (const std::exception &e) {
-        result.errorMessage = QString("Exception during decompilation: %1").arg(e.what());
-        emit decompilationError(result.errorMessage);
+        result.errorMessage = QString ("Exception during decompilation: %1").arg (e.what());
+        emit decompilationError (result.errorMessage);
     } catch (...) {
         result.errorMessage = "Unknown error during decompilation";
-        emit decompilationError(result.errorMessage);
+        emit decompilationError (result.errorMessage);
     }
 }
 
@@ -1480,82 +1502,89 @@ void DecompilationWorker::cancelDecompilation() {
     m_cancelled = true;
 }
 
-void DecompilationWorker::emitProgress(int percentage, const QString &status) {
+void DecompilationWorker::emitProgress (int percentage, const QString &status) {
     if (!m_cancelled) {
-        emit progressUpdate(percentage, status);
+        emit progressUpdate (percentage, status);
     }
 }
 
 // DisassemblyWorker implementation
-DisassemblyWorker::DisassemblyWorker(QObject *parent) 
-    : QObject(parent), m_cancelled(false) {
-}
+DisassemblyWorker::DisassemblyWorker (QObject *parent) : QObject (parent), m_cancelled (false) {}
 
-void DisassemblyWorker::performDisassembly(const DisassemblyRequest &request) {
+void DisassemblyWorker::performDisassembly (const DisassemblyRequest &request) {
     m_cancelled = false;
-    
+
     DisassemblyResult result;
-    result.functionId = request.functionId;
+    result.functionId       = request.functionId;
     result.isSourceFunction = request.isSourceFunction;
-    result.targetIndex = request.targetIndex;
-    
+    result.targetIndex      = request.targetIndex;
+
     try {
-        emitProgress(20, QString("Fetching disassembly for %1...").arg(request.functionName));
-        
+        emitProgress (20, QString ("Fetching disassembly for %1...").arg (request.functionName));
+
         if (m_cancelled) {
-            emit disassemblyError("Disassembly cancelled");
+            emit disassemblyError ("Disassembly cancelled");
             return;
         }
-        
+
         // Get the control flow graph for this function
-        ControlFlowGraph cfg = GetFunctionControlFlowGraph(GetConnection(), request.functionId);
-        
+        ControlFlowGraph cfg = GetFunctionControlFlowGraph (GetConnection(), request.functionId);
+
         if (cfg.blocks.length == 0) {
-            ControlFlowGraphDeinit(&cfg);
-            result.errorMessage = QString("No blocks found in control flow graph for %1").arg(request.functionName);
-            emit disassemblyError(result.errorMessage);
+            ControlFlowGraphDeinit (&cfg);
+            result.errorMessage = QString ("No blocks found in control flow graph for %1").arg (request.functionName);
+            emit disassemblyError (result.errorMessage);
             return;
         }
-        
-        emitProgress(60, QString("Processing disassembly for %1...").arg(request.functionName));
-        
+
+        emitProgress (60, QString ("Processing disassembly for %1...").arg (request.functionName));
+
         if (m_cancelled) {
-            ControlFlowGraphDeinit(&cfg);
-            emit disassemblyError("Disassembly cancelled");
+            ControlFlowGraphDeinit (&cfg);
+            emit disassemblyError ("Disassembly cancelled");
             return;
         }
-        
+
         // Convert CFG blocks to linear disassembly
         Str linear_disasm = StrInit();
-        VecForeachPtr(&cfg.blocks, block, {
+        VecForeachPtr (&cfg.blocks, block, {
             if (block->comment.length > 0) {
-                StrAppendf(&linear_disasm, "; Block %llu (0x%llx-0x%llx): %s\n",
-                          block->id, block->min_addr, block->max_addr, block->comment.data);
+                StrAppendf (
+                    &linear_disasm,
+                    "; Block %llu (0x%llx-0x%llx): %s\n",
+                    block->id,
+                    block->min_addr,
+                    block->max_addr,
+                    block->comment.data
+                );
             } else {
-                StrAppendf(&linear_disasm, "; Block %llu (0x%llx-0x%llx)\n", 
-                          block->id, block->min_addr, block->max_addr);
+                StrAppendf (
+                    &linear_disasm,
+                    "; Block %llu (0x%llx-0x%llx)\n",
+                    block->id,
+                    block->min_addr,
+                    block->max_addr
+                );
             }
-            
-            VecForeachPtr(&block->asm_lines, asm_line, {
-                StrAppendf(&linear_disasm, "%s\n", asm_line->data);
-            });
-            
-            StrAppendf(&linear_disasm, "\n");
+
+            VecForeachPtr (&block->asm_lines, asm_line, { StrAppendf (&linear_disasm, "%s\n", asm_line->data); });
+
+            StrAppendf (&linear_disasm, "\n");
         });
-        
+
         result.disassembly = linear_disasm;
-        ControlFlowGraphDeinit(&cfg);
-        
+        ControlFlowGraphDeinit (&cfg);
+
         result.success = true;
-        emitProgress(100, QString("Disassembly completed for %1").arg(request.functionName));
-        emit disassemblyFinished(result);
-        
+        emitProgress (100, QString ("Disassembly completed for %1").arg (request.functionName));
+        emit disassemblyFinished (result);
+
     } catch (const std::exception &e) {
-        result.errorMessage = QString("Exception during disassembly: %1").arg(e.what());
-        emit disassemblyError(result.errorMessage);
+        result.errorMessage = QString ("Exception during disassembly: %1").arg (e.what());
+        emit disassemblyError (result.errorMessage);
     } catch (...) {
         result.errorMessage = "Unknown error during disassembly";
-        emit disassemblyError(result.errorMessage);
+        emit disassemblyError (result.errorMessage);
     }
 }
 
@@ -1563,8 +1592,8 @@ void DisassemblyWorker::cancelDisassembly() {
     m_cancelled = true;
 }
 
-void DisassemblyWorker::emitProgress(int percentage, const QString &status) {
+void DisassemblyWorker::emitProgress (int percentage, const QString &status) {
     if (!m_cancelled) {
-        emit progressUpdate(percentage, status);
+        emit progressUpdate (percentage, status);
     }
 }
