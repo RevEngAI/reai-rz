@@ -89,17 +89,17 @@ BinarySearchDialog::BinarySearchDialog (QWidget* parent, bool openPageOnDoubleCl
     mainLayout->addWidget (table);
 
     // Add progress UI components (initially hidden)
-    progressBar = new QProgressBar(this);
-    progressBar->setVisible(false);
-    mainLayout->addWidget(progressBar);
-    
-    statusLabel = new QLabel(this);
-    statusLabel->setVisible(false);
-    mainLayout->addWidget(statusLabel);
-    
-    cancelButton = new QPushButton("Cancel Operation", this);
-    cancelButton->setVisible(false);
-    mainLayout->addWidget(cancelButton);
+    progressBar = new QProgressBar (this);
+    progressBar->setVisible (false);
+    mainLayout->addWidget (progressBar);
+
+    statusLabel = new QLabel (this);
+    statusLabel->setVisible (false);
+    mainLayout->addWidget (statusLabel);
+
+    cancelButton = new QPushButton ("Cancel Operation", this);
+    cancelButton->setVisible (false);
+    mainLayout->addWidget (cancelButton);
 
     connect (btnBox, &QDialogButtonBox::accepted, this, &BinarySearchDialog::on_PerformBinarySearch);
     connect (btnBox, &QDialogButtonBox::rejected, this, &QDialog::close);
@@ -111,22 +111,22 @@ BinarySearchDialog::~BinarySearchDialog() {
     if (worker) {
         worker->cancel();
     }
-    
+
     if (workerThread) {
         if (workerThread->isRunning()) {
             // Give it 3 seconds to finish gracefully
-            if (!workerThread->wait(3000)) {
+            if (!workerThread->wait (3000)) {
                 // Force terminate if it doesn't finish
                 workerThread->terminate();
-                workerThread->wait(1000);
+                workerThread->wait (1000);
             }
         }
-        
+
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
         }
-        
+
         workerThread = nullptr;
     }
 }
@@ -142,35 +142,33 @@ void BinarySearchDialog::startAsyncBinarySearch() {
 
     // Prepare request data
     BinarySearchWorker::SearchRequest request;
-    request.partialName = partialBinaryNameInput->text();
+    request.partialName   = partialBinaryNameInput->text();
     request.partialSha256 = partialBinarySha256Input->text();
-    request.modelName = modelNameSelector->currentText();
+    request.modelName     = modelNameSelector->currentText();
 
     // Setup UI for async operation
     setupProgressUI();
-    
+
     // Show global status
-    ShowGlobalStatus("Binary Search", "Searching for binaries...", 0);
+    ShowGlobalStatus ("Binary Search", "Searching for binaries...", 0);
 
     // Create worker thread
-    workerThread = new QThread(this);
-    worker = new BinarySearchWorker();
-    worker->moveToThread(workerThread);
+    workerThread = new QThread (this);
+    worker       = new BinarySearchWorker();
+    worker->moveToThread (workerThread);
 
     // Connect signals
-    connect(workerThread, &QThread::started, [this, request]() {
-        worker->performBinarySearch(request);
-    });
-    
-    connect(worker, &BinarySearchWorker::progress, this, &BinarySearchDialog::onSearchProgress);
-    connect(worker, &BinarySearchWorker::searchFinished, this, &BinarySearchDialog::onSearchFinished);
-    connect(worker, &BinarySearchWorker::searchError, this, &BinarySearchDialog::onSearchError);
-    
+    connect (workerThread, &QThread::started, [this, request]() { worker->performBinarySearch (request); });
+
+    connect (worker, &BinarySearchWorker::progress, this, &BinarySearchDialog::onSearchProgress);
+    connect (worker, &BinarySearchWorker::searchFinished, this, &BinarySearchDialog::onSearchFinished);
+    connect (worker, &BinarySearchWorker::searchError, this, &BinarySearchDialog::onSearchError);
+
     // CRITICAL: Tell the thread to quit when worker finishes (this was missing!)
-    connect(worker, &BinarySearchWorker::searchFinished, workerThread, &QThread::quit);
-    connect(worker, &BinarySearchWorker::searchError, workerThread, &QThread::quit);
-    
-    connect(workerThread, &QThread::finished, [this]() {
+    connect (worker, &BinarySearchWorker::searchFinished, workerThread, &QThread::quit);
+    connect (worker, &BinarySearchWorker::searchError, workerThread, &QThread::quit);
+
+    connect (workerThread, &QThread::finished, [this]() {
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
@@ -188,71 +186,71 @@ void BinarySearchDialog::cancelAsyncOperation() {
     if (worker) {
         worker->cancel();
     }
-    
+
     if (workerThread) {
         if (workerThread->isRunning()) {
             // Give it 3 seconds to finish gracefully
-            if (!workerThread->wait(3000)) {
+            if (!workerThread->wait (3000)) {
                 // Force terminate if it doesn't finish
                 workerThread->terminate();
-                workerThread->wait(1000);
+                workerThread->wait (1000);
             }
         }
-        
+
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
         }
-        
+
         workerThread = nullptr;
     }
-    
+
     hideProgressUI();
     HideGlobalStatus();
-    ShowGlobalMessage("Binary search cancelled", 3000);
+    ShowGlobalMessage ("Binary search cancelled", 3000);
 }
 
 void BinarySearchDialog::setupProgressUI() {
-    progressBar->setVisible(true);
-    progressBar->setValue(0);
-    statusLabel->setVisible(true);
-    statusLabel->setText("Searching for binaries...");
-    cancelButton->setVisible(true);
-    
-    setUIEnabled(false);
+    progressBar->setVisible (true);
+    progressBar->setValue (0);
+    statusLabel->setVisible (true);
+    statusLabel->setText ("Searching for binaries...");
+    cancelButton->setVisible (true);
+
+    setUIEnabled (false);
 }
 
 void BinarySearchDialog::hideProgressUI() {
-    progressBar->setVisible(false);
-    statusLabel->setVisible(false);
-    cancelButton->setVisible(false);
-    
-    setUIEnabled(true);
+    progressBar->setVisible (false);
+    statusLabel->setVisible (false);
+    cancelButton->setVisible (false);
+
+    setUIEnabled (true);
 }
 
-void BinarySearchDialog::setUIEnabled(bool enabled) {
-    partialBinaryNameInput->setEnabled(enabled);
-    partialBinarySha256Input->setEnabled(enabled);
-    modelNameSelector->setEnabled(enabled);
-    table->setEnabled(enabled);
+void BinarySearchDialog::setUIEnabled (bool enabled) {
+    partialBinaryNameInput->setEnabled (enabled);
+    partialBinarySha256Input->setEnabled (enabled);
+    modelNameSelector->setEnabled (enabled);
+    table->setEnabled (enabled);
 }
 
-void BinarySearchDialog::onSearchProgress(int percentage, const QString &message) {
-    progressBar->setValue(percentage);
-    statusLabel->setText(message);
-    
+void BinarySearchDialog::onSearchProgress (int percentage, const QString& message) {
+    progressBar->setValue (percentage);
+    statusLabel->setText (message);
+
     // Update global status
-    UpdateGlobalStatus(message, percentage);
+    UpdateGlobalStatus (message, percentage);
 }
 
-void BinarySearchDialog::onSearchFinished(const BinaryInfos &binaries) {
+void BinarySearchDialog::onSearchFinished (const BinaryInfos& binaries) {
     if (!binaries.length) {
-        ShowGlobalMessage("Search parameters returned no search results", 3000);
+        ShowGlobalMessage ("Search parameters returned no search results", 3000);
         return;
     }
 
     table->clearContents();
-    table->setRowCount(0);
+    table->setRowCount (0);
 
     VecForeachPtr (&binaries, binary, {
         QStringList row;
@@ -267,23 +265,19 @@ void BinarySearchDialog::onSearchFinished(const BinaryInfos &binaries) {
         addNewRowToResultsTable (table, row);
     });
 
-    ShowGlobalMessage(QString("Found %1 binaries").arg(binaries.length), 3000);
+    ShowGlobalMessage (QString ("Found %1 binaries").arg (binaries.length), 3000);
 
-    VecDeinit(&binaries);
+    VecDeinit (&binaries);
 }
 
-void BinarySearchDialog::onSearchError(const QString &error) {
+void BinarySearchDialog::onSearchError (const QString& error) {
     // Show error notification
-    ShowGlobalNotification(
-        "Binary Search Error",
-        QString("Error searching binaries: %1").arg(error),
-        false
-    );
-    
-    QMessageBox::critical(
+    ShowGlobalNotification ("Binary Search Error", QString ("Error searching binaries: %1").arg (error), false);
+
+    QMessageBox::critical (
         this,
         "Binary Search Error",
-        QString("Error searching binaries: %1").arg(error),
+        QString ("Error searching binaries: %1").arg (error),
         QMessageBox::Ok
     );
 }
@@ -317,23 +311,21 @@ void BinarySearchDialog::addNewRowToResultsTable (QTableWidget* t, const QString
 }
 
 // Worker implementation
-BinarySearchWorker::BinarySearchWorker(QObject *parent)
-    : QObject(parent), m_cancelled(false) {
-}
+BinarySearchWorker::BinarySearchWorker (QObject* parent) : QObject (parent), m_cancelled (false) {}
 
-void BinarySearchWorker::performBinarySearch(const SearchRequest &request) {
+void BinarySearchWorker::performBinarySearch (const SearchRequest& request) {
     m_cancelled = false;
-    
+
     try {
-        emitProgress(10, "Initializing search request...");
-        
+        emitProgress (10, "Initializing search request...");
+
         if (m_cancelled) {
-            emit searchError("Operation cancelled");
+            emit searchError ("Operation cancelled");
             return;
         }
-        
-        emitProgress(30, "Searching binaries on server...");
-        
+
+        emitProgress (30, "Searching binaries on server...");
+
         SearchBinaryRequest search = SearchBinaryRequestInit();
         search.partial_name        = StrInitFromZstr (request.partialName.toUtf8().constData());
         search.partial_sha256      = StrInitFromZstr (request.partialSha256.toUtf8().constData());
@@ -341,22 +333,22 @@ void BinarySearchWorker::performBinarySearch(const SearchRequest &request) {
 
         BinaryInfos binaries = SearchBinary (GetConnection(), &search);
         SearchBinaryRequestDeinit (&search);
-        
+
         if (m_cancelled) {
-            VecDeinit(&binaries);
-            emit searchError("Operation cancelled");
+            VecDeinit (&binaries);
+            emit searchError ("Operation cancelled");
             return;
         }
-        
-        emitProgress(80, "Processing search results...");
-        
-        emitProgress(100, QString("Found %1 binaries").arg(binaries.length));
-        emit searchFinished(binaries);
-        
-    } catch (const std::exception &e) {
-        emit searchError(QString("Exception during binary search: %1").arg(e.what()));
+
+        emitProgress (80, "Processing search results...");
+
+        emitProgress (100, QString ("Found %1 binaries").arg (binaries.length));
+        emit searchFinished (binaries);
+
+    } catch (const std::exception& e) {
+        emit searchError (QString ("Exception during binary search: %1").arg (e.what()));
     } catch (...) {
-        emit searchError("Unknown exception during binary search");
+        emit searchError ("Unknown exception during binary search");
     }
 }
 

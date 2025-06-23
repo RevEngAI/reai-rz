@@ -95,17 +95,17 @@ CollectionSearchDialog::CollectionSearchDialog (QWidget* parent, bool openPageOn
     mainLayout->addWidget (table);
 
     // Add progress UI components (initially hidden)
-    progressBar = new QProgressBar(this);
-    progressBar->setVisible(false);
-    mainLayout->addWidget(progressBar);
-    
-    statusLabel = new QLabel(this);
-    statusLabel->setVisible(false);
-    mainLayout->addWidget(statusLabel);
-    
-    cancelButton = new QPushButton("Cancel Operation", this);
-    cancelButton->setVisible(false);
-    mainLayout->addWidget(cancelButton);
+    progressBar = new QProgressBar (this);
+    progressBar->setVisible (false);
+    mainLayout->addWidget (progressBar);
+
+    statusLabel = new QLabel (this);
+    statusLabel->setVisible (false);
+    mainLayout->addWidget (statusLabel);
+
+    cancelButton = new QPushButton ("Cancel Operation", this);
+    cancelButton->setVisible (false);
+    mainLayout->addWidget (cancelButton);
 
     connect (btnBox, &QDialogButtonBox::accepted, this, &CollectionSearchDialog::on_PerformCollectionSearch);
     connect (btnBox, &QDialogButtonBox::rejected, this, &QDialog::close);
@@ -117,22 +117,22 @@ CollectionSearchDialog::~CollectionSearchDialog() {
     if (worker) {
         worker->cancel();
     }
-    
+
     if (workerThread) {
         if (workerThread->isRunning()) {
             // Give it 3 seconds to finish gracefully
-            if (!workerThread->wait(3000)) {
+            if (!workerThread->wait (3000)) {
                 // Force terminate if it doesn't finish
                 workerThread->terminate();
-                workerThread->wait(1000);
+                workerThread->wait (1000);
             }
         }
-        
+
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
         }
-        
+
         workerThread = nullptr;
     }
 }
@@ -149,35 +149,33 @@ void CollectionSearchDialog::startAsyncCollectionSearch() {
     // Prepare request data
     CollectionSearchWorker::SearchRequest request;
     request.partialCollectionName = partialCollectionNameInput->text();
-    request.partialBinaryName = partialBinaryNameInput->text();
-    request.partialBinarySha256 = partialBinarySha256Input->text();
-    request.modelName = modelNameSelector->currentText();
+    request.partialBinaryName     = partialBinaryNameInput->text();
+    request.partialBinarySha256   = partialBinarySha256Input->text();
+    request.modelName             = modelNameSelector->currentText();
 
     // Setup UI for async operation
     setupProgressUI();
-    
+
     // Show global status
-    ShowGlobalStatus("Collection Search", "Searching for collections...", 0);
+    ShowGlobalStatus ("Collection Search", "Searching for collections...", 0);
 
     // Create worker thread
-    workerThread = new QThread(this);
-    worker = new CollectionSearchWorker();
-    worker->moveToThread(workerThread);
+    workerThread = new QThread (this);
+    worker       = new CollectionSearchWorker();
+    worker->moveToThread (workerThread);
 
     // Connect signals
-    connect(workerThread, &QThread::started, [this, request]() {
-        worker->performCollectionSearch(request);
-    });
-    
-    connect(worker, &CollectionSearchWorker::progress, this, &CollectionSearchDialog::onSearchProgress);
-    connect(worker, &CollectionSearchWorker::searchFinished, this, &CollectionSearchDialog::onSearchFinished);
-    connect(worker, &CollectionSearchWorker::searchError, this, &CollectionSearchDialog::onSearchError);
-    
+    connect (workerThread, &QThread::started, [this, request]() { worker->performCollectionSearch (request); });
+
+    connect (worker, &CollectionSearchWorker::progress, this, &CollectionSearchDialog::onSearchProgress);
+    connect (worker, &CollectionSearchWorker::searchFinished, this, &CollectionSearchDialog::onSearchFinished);
+    connect (worker, &CollectionSearchWorker::searchError, this, &CollectionSearchDialog::onSearchError);
+
     // CRITICAL: Tell the thread to quit when worker finishes (this was missing!)
-    connect(worker, &CollectionSearchWorker::searchFinished, workerThread, &QThread::quit);
-    connect(worker, &CollectionSearchWorker::searchError, workerThread, &QThread::quit);
-    
-    connect(workerThread, &QThread::finished, [this]() {
+    connect (worker, &CollectionSearchWorker::searchFinished, workerThread, &QThread::quit);
+    connect (worker, &CollectionSearchWorker::searchError, workerThread, &QThread::quit);
+
+    connect (workerThread, &QThread::finished, [this]() {
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
@@ -195,72 +193,72 @@ void CollectionSearchDialog::cancelAsyncOperation() {
     if (worker) {
         worker->cancel();
     }
-    
+
     if (workerThread) {
         if (workerThread->isRunning()) {
             // Give it 3 seconds to finish gracefully
-            if (!workerThread->wait(3000)) {
+            if (!workerThread->wait (3000)) {
                 // Force terminate if it doesn't finish
                 workerThread->terminate();
-                workerThread->wait(1000);
+                workerThread->wait (1000);
             }
         }
-        
+
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
         }
-        
+
         workerThread = nullptr;
     }
-    
+
     hideProgressUI();
     HideGlobalStatus();
-    ShowGlobalMessage("Collection search cancelled", 3000);
+    ShowGlobalMessage ("Collection search cancelled", 3000);
 }
 
 void CollectionSearchDialog::setupProgressUI() {
-    progressBar->setVisible(true);
-    progressBar->setValue(0);
-    statusLabel->setVisible(true);
-    statusLabel->setText("Searching for collections...");
-    cancelButton->setVisible(true);
-    
-    setUIEnabled(false);
+    progressBar->setVisible (true);
+    progressBar->setValue (0);
+    statusLabel->setVisible (true);
+    statusLabel->setText ("Searching for collections...");
+    cancelButton->setVisible (true);
+
+    setUIEnabled (false);
 }
 
 void CollectionSearchDialog::hideProgressUI() {
-    progressBar->setVisible(false);
-    statusLabel->setVisible(false);
-    cancelButton->setVisible(false);
-    
-    setUIEnabled(true);
+    progressBar->setVisible (false);
+    statusLabel->setVisible (false);
+    cancelButton->setVisible (false);
+
+    setUIEnabled (true);
 }
 
-void CollectionSearchDialog::setUIEnabled(bool enabled) {
-    partialCollectionNameInput->setEnabled(enabled);
-    partialBinaryNameInput->setEnabled(enabled);
-    partialBinarySha256Input->setEnabled(enabled);
-    modelNameSelector->setEnabled(enabled);
-    table->setEnabled(enabled);
+void CollectionSearchDialog::setUIEnabled (bool enabled) {
+    partialCollectionNameInput->setEnabled (enabled);
+    partialBinaryNameInput->setEnabled (enabled);
+    partialBinarySha256Input->setEnabled (enabled);
+    modelNameSelector->setEnabled (enabled);
+    table->setEnabled (enabled);
 }
 
-void CollectionSearchDialog::onSearchProgress(int percentage, const QString &message) {
-    progressBar->setValue(percentage);
-    statusLabel->setText(message);
-    
+void CollectionSearchDialog::onSearchProgress (int percentage, const QString& message) {
+    progressBar->setValue (percentage);
+    statusLabel->setText (message);
+
     // Update global status
-    UpdateGlobalStatus(message, percentage);
+    UpdateGlobalStatus (message, percentage);
 }
 
-void CollectionSearchDialog::onSearchFinished(const CollectionInfos &collections) {
+void CollectionSearchDialog::onSearchFinished (const CollectionInfos& collections) {
     if (!collections.length) {
-        ShowGlobalMessage("Failed to get collection search results", 3000);
+        ShowGlobalMessage ("Failed to get collection search results", 3000);
         return;
     }
 
     table->clearContents();
-    table->setRowCount(0);
+    table->setRowCount (0);
 
     VecForeachPtr (&collections, collection, {
         QStringList row;
@@ -274,23 +272,19 @@ void CollectionSearchDialog::onSearchFinished(const CollectionInfos &collections
         addNewRowToResultsTable (table, row);
     });
 
-    ShowGlobalMessage(QString("Found %1 collections").arg(collections.length), 3000);
+    ShowGlobalMessage (QString ("Found %1 collections").arg (collections.length), 3000);
 
-    VecDeinit(&collections);
+    VecDeinit (&collections);
 }
 
-void CollectionSearchDialog::onSearchError(const QString &error) {
+void CollectionSearchDialog::onSearchError (const QString& error) {
     // Show error notification
-    ShowGlobalNotification(
-        "Collection Search Error",
-        QString("Error searching collections: %1").arg(error),
-        false
-    );
-    
-    QMessageBox::critical(
+    ShowGlobalNotification ("Collection Search Error", QString ("Error searching collections: %1").arg (error), false);
+
+    QMessageBox::critical (
         this,
         "Collection Search Error",
-        QString("Error searching collections: %1").arg(error),
+        QString ("Error searching collections: %1").arg (error),
         QMessageBox::Ok
     );
 }
@@ -323,25 +317,23 @@ void CollectionSearchDialog::addNewRowToResultsTable (QTableWidget* t, const QSt
 }
 
 // Worker implementation
-CollectionSearchWorker::CollectionSearchWorker(QObject *parent)
-    : QObject(parent), m_cancelled(false) {
-}
+CollectionSearchWorker::CollectionSearchWorker (QObject* parent) : QObject (parent), m_cancelled (false) {}
 
-void CollectionSearchWorker::performCollectionSearch(const SearchRequest &request) {
+void CollectionSearchWorker::performCollectionSearch (const SearchRequest& request) {
     m_cancelled = false;
-    
+
     try {
-        emitProgress(10, "Initializing search request...");
-        
+        emitProgress (10, "Initializing search request...");
+
         if (m_cancelled) {
-            emit searchError("Operation cancelled");
+            emit searchError ("Operation cancelled");
             return;
         }
-        
-        emitProgress(30, "Searching collections on server...");
 
-        SearchCollectionRequest search      = SearchCollectionRequestInit();
-        
+        emitProgress (30, "Searching collections on server...");
+
+        SearchCollectionRequest search = SearchCollectionRequestInit();
+
         search.partial_collection_name = StrInitFromZstr (request.partialCollectionName.toUtf8().constData());
         search.partial_binary_name     = StrInitFromZstr (request.partialBinaryName.toUtf8().constData());
         search.partial_binary_sha256   = StrInitFromZstr (request.partialBinarySha256.toUtf8().constData());
@@ -349,25 +341,25 @@ void CollectionSearchWorker::performCollectionSearch(const SearchRequest &reques
 
         CollectionInfos collections = SearchCollection (GetConnection(), &search);
         SearchCollectionRequestDeinit (&search);
-        
+
         if (m_cancelled) {
-            VecDeinit(&collections);
-            emit searchError("Operation cancelled");
+            VecDeinit (&collections);
+            emit searchError ("Operation cancelled");
             return;
         }
-        
-        emitProgress(80, "Processing search results...");
-        
-        emitProgress(100, QString("Found %1 collections").arg(collections.length));
-        emit searchFinished(collections);
-        
+
+        emitProgress (80, "Processing search results...");
+
+        emitProgress (100, QString ("Found %1 collections").arg (collections.length));
+        emit searchFinished (collections);
+
         // NOTE: Don't call VecDeinit here - let the UI thread handle cleanup
         // The collections data will be cleaned up in onSearchFinished
-        
-    } catch (const std::exception &e) {
-        emit searchError(QString("Exception during collection search: %1").arg(e.what()));
+
+    } catch (const std::exception& e) {
+        emit searchError (QString ("Exception during collection search: %1").arg (e.what()));
     } catch (...) {
-        emit searchError("Unknown exception during collection search");
+        emit searchError ("Unknown exception during collection search");
     }
 }
 

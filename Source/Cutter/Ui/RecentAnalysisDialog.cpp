@@ -28,7 +28,7 @@
 #include <Cutter/Ui/RecentAnalysisDialog.hpp>
 #include <Cutter/Cutter.hpp>
 
-RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) {
+RecentAnalysisDialog::RecentAnalysisDialog (QWidget *parent) : QDialog (parent) {
     setMinimumSize (QSize (960, 540));
 
     mainLayout = new QVBoxLayout;
@@ -52,17 +52,17 @@ RecentAnalysisDialog::RecentAnalysisDialog (QWidget* parent) : QDialog (parent) 
     mainLayout->addWidget (table);
 
     // Add progress UI components (initially hidden)
-    progressBar = new QProgressBar(this);
-    progressBar->setVisible(false);
-    mainLayout->addWidget(progressBar);
-    
-    statusLabel = new QLabel(this);
-    statusLabel->setVisible(false);
-    mainLayout->addWidget(statusLabel);
-    
-    cancelButton = new QPushButton("Cancel Operation", this);
-    cancelButton->setVisible(false);
-    mainLayout->addWidget(cancelButton);
+    progressBar = new QProgressBar (this);
+    progressBar->setVisible (false);
+    mainLayout->addWidget (progressBar);
+
+    statusLabel = new QLabel (this);
+    statusLabel->setVisible (false);
+    mainLayout->addWidget (statusLabel);
+
+    cancelButton = new QPushButton ("Cancel Operation", this);
+    cancelButton->setVisible (false);
+    mainLayout->addWidget (cancelButton);
 
     connect (table, &QTableWidget::cellDoubleClicked, this, &RecentAnalysisDialog::on_TableCellDoubleClick);
     connect (cancelButton, &QPushButton::clicked, this, &RecentAnalysisDialog::cancelAsyncOperation);
@@ -75,22 +75,22 @@ RecentAnalysisDialog::~RecentAnalysisDialog() {
     if (worker) {
         worker->cancel();
     }
-    
+
     if (workerThread) {
         if (workerThread->isRunning()) {
             // Give it 3 seconds to finish gracefully
-            if (!workerThread->wait(3000)) {
+            if (!workerThread->wait (3000)) {
                 // Force terminate if it doesn't finish
                 workerThread->terminate();
-                workerThread->wait(1000);
+                workerThread->wait (1000);
             }
         }
-        
+
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
         }
-        
+
         workerThread = nullptr;
     }
 }
@@ -102,26 +102,26 @@ void RecentAnalysisDialog::startAsyncGetRecentAnalysis() {
 
     // Setup UI for async operation
     setupProgressUI();
-    
+
     // Show global status
-    ShowGlobalStatus("Recent Analysis", "Fetching recent analyses...", 0);
+    ShowGlobalStatus ("Recent Analysis", "Fetching recent analyses...", 0);
 
     // Create worker thread
-    workerThread = new QThread(this);
-    worker = new RecentAnalysisWorker();
-    worker->moveToThread(workerThread);
+    workerThread = new QThread (this);
+    worker       = new RecentAnalysisWorker();
+    worker->moveToThread (workerThread);
 
     // Connect signals
-    connect(workerThread, &QThread::started, worker, &RecentAnalysisWorker::performGetRecentAnalysis);
-    connect(worker, &RecentAnalysisWorker::progress, this, &RecentAnalysisDialog::onAnalysisProgress);
-    connect(worker, &RecentAnalysisWorker::analysisFinished, this, &RecentAnalysisDialog::onAnalysisFinished);
-    connect(worker, &RecentAnalysisWorker::analysisError, this, &RecentAnalysisDialog::onAnalysisError);
-    
+    connect (workerThread, &QThread::started, worker, &RecentAnalysisWorker::performGetRecentAnalysis);
+    connect (worker, &RecentAnalysisWorker::progress, this, &RecentAnalysisDialog::onAnalysisProgress);
+    connect (worker, &RecentAnalysisWorker::analysisFinished, this, &RecentAnalysisDialog::onAnalysisFinished);
+    connect (worker, &RecentAnalysisWorker::analysisError, this, &RecentAnalysisDialog::onAnalysisError);
+
     // CRITICAL: Tell the thread to quit when worker finishes (this was missing!)
-    connect(worker, &RecentAnalysisWorker::analysisFinished, workerThread, &QThread::quit);
-    connect(worker, &RecentAnalysisWorker::analysisError, workerThread, &QThread::quit);
-    
-    connect(workerThread, &QThread::finished, [this]() {
+    connect (worker, &RecentAnalysisWorker::analysisFinished, workerThread, &QThread::quit);
+    connect (worker, &RecentAnalysisWorker::analysisError, workerThread, &QThread::quit);
+
+    connect (workerThread, &QThread::finished, [this]() {
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
@@ -139,61 +139,61 @@ void RecentAnalysisDialog::cancelAsyncOperation() {
     if (worker) {
         worker->cancel();
     }
-    
+
     if (workerThread) {
         if (workerThread->isRunning()) {
             // Give it 3 seconds to finish gracefully
-            if (!workerThread->wait(3000)) {
+            if (!workerThread->wait (3000)) {
                 // Force terminate if it doesn't finish
                 workerThread->terminate();
-                workerThread->wait(1000);
+                workerThread->wait (1000);
             }
         }
-        
+
         if (worker) {
             worker->deleteLater();
             worker = nullptr;
         }
-        
+
         workerThread = nullptr;
     }
-    
+
     hideProgressUI();
     HideGlobalStatus();
-    ShowGlobalMessage("Recent analysis fetch cancelled", 3000);
+    ShowGlobalMessage ("Recent analysis fetch cancelled", 3000);
 }
 
 void RecentAnalysisDialog::setupProgressUI() {
-    progressBar->setVisible(true);
-    progressBar->setValue(0);
-    statusLabel->setVisible(true);
-    statusLabel->setText("Fetching recent analyses...");
-    cancelButton->setVisible(true);
-    
-    setUIEnabled(false);
+    progressBar->setVisible (true);
+    progressBar->setValue (0);
+    statusLabel->setVisible (true);
+    statusLabel->setText ("Fetching recent analyses...");
+    cancelButton->setVisible (true);
+
+    setUIEnabled (false);
 }
 
 void RecentAnalysisDialog::hideProgressUI() {
-    progressBar->setVisible(false);
-    statusLabel->setVisible(false);
-    cancelButton->setVisible(false);
-    
-    setUIEnabled(true);
+    progressBar->setVisible (false);
+    statusLabel->setVisible (false);
+    cancelButton->setVisible (false);
+
+    setUIEnabled (true);
 }
 
-void RecentAnalysisDialog::setUIEnabled(bool enabled) {
-    table->setEnabled(enabled);
+void RecentAnalysisDialog::setUIEnabled (bool enabled) {
+    table->setEnabled (enabled);
 }
 
-void RecentAnalysisDialog::onAnalysisProgress(int percentage, const QString &message) {
-    progressBar->setValue(percentage);
-    statusLabel->setText(message);
-    
+void RecentAnalysisDialog::onAnalysisProgress (int percentage, const QString &message) {
+    progressBar->setValue (percentage);
+    statusLabel->setText (message);
+
     // Update global status
-    UpdateGlobalStatus(message, percentage);
+    UpdateGlobalStatus (message, percentage);
 }
 
-void RecentAnalysisDialog::onAnalysisFinished(const AnalysisInfos &analyses) {
+void RecentAnalysisDialog::onAnalysisFinished (const AnalysisInfos &analyses) {
     table->clearContents();
     table->setRowCount (0);
 
@@ -205,7 +205,7 @@ void RecentAnalysisDialog::onAnalysisFinished(const AnalysisInfos &analyses) {
         Str status = StrInit();
         StatusToStr (recent_analysis->status, &status);
         row << status.data;
-        StrDeinit(&status);
+        StrDeinit (&status);
         row << recent_analysis->username.data;
         row << recent_analysis->creation.data;
         row << recent_analysis->sha256.data;
@@ -213,23 +213,19 @@ void RecentAnalysisDialog::onAnalysisFinished(const AnalysisInfos &analyses) {
         addNewRowToResultsTable (table, row);
     });
 
-    ShowGlobalMessage(QString("Loaded %1 recent analyses").arg(analyses.length), 3000);
+    ShowGlobalMessage (QString ("Loaded %1 recent analyses").arg (analyses.length), 3000);
 
-    VecDeinit(&analyses);
+    VecDeinit (&analyses);
 }
 
-void RecentAnalysisDialog::onAnalysisError(const QString &error) {
+void RecentAnalysisDialog::onAnalysisError (const QString &error) {
     // Show error notification
-    ShowGlobalNotification(
-        "Recent Analysis Error",
-        QString("Error fetching recent analyses: %1").arg(error),
-        false
-    );
-    
-    QMessageBox::critical(
+    ShowGlobalNotification ("Recent Analysis Error", QString ("Error fetching recent analyses: %1").arg (error), false);
+
+    QMessageBox::critical (
         this,
         "Recent Analysis Error",
-        QString("Error fetching recent analyses: %1").arg(error),
+        QString ("Error fetching recent analyses: %1").arg (error),
         QMessageBox::Ok
     );
 }
@@ -254,7 +250,7 @@ void RecentAnalysisDialog::on_TableCellDoubleClick (int row, int column) {
     StrDeinit (&link);
 }
 
-void RecentAnalysisDialog::addNewRowToResultsTable (QTableWidget* t, const QStringList& row) {
+void RecentAnalysisDialog::addNewRowToResultsTable (QTableWidget *t, const QStringList &row) {
     size_t tableRowCount = t->rowCount();
     t->insertRow (tableRowCount);
     for (i32 i = 0; i < headerLabels.size(); i++) {
@@ -263,49 +259,47 @@ void RecentAnalysisDialog::addNewRowToResultsTable (QTableWidget* t, const QStri
 }
 
 // Worker implementation
-RecentAnalysisWorker::RecentAnalysisWorker(QObject *parent)
-    : QObject(parent), m_cancelled(false) {
-}
+RecentAnalysisWorker::RecentAnalysisWorker (QObject *parent) : QObject (parent), m_cancelled (false) {}
 
 void RecentAnalysisWorker::performGetRecentAnalysis() {
     m_cancelled = false;
-    
+
     try {
-        emitProgress(10, "Initializing request...");
-        
+        emitProgress (10, "Initializing request...");
+
         if (m_cancelled) {
-            emit analysisError("Operation cancelled");
+            emit analysisError ("Operation cancelled");
             return;
         }
-        
-        emitProgress(30, "Fetching recent analyses from server...");
-        
-        RecentAnalysisRequest recents = RecentAnalysisRequestInit();
-        AnalysisInfos recent_analyses = GetRecentAnalysis(GetConnection(), &recents);
-        RecentAnalysisRequestDeinit(&recents);
-        
+
+        emitProgress (30, "Fetching recent analyses from server...");
+
+        RecentAnalysisRequest recents         = RecentAnalysisRequestInit();
+        AnalysisInfos         recent_analyses = GetRecentAnalysis (GetConnection(), &recents);
+        RecentAnalysisRequestDeinit (&recents);
+
         if (m_cancelled) {
-            VecDeinit(&recent_analyses);
-            emit analysisError("Operation cancelled");
+            VecDeinit (&recent_analyses);
+            emit analysisError ("Operation cancelled");
             return;
         }
-        
-        emitProgress(80, "Processing analysis data...");
-        
+
+        emitProgress (80, "Processing analysis data...");
+
         if (!recent_analyses.length) {
-            emitProgress(100, "No recent analyses found");
-            emit analysisFinished(recent_analyses);
-            VecDeinit(&recent_analyses);
+            emitProgress (100, "No recent analyses found");
+            emit analysisFinished (recent_analyses);
+            VecDeinit (&recent_analyses);
             return;
         }
-        
-        emitProgress(100, QString("Loaded %1 recent analyses").arg(recent_analyses.length));
-        emit analysisFinished(recent_analyses);
-                
+
+        emitProgress (100, QString ("Loaded %1 recent analyses").arg (recent_analyses.length));
+        emit analysisFinished (recent_analyses);
+
     } catch (const std::exception &e) {
-        emit analysisError(QString("Exception during recent analysis fetch: %1").arg(e.what()));
+        emit analysisError (QString ("Exception during recent analysis fetch: %1").arg (e.what()));
     } catch (...) {
-        emit analysisError("Unknown exception during recent analysis fetch");
+        emit analysisError ("Unknown exception during recent analysis fetch");
     }
 }
 
