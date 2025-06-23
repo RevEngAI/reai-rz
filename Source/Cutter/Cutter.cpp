@@ -28,6 +28,10 @@
 #include <QtPlugin>
 #include <QInputDialog>
 #include <QIcon>
+#include <QStatusBar>
+#include <QHBoxLayout>
+#include <QWidget>
+#include <QApplication>
 
 /* creait lib */
 #include <Reai/Api.h>
@@ -46,6 +50,9 @@
 #include <Plugin.h>
 #include <Cutter/Cutter.hpp>
 #include <Cutter/Decompiler.hpp>
+
+// Global instance for singleton access
+ReaiCutterPlugin* ReaiCutterPlugin::s_instance = nullptr;
 
 Str *getMsg() {
     static Str msg = StrInit();
@@ -92,6 +99,9 @@ void rzAppendMsg (LogLevel level, Str *msg) {
 }
 
 void ReaiCutterPlugin::setupPlugin() {
+    // Set global instance
+    s_instance = this;
+    
     RzCoreLocked core (Core());
 
     // if plugin failed to load because no config exists
@@ -227,6 +237,246 @@ void ReaiCutterPlugin::setupInterface (MainWindow *mainWin) {
 
     // Setup context menus
     setupContextMenus();
+    
+    // Setup status bar
+    setupStatusBar();
+    
+    // Setup system tray
+    setupSystemTray();
+}
+
+void ReaiCutterPlugin::setupStatusBar() {
+    if (!mainWindow) {
+        return;
+    }
+    
+    QStatusBar *statusBar = mainWindow->statusBar();
+    if (!statusBar) {
+        qWarning() << "MainWindow has no status bar";
+        return;
+    }
+    
+    // Create status widgets
+    statusLabel = new QLabel("RevEngAI Ready");
+    statusLabel->setStyleSheet("color: gray; font-style: italic;");
+    statusLabel->setVisible(false); // Initially hidden
+    
+    statusProgressBar = new QProgressBar();
+    statusProgressBar->setMaximumWidth(200);
+    statusProgressBar->setVisible(false);
+    
+    statusCancelButton = new QPushButton("Cancel");
+    statusCancelButton->setMaximumWidth(60);
+    statusCancelButton->setVisible(false);
+    
+    // Create a container widget for our status elements
+    QWidget *statusWidget = new QWidget();
+    QHBoxLayout *statusLayout = new QHBoxLayout(statusWidget);
+    statusLayout->setContentsMargins(0, 0, 0, 0);
+    statusLayout->addWidget(statusLabel);
+    statusLayout->addWidget(statusProgressBar);
+    statusLayout->addWidget(statusCancelButton);
+    
+    // Add to status bar (permanent widget stays on the right)
+    statusBar->addPermanentWidget(statusWidget);
+    
+    // Setup timer for auto-hiding status messages
+    statusHideTimer = new QTimer(this);
+    statusHideTimer->setSingleShot(true);
+    connect(statusHideTimer, &QTimer::timeout, this, &ReaiCutterPlugin::onStatusHideTimeout);
+    
+    // Connect cancel button
+    connect(statusCancelButton, &QPushButton::clicked, this, &ReaiCutterPlugin::onStatusCancelClicked);
+}
+
+void ReaiCutterPlugin::setupSystemTray() {
+    // Setup system tray icon for notifications
+    if (QSystemTrayIcon::isSystemTrayAvailable()) {
+        systemTrayIcon = new QSystemTrayIcon(this);
+        systemTrayIcon->setIcon(QIcon(":/icons/revengai.png")); // You may want to add an icon
+        systemTrayIcon->setToolTip("RevEngAI Plugin");
+        systemTrayIcon->show();
+    }
+}
+
+void ReaiCutterPlugin::showStatusProgress(const QString &operationType, const QString &message, int percentage) {
+    if (!statusLabel || !statusProgressBar || !statusCancelButton) {
+        return;
+    }
+    
+    currentOperationType = operationType;
+    
+    statusLabel->setText(QString("RevEngAI: %1").arg(message));
+    statusLabel->setStyleSheet("color: blue; font-weight: bold;");
+    statusLabel->setVisible(true);
+    
+    if (percentage >= 0) {
+        statusProgressBar->setValue(percentage);
+        statusProgressBar->setVisible(true);
+    } else {
+        statusProgressBar->setVisible(false);
+    }
+    
+    statusCancelButton->setVisible(true);
+    
+    // Stop any existing hide timer
+    statusHideTimer->stop();
+}
+
+void ReaiCutterPlugin::updateStatusProgress(const QString &message, int percentage) {
+    if (!statusLabel || !statusProgressBar) {
+        return;
+    }
+    
+    statusLabel->setText(QString("RevEngAI: %1").arg(message));
+    
+    if (percentage >= 0 && statusProgressBar->isVisible()) {
+        statusProgressBar->setValue(percentage);
+    }
+}
+
+void ReaiCutterPlugin::hideStatusProgress() {
+    if (!statusLabel || !statusProgressBar || !statusCancelButton) {
+        return;
+    }
+    
+    statusLabel->setVisible(false);
+    statusProgressBar->setVisible(false);
+    statusCancelButton->setVisible(false);
+    
+    currentOperationType.clear();
+    currentAnalysisBinaryId = 0;
+}
+
+void ReaiCutterPlugin::showStatusMessage(const QString &message, int duration) {
+    if (!statusLabel) {
+        return;
+    }
+    
+    statusLabel->setText(QString("RevEngAI: %1").arg(message));
+    statusLabel->setStyleSheet("color: green; font-weight: normal;");
+    statusLabel->setVisible(true);
+    
+    // Hide progress bar and cancel button for simple messages
+    if (statusProgressBar) statusProgressBar->setVisible(false);
+    if (statusCancelButton) statusCancelButton->setVisible(false);
+    
+    // Auto-hide after duration
+    statusHideTimer->start(duration);
+}
+
+void ReaiCutterPlugin::showNotification(const QString &title, const QString &message, bool isSuccess) {
+    // Show popup notification
+    QMessageBox::Icon icon = isSuccess ? QMessageBox::Information : QMessageBox::Warning;
+    QMessageBox msgBox;
+    msgBox.setIcon(icon);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.exec();
+    
+    // Also show in status bar
+    QString statusMsg = isSuccess ? QString("✓ %1").arg(message) : QString("✗ %1").arg(message);
+    showStatusMessage(statusMsg, 8000); // Show for 8 seconds
+}
+
+void ReaiCutterPlugin::onStatusHideTimeout() {
+    hideStatusProgress();
+}
+
+void ReaiCutterPlugin::onStatusCancelClicked() {
+    // This is a placeholder - individual operations should connect to this signal
+    // or override this behavior for their specific cancellation logic
+    qDebug() << "Cancel clicked for operation:" << currentOperationType;
+    hideStatusProgress();
+    showStatusMessage("Operation cancelled", 3000);
+}
+
+void ReaiCutterPlugin::startAnalysisPolling(BinaryId binaryId, const QString &analysisName) {
+    // Stop any existing polling
+    stopAnalysisPolling();
+    
+    // Create polling thread
+    pollerThread = new QThread(this);
+    statusPoller = new AnalysisStatusPoller();
+    statusPoller->moveToThread(pollerThread);
+    
+    // Connect signals
+    connect(statusPoller, &AnalysisStatusPoller::statusUpdate, this, &ReaiCutterPlugin::onAnalysisStatusUpdate);
+    connect(statusPoller, &AnalysisStatusPoller::analysisCompleted, this, &ReaiCutterPlugin::onAnalysisCompleted);
+    connect(statusPoller, &AnalysisStatusPoller::pollingError, [this](const QString &error) {
+        qWarning() << "Analysis polling error:" << error;
+        showStatusMessage(QString("Polling error: %1").arg(error), 5000);
+    });
+    
+    // Clean up when thread finishes
+    connect(pollerThread, &QThread::finished, statusPoller, &QObject::deleteLater);
+    connect(pollerThread, &QThread::finished, pollerThread, &QObject::deleteLater);
+    connect(pollerThread, &QThread::finished, [this]() {
+        statusPoller = nullptr;
+        pollerThread = nullptr;
+    });
+    
+    // Start polling
+    connect(pollerThread, &QThread::started, [this, binaryId, analysisName]() {
+        AnalysisStatusPoller::PollingRequest request;
+        request.binaryId = binaryId;
+        request.analysisName = analysisName;
+        request.pollIntervalMs = 30000; // Poll every 30 seconds
+        statusPoller->startPolling(request);
+    });
+    
+    pollerThread->start();
+    
+    // Show status
+    showStatusMessage(QString("Monitoring analysis: %1 (ID: %2)").arg(analysisName).arg(binaryId), 5000);
+}
+
+void ReaiCutterPlugin::stopAnalysisPolling() {
+    if (statusPoller) {
+        statusPoller->stopPolling();
+    }
+    
+    if (pollerThread && pollerThread->isRunning()) {
+        pollerThread->quit();
+        if (!pollerThread->wait(3000)) {
+            pollerThread->terminate();
+            pollerThread->wait(1000);
+        }
+    }
+    
+    statusPoller = nullptr;
+    pollerThread = nullptr;
+}
+
+void ReaiCutterPlugin::onAnalysisStatusUpdate(BinaryId binaryId, const QString &status, const QString &analysisName) {
+    QString message = QString("Analysis %1 (ID: %2) status: %3").arg(analysisName).arg(binaryId).arg(status);
+    showStatusMessage(message, 3000);
+}
+
+void ReaiCutterPlugin::onAnalysisCompleted(BinaryId binaryId, const QString &analysisName, bool success) {
+    // Stop polling since analysis is complete
+    stopAnalysisPolling();
+    
+    QString title = success ? "Analysis Complete" : "Analysis Failed";
+    QString message = QString("Analysis '%1' (ID: %2) has %3")
+                        .arg(analysisName)
+                        .arg(binaryId)
+                        .arg(success ? "completed successfully" : "failed");
+    
+    // Show system notification
+    if (systemTrayIcon && systemTrayIcon->isVisible()) {
+        QSystemTrayIcon::MessageIcon icon = success ? QSystemTrayIcon::Information : QSystemTrayIcon::Warning;
+        systemTrayIcon->showMessage(title, message, icon, 10000); // Show for 10 seconds
+    }
+    
+    // Also show regular notification
+    showNotification(title, message, success);
+    
+    // Update current binary ID if this analysis succeeded
+    if (success) {
+        SetBinaryId(binaryId);
+    }
 }
 
 void ReaiCutterPlugin::registerDecompilers() {
@@ -234,6 +484,14 @@ void ReaiCutterPlugin::registerDecompilers() {
 }
 
 ReaiCutterPlugin::~ReaiCutterPlugin() {
+    // Stop analysis polling
+    stopAnalysisPolling();
+    
+    // Clear global instance
+    if (s_instance == this) {
+        s_instance = nullptr;
+    }
+    
     if (!isInitialized) {
         return;
     }
@@ -546,4 +804,132 @@ void ReaiCutterPlugin::on_FindSimilarFunctions() {
     
     // Call the public slot to show diff for the function
     diffWidget->showDiffForFunction(functionName, 90); // Default 90% similarity
+}
+
+// Global convenience functions implementation
+void ShowGlobalStatus(const QString &operationType, const QString &message, int percentage) {
+    if (ReaiCutterPlugin::instance()) {
+        ReaiCutterPlugin::instance()->showStatusProgress(operationType, message, percentage);
+    }
+}
+
+void UpdateGlobalStatus(const QString &message, int percentage) {
+    if (ReaiCutterPlugin::instance()) {
+        ReaiCutterPlugin::instance()->updateStatusProgress(message, percentage);
+    }
+}
+
+void HideGlobalStatus() {
+    if (ReaiCutterPlugin::instance()) {
+        ReaiCutterPlugin::instance()->hideStatusProgress();
+    }
+}
+
+void ShowGlobalMessage(const QString &message, int duration) {
+    if (ReaiCutterPlugin::instance()) {
+        ReaiCutterPlugin::instance()->showStatusMessage(message, duration);
+    }
+}
+
+void ShowGlobalNotification(const QString &title, const QString &message, bool isSuccess) {
+    if (ReaiCutterPlugin::instance()) {
+        ReaiCutterPlugin::instance()->showNotification(title, message, isSuccess);
+    }
+}
+
+void StartGlobalAnalysisPolling(BinaryId binaryId, const QString &analysisName) {
+    if (ReaiCutterPlugin::instance()) {
+        ReaiCutterPlugin::instance()->startAnalysisPolling(binaryId, analysisName);
+    }
+}
+
+void StopGlobalAnalysisPolling() {
+    if (ReaiCutterPlugin::instance()) {
+        ReaiCutterPlugin::instance()->stopAnalysisPolling();
+    }
+}
+
+// AnalysisStatusPoller implementation
+AnalysisStatusPoller::AnalysisStatusPoller(QObject *parent) 
+    : QObject(parent), currentBinaryId(0), isPolling(false) {
+    pollTimer = new QTimer(this);
+    pollTimer->setSingleShot(false);
+    connect(pollTimer, &QTimer::timeout, this, &AnalysisStatusPoller::checkAnalysisStatus);
+}
+
+void AnalysisStatusPoller::startPolling(const PollingRequest &request) {
+    if (isPolling) {
+        stopPolling();
+    }
+    
+    currentBinaryId = request.binaryId;
+    currentAnalysisName = request.analysisName;
+    isPolling = true;
+    
+    pollTimer->setInterval(request.pollIntervalMs);
+    pollTimer->start();
+    
+    // Check immediately
+    checkAnalysisStatus();
+}
+
+void AnalysisStatusPoller::stopPolling() {
+    if (pollTimer) {
+        pollTimer->stop();
+    }
+    isPolling = false;
+    currentBinaryId = 0;
+    currentAnalysisName.clear();
+}
+
+void AnalysisStatusPoller::checkAnalysisStatus() {
+    if (!isPolling || currentBinaryId == 0) {
+        return;
+    }
+    
+    try {
+        Status status = GetAnalysisStatus(GetConnection(), currentBinaryId);
+        
+        QString statusString;
+        bool isComplete = false;
+        bool isSuccess = false;
+        
+        switch (status & STATUS_MASK) {
+            case STATUS_QUEUED:
+                statusString = "Queued";
+                break;
+            case STATUS_PROCESSING:
+                statusString = "Processing";
+                break;
+            case STATUS_COMPLETE:
+                statusString = "Complete";
+                isComplete = true;
+                isSuccess = true;
+                break;
+            case STATUS_ERROR:
+                statusString = "Error";
+                isComplete = true;
+                isSuccess = false;
+                break;
+            default:
+                statusString = "Unknown";
+                break;
+        }
+        
+        // Emit status update
+        emit statusUpdate(currentBinaryId, statusString, currentAnalysisName);
+        
+        // If analysis is complete, emit completion signal and stop polling
+        if (isComplete) {
+            emit analysisCompleted(currentBinaryId, currentAnalysisName, isSuccess);
+            stopPolling();
+        }
+        
+    } catch (const std::exception &e) {
+        emit pollingError(QString("Failed to check analysis status: %1").arg(e.what()));
+        stopPolling();
+    } catch (...) {
+        emit pollingError("Unknown error while checking analysis status");
+        stopPolling();
+    }
 }

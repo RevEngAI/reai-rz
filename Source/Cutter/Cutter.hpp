@@ -19,6 +19,12 @@
 
 /* qt */
 #include <QObject>
+#include <QLabel>
+#include <QProgressBar>
+#include <QPushButton>
+#include <QTimer>
+#include <QSystemTrayIcon>
+#include <QThread>
 
 /* plugin */
 #include <Plugin.h>
@@ -26,6 +32,7 @@
 
 // Forward declarations
 class InteractiveDiffWidget;
+class AnalysisStatusPoller;
 
 // TODO: some shortcuts like (Ctrl+A, Ctr+E) to apple existing analysis would be really nice
 
@@ -69,8 +76,25 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
     MainWindow            *mainWindow = NULL;
     InteractiveDiffWidget *diffWidget = nullptr;
 
+    // Status bar management
+    QLabel *statusLabel = nullptr;
+    QProgressBar *statusProgressBar = nullptr;
+    QPushButton *statusCancelButton = nullptr;
+    QTimer *statusHideTimer = nullptr;
+    
+    // Current operation tracking
+    QString currentOperationType;
+    BinaryId currentAnalysisBinaryId = 0;
+    
+    // Analysis status polling
+    QThread *pollerThread = nullptr;
+    AnalysisStatusPoller *statusPoller = nullptr;
+    QSystemTrayIcon *systemTrayIcon = nullptr;
+
     void renameFunctions (std::vector<std::pair<QString, QString>> nameMap);
     void setupContextMenus();
+    void setupStatusBar();
+    void setupSystemTray();
 
    public:
     void setupPlugin() override;
@@ -91,6 +115,20 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
         return "AI based reverse engineering helper API & Toolkit";
     }
 
+    // Status bar management methods
+    void showStatusProgress(const QString &operationType, const QString &message, int percentage = -1);
+    void updateStatusProgress(const QString &message, int percentage);
+    void hideStatusProgress();
+    void showStatusMessage(const QString &message, int duration = 5000);
+    void showNotification(const QString &title, const QString &message, bool isSuccess = true);
+    
+    // Analysis polling methods
+    void startAnalysisPolling(BinaryId binaryId, const QString &analysisName);
+    void stopAnalysisPolling();
+    
+    // Global access to status methods (singleton pattern)
+    static ReaiCutterPlugin* instance() { return s_instance; }
+
     void on_ToggleReaiPlugin();
     void on_CreateAnalysis();
     void on_ApplyExistingAnalysis();
@@ -105,6 +143,56 @@ class ReaiCutterPlugin : public QObject, public CutterPlugin {
 
 private slots:
     void on_FindSimilarFunctions();
+    void onStatusHideTimeout();
+    void onStatusCancelClicked();
+    void onAnalysisStatusUpdate(BinaryId binaryId, const QString &status, const QString &analysisName);
+    void onAnalysisCompleted(BinaryId binaryId, const QString &analysisName, bool success);
+
+private:
+    static ReaiCutterPlugin* s_instance;
 };
+
+// Analysis status polling worker
+class AnalysisStatusPoller : public QObject {
+    Q_OBJECT
+
+public:
+    explicit AnalysisStatusPoller(QObject *parent = nullptr);
+    
+    struct PollingRequest {
+        BinaryId binaryId;
+        QString analysisName;
+        int pollIntervalMs;
+    };
+
+public slots:
+    void startPolling(const PollingRequest &request);
+    void stopPolling();
+
+signals:
+    void statusUpdate(BinaryId binaryId, const QString &status, const QString &analysisName);
+    void analysisCompleted(BinaryId binaryId, const QString &analysisName, bool success);
+    void pollingError(const QString &error);
+
+private slots:
+    void checkAnalysisStatus();
+
+private:
+    QTimer *pollTimer;
+    BinaryId currentBinaryId;
+    QString currentAnalysisName;
+    bool isPolling;
+};
+
+// Global convenience functions for status updates
+void ShowGlobalStatus(const QString &operationType, const QString &message, int percentage = -1);
+void UpdateGlobalStatus(const QString &message, int percentage);
+void HideGlobalStatus();
+void ShowGlobalMessage(const QString &message, int duration = 5000);
+void ShowGlobalNotification(const QString &title, const QString &message, bool isSuccess = true);
+
+// Global convenience functions for analysis polling
+void StartGlobalAnalysisPolling(BinaryId binaryId, const QString &analysisName);
+void StopGlobalAnalysisPolling();
 
 #endif // REAI_PLUGIN_CUTTER_CUTTER_HPP

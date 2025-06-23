@@ -21,6 +21,7 @@
 #include <Reai/Api.h>
 #include <Reai/Util/Vec.h>
 #include <Cutter/Ui/CreateAnalysisDialog.hpp>
+#include <Cutter/Cutter.hpp>  // For global status functions
 
 CreateAnalysisDialog::CreateAnalysisDialog(QWidget* parent) 
     : QDialog(parent), workerThread(nullptr), worker(nullptr) {
@@ -153,6 +154,9 @@ void CreateAnalysisDialog::startAsyncCreateAnalysis() {
 
     // Setup UI for async operation
     setupProgressUI();
+    
+    // Show global status
+    ShowGlobalStatus("Analysis Creation", "Preparing analysis...", 0);
 
     // Create worker thread
     workerThread = new QThread(this);
@@ -175,6 +179,7 @@ void CreateAnalysisDialog::startAsyncCreateAnalysis() {
         }
         workerThread = nullptr;
         hideProgressUI();
+        HideGlobalStatus(); // Hide global status when done
     });
 
     // Start the worker thread
@@ -205,6 +210,8 @@ void CreateAnalysisDialog::cancelAsyncCreateAnalysis() {
     }
     
     hideProgressUI();
+    HideGlobalStatus();
+    ShowGlobalMessage("Analysis creation cancelled", 3000);
 }
 
 void CreateAnalysisDialog::setupProgressUI() {
@@ -236,19 +243,35 @@ void CreateAnalysisDialog::setUIEnabled(bool enabled) {
 void CreateAnalysisDialog::onAnalysisProgress(int percentage, const QString &message) {
     progressBar->setValue(percentage);
     statusLabel->setText(message);
+    
+    // Update global status
+    UpdateGlobalStatus(message, percentage);
 }
 
 void CreateAnalysisDialog::onAnalysisFinished(const CreateAnalysisResult &result) {
     if (result.success) {
         SetBinaryId(result.binaryId);
-        QMessageBox::information(
-            this,
-            "Analysis Created",
-            QString("Analysis created successfully! Binary ID: %1").arg(result.binaryId),
-            QMessageBox::Ok
+        
+        // Start polling for analysis completion
+        QString analysisName = progNameInput->text();
+        StartGlobalAnalysisPolling(result.binaryId, analysisName);
+        
+        // Show success notification
+        ShowGlobalNotification(
+            "Analysis Created Successfully",
+            QString("Analysis created with Binary ID: %1. You'll be notified when analysis is complete.").arg(result.binaryId),
+            true
         );
+        
         accept(); // Close dialog with success
     } else {
+        // Show error notification
+        ShowGlobalNotification(
+            "Analysis Creation Failed",
+            QString("Failed to create analysis: %1").arg(result.errorMessage),
+            false
+        );
+        
         QMessageBox::critical(
             this,
             "Analysis Creation Failed",
@@ -259,6 +282,13 @@ void CreateAnalysisDialog::onAnalysisFinished(const CreateAnalysisResult &result
 }
 
 void CreateAnalysisDialog::onAnalysisError(const QString &error) {
+    // Show error notification
+    ShowGlobalNotification(
+        "Analysis Creation Error",
+        QString("Error during analysis creation: %1").arg(error),
+        false
+    );
+    
     QMessageBox::critical(
         this,
         "Analysis Creation Error",
