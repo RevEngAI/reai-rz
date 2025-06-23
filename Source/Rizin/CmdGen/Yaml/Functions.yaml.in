@@ -61,6 +61,31 @@ commands:
             comment: "Search only in provided list of comma separated collection IDs"
           - text: 'REfs FUN_8a3004 90 25 "" "420229, 38445"'
             comment: "Can provide binary IDs as well to limit the search for functions to those binaries"
+  - name: REfaf
+    cname: function_assembly_diff
+    summary: Interactive diff viewer for assembly code of similar functions.
+    args:
+      - name: function_name
+        type: RZ_CMD_ARG_TYPE_STRING
+        optional: false
+      - name: min_similarity
+        type: RZ_CMD_ARG_TYPE_NUM
+        default_value: 90
+    details:
+      - name: Usage
+        entries:
+          - text: "REfad main"
+            comment: "Show interactive diff for function 'main' with similar functions (default 90% similarity)"
+          - text: "REfad parse_header 85"
+            comment: "Show interactive diff for 'parse_header' with minimum 85% similarity"
+      - name: Controls
+        entries:
+          - text: "j/k or ↑/↓"
+            comment: "Navigate through similar functions list"
+          - text: "h or ?"
+            comment: "Show help overlay"
+          - text: "q or ESC"
+            comment: "Exit interactive diff viewer"
   - name: REfsd
     cname: function_similarity_search_debug
     summary: RevEng.AI ANN functions similarity search. Suggestions restricted to debug symbols only.
