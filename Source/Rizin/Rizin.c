@@ -30,9 +30,14 @@
 /* local includes */
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
-#include "../PluginVersion.h"\
+#include "../PluginVersion.h"
 
-typedef int (*RzAnalysisFunctionRenameCallback) (RzAnalysis *analysis, void* core, RzAnalysisFunction *fcn, const char *newname);
+typedef int (*RzAnalysisFunctionRenameCallback) (
+    RzAnalysis         *analysis,
+    void               *core,
+    RzAnalysisFunction *fcn,
+    const char         *newname
+);
 
 Str *getMsg() {
     static Str  s;
@@ -75,7 +80,7 @@ void rzAppendMsg (LogLevel level, Str *msg) {
 
 // NOTE: Hook function for function rename
 // This is called back from Rizin event system whenever a function is renamed.
-static int reai_on_fcn_rename (RzAnalysis *analysis, RzCore* core, RzAnalysisFunction *fcn, const char *newname) {
+static int reai_on_fcn_rename (RzAnalysis *analysis, RzCore *core, RzAnalysisFunction *fcn, const char *newname) {
     if (!analysis || !core || !fcn || !fcn->name || !newname) {
         LOG_ERROR ("Invalid arguments in function rename callback");
         return 1;
@@ -88,7 +93,7 @@ static int reai_on_fcn_rename (RzAnalysis *analysis, RzCore* core, RzAnalysisFun
     // In Cutter, fetching binary id from local plugin storage won't work,
     // and the IdFromCore will end up fetching from RzCore config only.
     // Check if we can work with the current analysis
-    if (!rzCanWorkWithAnalysis (GetBinaryIdFromCore(core), false)) {
+    if (!rzCanWorkWithAnalysis (GetBinaryIdFromCore (core), false)) {
         LOG_INFO ("RevEngAI analysis not ready, skipping function rename sync");
         return 1;
     }

@@ -1268,7 +1268,7 @@ void AnalysisSelectionDialog::onUseExistingClicked() {
         RzCoreLocked core (Core());
         rzApplyAnalysis (core, selectedAnalysisId);
 
-        selectionResult    = UseExisting;
+        selectionResult = UseExisting;
         accept();
     }
 }

@@ -68,8 +68,8 @@ extern "C" {
     /// SUCCESS : A non-zero binary ID if found locally or in RzCore config.
     /// FAILURE : 0.
     ///
-    BinaryId GetBinaryIdFromCore (RzCore *core);
-    void     SetBinaryIdInCore (RzCore *core, BinaryId binary_id);
+    BinaryId GetBinaryIdFromCore (RzCore* core);
+    void     SetBinaryIdInCore (RzCore* core, BinaryId binary_id);
 
 
     ///
@@ -149,6 +149,14 @@ extern "C" {
     /// FAILURE : 0
     ///
     u64 rzGetCurrentBinaryBaseAddr (RzCore* core);
+
+    ///
+    /// Get most similar function symbol for given origin function ID.
+    ///
+    /// symbols[in] : AnnSymbols to search in.
+    /// origin_fn_id[in] : Origin function ID to get most similar symbol for.
+    ///
+    AnnSymbol* rzGetMostSimilarFunctionSymbol (AnnSymbols* symbols, FunctionId origin_fn_id);
 
     void rzDisplayMsg (LogLevel level, Str* msg);
     void rzAppendMsg (LogLevel level, Str* msg);
