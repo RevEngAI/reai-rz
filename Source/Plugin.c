@@ -140,16 +140,61 @@ Connection *GetConnection() {
 }
 
 BinaryId GetBinaryId() {
+    // First try to get from local plugin instance
     if (getPlugin (false)) {
-        return getPlugin (false)->binary_id;
-    } else {
-        return 0;
+        BinaryId local_id = getPlugin (false)->binary_id;
+        if (local_id != 0) {
+            return local_id;
+        }
     }
+    
+    // If local not available or is 0, we can't get from RzCore here
+    // Use GetBinaryIdFromCore() when RzCore is available
+    return 0;
+}
+
+// In cutter, due to multithreading, we can't use local plugin instance to get binary ID
+// So we use RzCore config to get binary ID
+BinaryId GetBinaryIdFromCore (RzCore *core) {
+    // First try to get from local plugin instance
+    if (getPlugin (false)) {
+        BinaryId local_id = getPlugin (false)->binary_id;
+        if (local_id != 0) {
+            LOG_INFO ("Got binary ID %llu from local plugin", local_id);
+            return local_id;
+        }
+    }
+    
+    // If local not available or is 0, try to get from RzCore config
+    if (core && core->config) {
+        BinaryId binary_id = (BinaryId)rz_config_get_i (core->config, "reai.binary_id");
+        if (binary_id != 0) {
+            LOG_INFO ("Got binary ID %llu from RzCore config", binary_id);
+            return binary_id;
+        }
+    }
+    
+    return 0;
 }
 
 void SetBinaryId (BinaryId binary_id) {
+    // Set in local plugin instance
     if (getPlugin (false)) {
+        LOG_INFO ("Setting binary ID to %llu in local plugin", binary_id);
         getPlugin (false)->binary_id = binary_id;
+    } else {
+        LOG_ERROR ("Failed to set binary ID - plugin not initialized");
+    }
+}
+
+// In cutter, due to multithreading, we can't use local plugin instance to get binary ID
+// So we use RzCore config to set binary ID
+void SetBinaryIdInCore (RzCore *core, BinaryId binary_id) {
+    if (core && core->config) {
+        rz_config_lock(core->config, false);
+        rz_config_set_i (core->config, "reai.binary_id", binary_id);
+        rz_config_lock(core->config, true);
+        LOG_INFO ("Set binary ID %llu in RzCore config", binary_id);
     }
 }
 
@@ -216,6 +261,13 @@ void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
     }
 
     if (rzCanWorkWithAnalysis (binary_id, true)) {
+        // Set binary ID BEFORE applying analysis so that function rename hooks work properly
+        SetBinaryId (binary_id);
+        
+        // Also set in RzCore config as backup for cross-context access
+        SetBinaryIdInCore (core, binary_id);
+        LOG_INFO ("Set binary ID %llu in both local plugin and RzCore config", binary_id);
+        
         FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), binary_id);
         if (!functions.length) {
             DISPLAY_ERROR ("Failed to get functions from RevEngAI analysis.");
@@ -234,8 +286,6 @@ void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
             }
             rz_analysis_function_force_rename (fn, function->symbol.name.data);
         });
-
-        SetBinaryId (binary_id);
 
         if (!failed) {
             DISPLAY_INFO ("All functions renamed successfully");
@@ -375,7 +425,8 @@ FunctionId rzLookupFunctionId (RzCore *core, RzAnalysisFunction *rz_fn) {
         DISPLAY_FATAL ("Invalid arguments: Invalid Rizin core or analysis function.");
     }
 
-    if (!GetBinaryId()) {
+    BinaryId binary_id = GetBinaryIdFromCore(core);
+    if (!binary_id) {
         APPEND_ERROR (
             "Please create a new analysis or apply an existing analysis. "
             "I need an existing analysis to get function information."
@@ -383,7 +434,7 @@ FunctionId rzLookupFunctionId (RzCore *core, RzAnalysisFunction *rz_fn) {
         return 0;
     }
 
-    FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), GetBinaryId());
+    FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), binary_id);
     if (!functions.length) {
         APPEND_ERROR ("Failed to get function info list for opened binary file from RevEng.AI servers.");
         return 0;

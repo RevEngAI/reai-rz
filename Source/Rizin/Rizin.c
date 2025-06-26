@@ -30,9 +30,11 @@
 /* local includes */
 #include <Rizin/CmdGen/Output/CmdDescs.h>
 #include <Plugin.h>
-#include "../PluginVersion.h"
+#include "../PluginVersion.h"\
 
-Str* getMsg() {
+typedef int (*RzAnalysisFunctionRenameCallback) (RzAnalysis *analysis, void* core, RzAnalysisFunction *fcn, const char *newname);
+
+Str *getMsg() {
     static Str  s;
     static bool is_inited = false;
     if (!is_inited) {
@@ -46,7 +48,7 @@ void rzClearMsg() {
     StrClear (getMsg());
 }
 
-void rzDisplayMsg (LogLevel level, Str* msg) {
+void rzDisplayMsg (LogLevel level, Str *msg) {
     if (!msg) {
         LOG_ERROR ("Invalid arguments");
         return;
@@ -57,7 +59,7 @@ void rzDisplayMsg (LogLevel level, Str* msg) {
     StrClear (getMsg());
 }
 
-void rzAppendMsg (LogLevel level, Str* msg) {
+void rzAppendMsg (LogLevel level, Str *msg) {
     if (!msg) {
         LOG_ERROR ("Invalid arguments");
         return;
@@ -71,7 +73,51 @@ void rzAppendMsg (LogLevel level, Str* msg) {
     );
 }
 
-RZ_IPI bool rz_plugin_init (RzCore* core) {
+// NOTE: Hook function for function rename
+// This is called back from Rizin event system whenever a function is renamed.
+static int reai_on_fcn_rename (RzAnalysis *analysis, RzCore* core, RzAnalysisFunction *fcn, const char *newname) {
+    if (!analysis || !core || !fcn || !fcn->name || !newname) {
+        LOG_ERROR ("Invalid arguments in function rename callback");
+        return 1;
+    }
+
+    LOG_INFO ("Function rename detected: new name '%s' at 0x%llx", fcn->name, fcn->addr);
+
+    // Only sync if we have a valid binary ID (analysis is applied)
+    // Use GetBinaryIdFromCore to check both local storage and RzCore config.
+    // In Cutter, fetching binary id from local plugin storage won't work,
+    // and the IdFromCore will end up fetching from RzCore config only.
+    // Check if we can work with the current analysis
+    if (!rzCanWorkWithAnalysis (GetBinaryIdFromCore(core), false)) {
+        LOG_INFO ("RevEngAI analysis not ready, skipping function rename sync");
+        return 1;
+    }
+
+    // Look up the RevEngAI function ID for this Rizin function
+    FunctionId fn_id = rzLookupFunctionId (core, fcn);
+    if (!fn_id) {
+        LOG_ERROR ("Failed to find RevEngAI function ID for function '%s' at 0x%llx", fcn->name, fcn->addr);
+        return 1;
+    }
+
+    // Create new name string for the API call
+    Str new_name = StrInitFromZstr (fcn->name);
+
+    // Call RevEngAI API to rename the function
+    if (RenameFunction (GetConnection(), fn_id, new_name)) {
+        LOG_INFO ("Successfully synced function rename with RevEngAI: '%s' (ID: %llu)", fcn->name, fn_id);
+        return 0;
+    } else {
+        LOG_ERROR ("Failed to sync function rename with RevEngAI for function '%s' (ID: %llu)", fcn->name, fn_id);
+        return 1;
+    }
+
+    StrDeinit (&new_name);
+
+    return 0;
+}
+
+RZ_IPI bool rz_plugin_init (RzCore *core) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Cannot initialize plugin.");
         return false;
@@ -79,18 +125,33 @@ RZ_IPI bool rz_plugin_init (RzCore* core) {
 
     LogInit (true);
 
+    // Register our config variables
+    if (core->config) {
+        rz_config_set_i (core->config, "reai.binary_id", 0);
+        rz_config_desc (core->config, "reai.binary_id", "Current RevEngAI binary ID for cross-context access");
+        LOG_INFO ("Registered RevEngAI config variable: reai.binary_id");
+    }
+
+    // Install our hook
+    if (core->analysis) {
+        core->analysis->cb.on_fcn_rename = (RzAnalysisFunctionRenameCallback)reai_on_fcn_rename;
+        LOG_INFO ("RevEngAI function rename hook installed");
+    } else {
+        LOG_ERROR ("Failed to install function rename hook: analysis not available");
+    }
+
     rzshell_cmddescs_init (core);
     return true;
 }
 
-RZ_IPI bool rz_plugin_fini (RzCore* core) {
+RZ_IPI bool rz_plugin_fini (RzCore *core) {
     if (!core) {
         DISPLAY_ERROR ("Invalid rizin core provided. Failed to free plugin resources.");
         return false;
     }
 
-    RzCmd*     rcmd          = core->rcmd;
-    RzCmdDesc* reai_cmd_desc = rz_cmd_get_desc (rcmd, "RE");
+    RzCmd     *rcmd          = core->rcmd;
+    RzCmdDesc *reai_cmd_desc = rz_cmd_get_desc (rcmd, "RE");
     return rz_cmd_desc_remove (rcmd, reai_cmd_desc);
 }
 

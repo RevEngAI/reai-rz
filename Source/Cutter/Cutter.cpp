@@ -873,10 +873,10 @@ void ReaiCutterPlugin::onStartupAnalysisFound (const QVector<AnalysisInfo> &matc
                 QString ("Applied existing analysis (Binary ID: %1)").arg (selectedId),
                 true
             );
+            mainWindow->refreshAll();
             break;
         }
         case AnalysisSelectionDialog::CreateNew :
-            // Open CreateAnalysisDialog
             on_CreateAnalysis();
             break;
         case AnalysisSelectionDialog::Cancel :
@@ -1264,6 +1264,10 @@ void AnalysisSelectionDialog::onUseExistingClicked() {
     int currentRow = analysisTable->currentRow();
     if (currentRow >= 0 && currentRow < analysisData.size()) {
         selectedAnalysisId = analysisData[currentRow].binary_id;
+
+        RzCoreLocked core (Core());
+        rzApplyAnalysis (core, selectedAnalysisId);
+
         selectionResult    = UseExisting;
         accept();
     }
