@@ -61,6 +61,18 @@ extern "C" {
     void     SetBinaryId (BinaryId binary_id);
 
     ///
+    /// Get binary ID with RzCore fallback for cross-context access.
+    ///
+    /// core[in] : RzCore instance to get config from if local storage unavailable.
+    ///
+    /// SUCCESS : A non-zero binary ID if found locally or in RzCore config.
+    /// FAILURE : 0.
+    ///
+    BinaryId GetBinaryIdFromCore (RzCore *core);
+    void     SetBinaryIdInCore (RzCore *core, BinaryId binary_id);
+
+
+    ///
     /// Get all available AI models.
     ///
     /// SUCCESS : Vector of ModelInfo objects filled with valid data.
