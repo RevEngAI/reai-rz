@@ -147,7 +147,7 @@ BinaryId GetBinaryId() {
             return local_id;
         }
     }
-    
+
     // If local not available or is 0, we can't get from RzCore here
     // Use GetBinaryIdFromCore() when RzCore is available
     return 0;
@@ -164,7 +164,7 @@ BinaryId GetBinaryIdFromCore (RzCore *core) {
             return local_id;
         }
     }
-    
+
     // If local not available or is 0, try to get from RzCore config
     if (core && core->config) {
         BinaryId binary_id = (BinaryId)rz_config_get_i (core->config, "reai.binary_id");
@@ -173,7 +173,7 @@ BinaryId GetBinaryIdFromCore (RzCore *core) {
             return binary_id;
         }
     }
-    
+
     return 0;
 }
 
@@ -191,9 +191,9 @@ void SetBinaryId (BinaryId binary_id) {
 // So we use RzCore config to set binary ID
 void SetBinaryIdInCore (RzCore *core, BinaryId binary_id) {
     if (core && core->config) {
-        rz_config_lock(core->config, false);
+        rz_config_lock (core->config, false);
         rz_config_set_i (core->config, "reai.binary_id", binary_id);
-        rz_config_lock(core->config, true);
+        rz_config_lock (core->config, true);
         LOG_INFO ("Set binary ID %llu in RzCore config", binary_id);
     }
 }
@@ -207,7 +207,7 @@ ModelInfos *GetModels() {
     }
 }
 
-AnnSymbol *getMostSimilarFunctionSymbol (AnnSymbols *symbols, FunctionId origin_fn_id) {
+AnnSymbol *rzGetMostSimilarFunctionSymbol (AnnSymbols *symbols, FunctionId origin_fn_id) {
     if (!symbols) {
         LOG_FATAL ("Function matches are invalid. Cannot proceed.");
     }
@@ -263,11 +263,11 @@ void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
     if (rzCanWorkWithAnalysis (binary_id, true)) {
         // Set binary ID BEFORE applying analysis so that function rename hooks work properly
         SetBinaryId (binary_id);
-        
+
         // Also set in RzCore config as backup for cross-context access
         SetBinaryIdInCore (core, binary_id);
         LOG_INFO ("Set binary ID %llu in both local plugin and RzCore config", binary_id);
-        
+
         FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), binary_id);
         if (!functions.length) {
             DISPLAY_ERROR ("Failed to get functions from RevEngAI analysis.");
@@ -347,10 +347,33 @@ void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min
                 continue;
             }
 
-            AnnSymbol *best_match = getMostSimilarFunctionSymbol (&map, id);
+            AnnSymbol *best_match = rzGetMostSimilarFunctionSymbol (&map, id);
             if (best_match) {
-                LOG_INFO ("Renamed '%s' to '%s'", fn->name, best_match->function_name.data);
-                rz_analysis_function_force_rename (fn, best_match->function_name.data);
+                // Sync with cloud
+                FunctionId fn_id = rzLookupFunctionId (core, fn);
+                if (fn_id) {
+                    if (RenameFunction (GetConnection(), fn_id, best_match->function_name)) {
+                        LOG_INFO ("Renamed '%s' to '%s'", fn->name, best_match->function_name.data);
+                        rz_analysis_function_force_rename (fn, best_match->function_name.data);
+                        LOG_INFO (
+                            "Successfully synced function rename with RevEngAI: '%s' (ID: %llu)",
+                            fn->name,
+                            fn_id
+                        );
+                    } else {
+                        LOG_ERROR (
+                            "Failed to sync function rename with RevEngAI for function '%s' (ID: %llu)",
+                            fn->name,
+                            fn_id
+                        );
+                    }
+                } else {
+                    LOG_ERROR (
+                        "Failed to get function ID for function with name = '%s' at address = 0x%llx",
+                        fn->name,
+                        fn->addr
+                    );
+                }
             }
         }
 
@@ -425,7 +448,7 @@ FunctionId rzLookupFunctionId (RzCore *core, RzAnalysisFunction *rz_fn) {
         DISPLAY_FATAL ("Invalid arguments: Invalid Rizin core or analysis function.");
     }
 
-    BinaryId binary_id = GetBinaryIdFromCore(core);
+    BinaryId binary_id = GetBinaryIdFromCore (core);
     if (!binary_id) {
         APPEND_ERROR (
             "Please create a new analysis or apply an existing analysis. "
