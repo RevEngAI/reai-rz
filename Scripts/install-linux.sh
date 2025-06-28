@@ -72,7 +72,7 @@ else
     exit 1
 fi
 
-# Find and install Cutter plugin
+# Find and install Cutter plugin (optional)
 echo "=== Installing Cutter plugin ==="
 CUTTER_PLUGIN="$ARTIFACT_DIR/libreai_cutter.so"
 if [ -f "$CUTTER_PLUGIN" ]; then
@@ -108,8 +108,9 @@ if [ -f "$CUTTER_PLUGIN" ]; then
     
     echo "[OK] Cutter plugin installed and rpath fixed"
 else
-    echo "[FAIL] Error: libreai_cutter.so not found in artifacts"
-    exit 1
+    echo "[WARN] libreai_cutter.so not found in artifacts"
+    echo "       Assuming Cutter plugin was not built, skipping installation"
+    echo "       Cutter plugin will not be available"
 fi
 
 # Create environment setup script
@@ -142,8 +143,12 @@ echo "  * Shared libraries installed to: $USER_LIB_DIR"
 echo "    - libreai.so"
 echo "  * Rizin plugin installed to: $RIZIN_PLUGIN_DIR"
 echo "    - libreai_rizin.so"
+if [ -f "$CUTTER_PLUGIN_DIR/libreai_cutter.so" ]; then
 echo "  * Cutter plugin installed to: $CUTTER_PLUGIN_DIR"
 echo "    - libreai_cutter.so"
+else
+echo "  * Cutter plugin: not installed (not available in artifacts)"
+fi
 echo "  * Environment script created: $ENV_SCRIPT"
 echo ""
 echo "To use the plugins:"
