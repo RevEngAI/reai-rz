@@ -14,7 +14,7 @@ echo "Artifact directory: $ARTIFACT_DIR"
 
 # Check if we have required tools
 if ! command -v install_name_tool &> /dev/null; then
-    echo "❌ Error: install_name_tool not found. Please install Xcode command line tools."
+    echo "[FAIL] Error: install_name_tool not found. Please install Xcode command line tools."
     echo "Run: xcode-select --install"
     exit 1
 fi
@@ -32,9 +32,9 @@ if [ -f "$LIBREAI_PATH" ]; then
     echo "Installing: libreai.dylib -> $USER_LIB_DIR/"
     cp "$LIBREAI_PATH" "$USER_LIB_DIR/"
     chmod 755 "$USER_LIB_DIR/libreai.dylib"
-    echo "✅ libreai.dylib installed"
+    echo "[OK] libreai.dylib installed"
 else
-    echo "❌ Error: libreai.dylib not found in artifacts"
+    echo "[FAIL] Error: libreai.dylib not found in artifacts"
     exit 1
 fi
 
@@ -44,7 +44,7 @@ RIZIN_PLUGIN="$ARTIFACT_DIR/libreai_rizin.dylib"
 if [ -f "$RIZIN_PLUGIN" ]; then
     # Get rizin plugin directory
     RIZIN_PLUGIN_DIR=$(rizin -H RZ_USER_PLUGINS 2>/dev/null) || {
-        echo "❌ Error: Could not get rizin plugin directory. Is rizin installed?"
+        echo "[FAIL] Error: Could not get rizin plugin directory. Is rizin installed?"
         exit 1
     }
     
@@ -69,9 +69,9 @@ if [ -f "$RIZIN_PLUGIN" ]; then
     install_name_tool -add_rpath "@loader_path/../../../lib" "$RIZIN_INSTALLED_PLUGIN" 2>/dev/null || true
     install_name_tool -add_rpath "$USER_LIB_DIR" "$RIZIN_INSTALLED_PLUGIN" 2>/dev/null || true
     
-    echo "✅ Rizin plugin installed and rpath fixed"
+    echo "[OK] Rizin plugin installed and rpath fixed"
 else
-    echo "❌ Error: libreai_rizin.dylib not found in artifacts"
+    echo "[FAIL] Error: libreai_rizin.dylib not found in artifacts"
     exit 1
 fi
 
@@ -99,9 +99,9 @@ if [ -f "$CUTTER_PLUGIN" ]; then
     # So add absolute path to user's lib directory
     install_name_tool -add_rpath "$USER_LIB_DIR" "$CUTTER_INSTALLED_PLUGIN" 2>/dev/null || true
     
-    echo "✅ Cutter plugin installed and rpath fixed"
+    echo "[OK] Cutter plugin installed and rpath fixed"
 else
-    echo "❌ Error: libreai_cutter.so not found in artifacts"
+    echo "[FAIL] Error: libreai_cutter.so not found in artifacts"
     exit 1
 fi
 
@@ -128,18 +128,18 @@ EOF
 chmod +x "$ENV_SCRIPT"
 
 echo ""
-echo "🎉 Installation complete!"
+echo "[OK] Installation complete!"
 echo ""
-echo "📋 Summary:"
-echo "  • Shared libraries installed to: $USER_LIB_DIR"
+echo "Summary:"
+echo "  * Shared libraries installed to: $USER_LIB_DIR"
 echo "    - libreai.dylib"
-echo "  • Rizin plugin installed to: $RIZIN_PLUGIN_DIR"
+echo "  * Rizin plugin installed to: $RIZIN_PLUGIN_DIR"
 echo "    - libreai_rizin.dylib"
-echo "  • Cutter plugin installed to: $CUTTER_PLUGIN_DIR"
+echo "  * Cutter plugin installed to: $CUTTER_PLUGIN_DIR"
 echo "    - libreai_cutter.so"
-echo "  • Environment script created: $ENV_SCRIPT"
+echo "  * Environment script created: $ENV_SCRIPT"
 echo ""
-echo "🚀 To use the plugins:"
+echo "To use the plugins:"
 echo "  1. For command line rizin: plugins should work automatically"
 echo "  2. For Cutter: run 'source $ENV_SCRIPT' before launching Cutter"
 echo "  3. Or add to your ~/.bashrc or ~/.zshrc:"

@@ -1,0 +1,250 @@
+name: Docker ARM64 Build and Test
+
+on:
+  pull_request:
+    branches: [ "**" ]
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker-test.yml'
+  push:
+    branches: [ "master", "main" ]
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker-test.yml'
+  workflow_dispatch:
+
+jobs:
+  docker-test-arm64:
+    runs-on: ubuntu-24.04-arm
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build ARM64 Docker image
+      run: |
+        # Build ARM64 Docker image natively on ARM64 runner
+        docker build \
+          --build-arg REVENG_APIKEY=test-api-key-for-ci \
+          --build-arg REVENG_HOST=https://api.reveng.ai \
+          -t reai-rz:test .
+        
+    - name: Create test binary
+      run: |
+        # Create a simple test binary
+        cat > test.c << 'EOF'
+        #include <stdio.h>
+        int main() {
+            printf("Hello, RevEngAI!\n");
+            return 0;
+        }
+        EOF
+        
+        # Compile test binary
+        gcc -o test_binary test.c
+        
+        # Make it executable and show info
+        chmod +x test_binary
+        file test_binary
+        ls -la test_binary
+        
+    - name: Test Docker container startup
+      run: |
+        echo "Testing Docker container startup..."
+        docker run --rm reai-rz:test echo "Container started successfully"
+        
+    - name: Test rizin installation
+      run: |
+        echo "Testing rizin installation..."
+        docker run --rm reai-rz:test rizin -v
+        
+    - name: Test RevEng.AI plugin availability
+      run: |
+        echo "Testing RevEng.AI plugin availability..."
+        
+        # Test that RE? command is available and shows plugin commands
+        docker run --rm \
+          -v $(pwd)/test_binary:/home/revengai/binary \
+          reai-rz:test \
+          bash -c "
+            echo 'Testing RE? command...'
+            # Use timeout to prevent hanging, and capture output
+            timeout 30s rizin -q -c 'RE?; q' /home/revengai/binary > plugin_output.txt 2>&1 || true
+            
+            echo '=== Plugin Output ==='
+            cat plugin_output.txt
+            
+            # Check if RE? command shows RevEng.AI commands
+            if grep -q 'RevEng\.AI\|REa\|REd\|REs\|REb\|REi' plugin_output.txt; then
+              echo '[OK] RevEng.AI plugin commands found!'
+              exit 0
+            else
+              echo '[FAIL] RevEng.AI plugin commands not found in output'
+              echo 'Expected to find RevEng.AI plugin commands like REa, REd, REs, etc.'
+              exit 1
+            fi
+          "
+          
+    - name: Test plugin loading in detail
+      run: |
+        echo "Testing detailed plugin loading..."
+        
+        # Test plugin loading with more verbose output
+        docker run --rm \
+          -v $(pwd)/test_binary:/home/revengai/binary \
+          reai-rz:test \
+          bash -c "
+            echo 'Checking rizin plugin directory...'
+            PLUGIN_DIR=\$(rizin -H RZ_USER_PLUGINS)
+            echo \"Plugin directory: \$PLUGIN_DIR\"
+            ls -la \"\$PLUGIN_DIR\" || echo 'Plugin directory not found'
+            
+            echo 'Looking for reai plugins...'
+            find /home/revengai/.local -name '*reai*' -type f || echo 'No reai files found'
+            
+            echo 'Testing rizin with library paths...'
+            echo \"LD_LIBRARY_PATH: \$LD_LIBRARY_PATH\"
+            
+            echo 'Loading rizin and listing all plugins...'
+            timeout 30s rizin -q -c 'L; q' /home/revengai/binary || true
+            
+            echo 'Testing RevEng.AI specific commands...'
+            timeout 30s rizin -q -c 'RE?; q' /home/revengai/binary || echo 'RE? command failed'
+          "
+          
+    - name: Test configuration file
+      run: |
+        echo "Testing configuration file..."
+        
+        docker run --rm reai-rz:test \
+          bash -c "
+            echo 'Checking configuration file...'
+            if [ -f /home/revengai/.creait ]; then
+              echo '[OK] Configuration file exists'
+              echo 'Contents:'
+              cat /home/revengai/.creait
+            else
+              echo '[FAIL] Configuration file not found'
+              exit 1
+            fi
+          "
+          
+    - name: Test architecture info
+      run: |
+        echo "Testing ARM64 architecture compatibility..."
+        
+        docker run --rm reai-rz:test \
+          bash -c "
+            echo 'Architecture: \$(uname -m)'
+            echo 'Rizin version:'
+            rizin -v
+            echo 'Library architecture check:'
+            file /home/revengai/.local/lib/libreai* || echo 'No reai libraries found'
+            echo 'Plugin architecture check:'
+            PLUGIN_DIR=\$(rizin -H RZ_USER_PLUGINS)
+            file \"\$PLUGIN_DIR\"/*reai* || echo 'No reai plugins found'
+          "
+          
+    - name: Integration test with sample analysis
+      run: |
+        echo "Running ARM64 integration test with sample analysis..."
+        
+        # Test actual plugin functionality (without requiring valid API key)
+        docker run --rm \
+          -v $(pwd)/test_binary:/home/revengai/binary \
+          reai-rz:test \
+          bash -c "
+            echo 'Running integration test...'
+            timeout 60s rizin -q -c '
+              aa;
+              RE?;
+              echo Testing plugin help completed;
+              q
+            ' /home/revengai/binary > integration_output.txt 2>&1 || true
+            
+            echo '=== Integration Test Output ==='
+            cat integration_output.txt
+            
+            # Check for successful plugin loading indicators
+            if grep -q 'RevEng\.AI\|REa\|REd' integration_output.txt; then
+              echo '[OK] Integration test passed - plugin loaded successfully'
+            else
+              echo '[WARN] Integration test warning - plugin may not have loaded properly'
+              echo 'This might be expected if no valid API key is provided'
+            fi
+          "
+          
+    - name: Test summary
+      run: |
+        echo "=== Docker ARM64 Test Summary ==="
+        echo "Platform: Linux ARM64 (aarch64)"
+        echo "Runner: ubuntu-24.04-arm"
+        echo "[OK] Docker image built successfully"
+        echo "[OK] Container starts correctly"
+        echo "[OK] Rizin is installed and working"
+        echo "[OK] Configuration file is created"
+        echo "[OK] RevEng.AI plugin availability tested"
+        echo ""
+        echo "Docker image ready for use with:"
+        echo "docker run -it --rm -v /path/to/binary:/home/revengai/binary reai-rz:test rizin binary"
+
+    - name: Extract ARM64 binaries from Docker container
+      run: |
+        echo "=== Extracting ARM64 binaries ==="
+        mkdir -p artifacts
+        
+        # Create a temporary container to extract files
+        CONTAINER_ID=$(docker create reai-rz:test)
+        
+        # Extract shared libraries
+        echo "Extracting shared libraries..."
+        docker cp "$CONTAINER_ID:/home/revengai/.local/lib/." artifacts/ || echo "No .local/lib files found"
+        
+        # Extract rizin plugin
+        echo "Extracting Rizin plugin..."
+        RIZIN_PLUGIN_DIR=$(docker run --rm reai-rz:test rizin -H RZ_USER_PLUGINS 2>/dev/null || echo "/home/revengai/.local/share/rizin/plugins")
+        docker cp "$CONTAINER_ID:$RIZIN_PLUGIN_DIR/." artifacts/ 2>/dev/null || echo "No Rizin plugins found"
+        
+        # Extract any other reai files from the container
+        echo "Searching for other reai files..."
+        docker run --rm reai-rz:test find /home/revengai/.local -name "*reai*" -type f > reai_files.txt || true
+        
+        while IFS= read -r file; do
+          if [ -n "$file" ]; then
+            filename=$(basename "$file")
+            docker cp "$CONTAINER_ID:$file" "artifacts/$filename" 2>/dev/null || true
+          fi
+        done < reai_files.txt
+        
+        # Copy install scripts appropriate for Linux
+        echo "Adding install scripts..."
+        cp Scripts/install-linux.sh artifacts/ || echo "install-linux.sh not found"
+        cp Scripts/README.md artifacts/ || echo "README.md not found"
+        chmod +x artifacts/install-linux.sh 2>/dev/null || true
+        
+        # Clean up temporary container
+        docker rm "$CONTAINER_ID"
+        
+        # Show what we extracted
+        echo "=== Extracted ARM64 files ==="
+        find artifacts -type f | sort
+        
+        # Verify we have the essential files
+        echo "=== ARM64 File verification ==="
+        if [ -f "artifacts/libreai.so" ] || [ -f "artifacts/libreai_rizin.so" ]; then
+          echo "[OK] Found essential reai files"
+        else
+          echo "[WARN] No essential reai files found"
+        fi
+
+    - name: Upload ARM64 artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: reai-rz-docker-linux-aarch64-binaries
+        path: artifacts/
+        if-no-files-found: warn 

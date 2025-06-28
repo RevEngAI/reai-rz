@@ -28,7 +28,15 @@ jobs:
       with:
         workflow: build-linux.yml
         name: reai-rz-linux-binaries
-        path: release-artifacts/linux/
+        path: release-artifacts/linux-x86_64/
+        if_no_artifact_found: warn
+
+    - name: Download Linux ARM64 artifacts from Docker
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        workflow: docker-test.yml
+        name: reai-rz-docker-linux-aarch64-binaries
+        path: release-artifacts/linux-aarch64/
         if_no_artifact_found: warn
         
     - name: Download macOS artifacts
@@ -56,22 +64,28 @@ jobs:
         find . -type f | sort
         
         # Create platform-specific packages
-        if [ -d "linux" ]; then
-          echo "Creating Linux package..."
-          tar -czf "reai-rz-linux.tar.gz" -C linux .
-          echo "✅ Created reai-rz-linux.tar.gz"
+        if [ -d "linux-x86_64" ]; then
+          echo "Creating Linux x86_64 package..."
+          tar -czf "reai-rz-linux-x86_64.tar.gz" -C linux-x86_64 .
+          echo "[OK] Created reai-rz-linux-x86_64.tar.gz"
+        fi
+
+        if [ -d "linux-aarch64" ]; then
+          echo "Creating Linux ARM64 package..."
+          tar -czf "reai-rz-linux-aarch64.tar.gz" -C linux-aarch64 .
+          echo "[OK] Created reai-rz-linux-aarch64.tar.gz"
         fi
         
         if [ -d "macos" ]; then
           echo "Creating macOS package..."
           tar -czf "reai-rz-macos.tar.gz" -C macos .
-          echo "✅ Created reai-rz-macos.tar.gz"
+          echo "[OK] Created reai-rz-macos.tar.gz"
         fi
         
         if [ -d "windows" ]; then
           echo "Creating Windows package..."
           cd windows && zip -r "../reai-rz-windows.zip" . && cd ..
-          echo "✅ Created reai-rz-windows.zip"
+          echo "[OK] Created reai-rz-windows.zip"
         fi
         
         # List final packages
@@ -109,7 +123,8 @@ jobs:
           
           | Platform | Download | Contents |
           |----------|----------|----------|
-          | Linux | `reai-rz-linux.tar.gz` | Rizin + Cutter plugins + install script |
+          | Linux x86_64 | `reai-rz-linux-x86_64.tar.gz` | Rizin + Cutter plugins + install script |
+          | Linux ARM64 | `reai-rz-linux-aarch64.tar.gz` | Rizin + Cutter plugins + install script |
           | macOS | `reai-rz-macos.tar.gz` | Rizin + Cutter plugins + install script |
           | Windows | `reai-rz-windows.zip` | Rizin + Cutter plugins + install script |
           
@@ -117,11 +132,25 @@ jobs:
           
           Use the included install scripts for automatic installation:
           
-          #### Linux
+          #### Linux x86_64
           ```bash
-          wget https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-linux.tar.gz
-          tar -xzf reai-rz-linux.tar.gz
-          cd reai-rz-linux
+          wget https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-linux-x86_64.tar.gz
+          tar -xzf reai-rz-linux-x86_64.tar.gz
+          cd reai-rz-linux-x86_64
+          
+          # Install dependencies (Ubuntu/Debian)
+          sudo apt install patchelf
+          
+          # Run installer
+          chmod +x install-linux.sh
+          ./install-linux.sh
+          ```
+
+          #### Linux ARM64
+          ```bash
+          wget https://github.com/RevEngAI/reai-rz/releases/download/${{ steps.tag_name.outputs.tag_name }}/reai-rz-linux-aarch64.tar.gz
+          tar -xzf reai-rz-linux-aarch64.tar.gz
+          cd reai-rz-linux-aarch64
           
           # Install dependencies (Ubuntu/Debian)
           sudo apt install patchelf

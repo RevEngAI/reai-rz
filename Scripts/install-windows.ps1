@@ -11,10 +11,10 @@ if ($Help) {
     Write-Host "Usage: .\install-windows.ps1"
     Write-Host ""
     Write-Host "This script will:"
-    Write-Host "  • Install shared libraries to user's local directory"
-    Write-Host "  • Install Rizin plugin to appropriate directory"
-    Write-Host "  • Install Cutter plugin to appropriate directory"
-    Write-Host "  • Set up environment variables"
+    Write-Host "  * Install shared libraries to user's local directory"
+    Write-Host "  * Install Rizin plugin to appropriate directory"
+    Write-Host "  * Install Cutter plugin to appropriate directory"
+    Write-Host "  * Set up environment variables"
     exit 0
 }
 
@@ -41,9 +41,9 @@ $ReaiDllPath = "$ArtifactDir\\reai.dll"
 if (Test-Path $ReaiDllPath) {
     Write-Host "Installing: reai.dll -> $UserBinDir\\"
     Copy-Item $ReaiDllPath $UserBinDir\\
-    Write-Host "✅ reai.dll installed" -ForegroundColor Green
+    Write-Host "[OK] reai.dll installed" -ForegroundColor Green
 } else {
-    Write-Host "❌ Error: reai.dll not found in artifacts" -ForegroundColor Red
+    Write-Host "[FAIL] Error: reai.dll not found in artifacts" -ForegroundColor Red
     exit 1
 }
 
@@ -52,9 +52,9 @@ $ReaiLibPath = "$ArtifactDir\\reai.lib"
 if (Test-Path $ReaiLibPath) {
     Write-Host "Installing: reai.lib -> $UserLibDir\\"
     Copy-Item $ReaiLibPath $UserLibDir\\
-    Write-Host "✅ reai.lib installed" -ForegroundColor Green
+    Write-Host "[OK] reai.lib installed" -ForegroundColor Green
 } else {
-    Write-Host "❌ Error: reai.lib not found in artifacts" -ForegroundColor Red
+    Write-Host "[FAIL] Error: reai.lib not found in artifacts" -ForegroundColor Red
     exit 1
 }
 
@@ -63,9 +63,9 @@ $CurlDllPath = "$ArtifactDir\\libcurl.dll"
 if (Test-Path $CurlDllPath) {
     Write-Host "Installing: libcurl.dll -> $UserBinDir\\"
     Copy-Item $CurlDllPath $UserBinDir\\
-    Write-Host "✅ libcurl.dll installed" -ForegroundColor Green
+    Write-Host "[OK] libcurl.dll installed" -ForegroundColor Green
 } else {
-    Write-Host "❌ Error: libcurl.dll not found in artifacts" -ForegroundColor Red
+    Write-Host "[FAIL] Error: libcurl.dll not found in artifacts" -ForegroundColor Red
     exit 1
 }
 
@@ -74,9 +74,9 @@ $CurlLibPath = "$ArtifactDir\\libcurl_imp.lib"
 if (Test-Path $CurlLibPath) {
     Write-Host "Installing: libcurl_imp.lib -> $UserLibDir\\"
     Copy-Item $CurlLibPath $UserLibDir\\
-    Write-Host "✅ libcurl_imp.lib installed" -ForegroundColor Green
+    Write-Host "[OK] libcurl_imp.lib installed" -ForegroundColor Green
 } else {
-    Write-Host "❌ Error: libcurl_imp.lib not found in artifacts" -ForegroundColor Red
+    Write-Host "[FAIL] Error: libcurl_imp.lib not found in artifacts" -ForegroundColor Red
     exit 1
 }
 
@@ -93,7 +93,7 @@ if ($RizinPlugin) {
         }
     }
     catch {
-        Write-Host "❌ Error: Could not get rizin plugin directory. Is rizin installed?" -ForegroundColor Red
+        Write-Host "[FAIL] Error: Could not get rizin plugin directory. Is rizin installed?" -ForegroundColor Red
         exit 1
     }
     
@@ -102,10 +102,10 @@ if ($RizinPlugin) {
     Write-Host "Installing Rizin plugin: $($RizinPlugin.Name) -> $RizinPluginDir\\"
     Copy-Item $RizinPlugin.FullName $RizinPluginDir\\
     
-    Write-Host "✅ Rizin plugin installed" -ForegroundColor Green
+    Write-Host "[OK] Rizin plugin installed" -ForegroundColor Green
 }
 else {
-    Write-Host "❌ Error: Rizin plugin (*reai_rizin*.dll) not found in artifacts" -ForegroundColor Red
+    Write-Host "[FAIL] Error: Rizin plugin (*reai_rizin*.dll) not found in artifacts" -ForegroundColor Red
     exit 1
 }
 
@@ -136,10 +136,10 @@ if ($CutterPlugin) {
     Write-Host "Installing Cutter plugin: $($CutterPlugin.Name) -> $CutterPluginDir\\"
     Copy-Item $CutterPlugin.FullName $CutterPluginDir\\
     
-    Write-Host "✅ Cutter plugin installed" -ForegroundColor Green
+    Write-Host "[OK] Cutter plugin installed" -ForegroundColor Green
 }
 else {
-    Write-Host "❌ Error: Cutter plugin (*reai_cutter*.dll) not found in artifacts" -ForegroundColor Red
+    Write-Host "[FAIL] Error: Cutter plugin (*reai_cutter*.dll) not found in artifacts" -ForegroundColor Red
     exit 1
 }
 
@@ -167,32 +167,32 @@ try {
     if ($currentPath -notlike "*$UserBinDir*") {
         $newPath = "$UserBinDir;$currentPath"
         [Environment]::SetEnvironmentVariable("PATH", $newPath, "User")
-        Write-Host "✅ User PATH updated with $UserBinDir" -ForegroundColor Green
+        Write-Host "[OK] User PATH updated with $UserBinDir" -ForegroundColor Green
     }
     else {
-        Write-Host "✅ User PATH already contains $UserBinDir" -ForegroundColor Green
+        Write-Host "[OK] User PATH already contains $UserBinDir" -ForegroundColor Green
     }
 }
 catch {
-    Write-Host "⚠️  Warning: Could not update system PATH. You may need to add $UserBinDir manually." -ForegroundColor Yellow
+    Write-Host "[WARN] Warning: Could not update system PATH. You may need to add $UserBinDir manually." -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "🎉 Installation complete!" -ForegroundColor Green
+Write-Host "[OK] Installation complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "📋 Summary:"
-Write-Host "  • Shared libraries installed to:"
+Write-Host "Summary:"
+Write-Host "  * Shared libraries installed to:"
 Write-Host "    - $UserBinDir : reai.dll, libcurl.dll"
 Write-Host "    - $UserLibDir : reai.lib, libcurl_imp.lib"
 if ($RizinPlugin) {
-    Write-Host "  • Rizin plugin installed to: $RizinPluginDir"
+    Write-Host "  * Rizin plugin installed to: $RizinPluginDir"
 }
 if ($CutterPlugin) {
-    Write-Host "  • Cutter plugin installed to: $CutterPluginDir"
+    Write-Host "  * Cutter plugin installed to: $CutterPluginDir"
 }
-Write-Host "  • Environment script created: $EnvScript"
+Write-Host "  * Environment script created: $EnvScript"
 Write-Host ""
-Write-Host "🚀 To use the plugins:"
+Write-Host "To use the plugins:"
 Write-Host "  1. Close and reopen your terminal/PowerShell"
 Write-Host "  2. The plugins should work automatically"
 Write-Host "  3. If needed, run: $EnvScript""

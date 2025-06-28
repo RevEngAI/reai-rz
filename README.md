@@ -3,125 +3,344 @@
 [![Build Linux](https://github.com/RevEngAI/reai-rz/workflows/Build%20Linux/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-linux.yml)
 [![Build macOS](https://github.com/RevEngAI/reai-rz/workflows/Build%20macOS/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-macos.yml)
 [![Build Windows](https://github.com/RevEngAI/reai-rz/workflows/Build%20Windows/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-windows.yml)
+[![Docker ARM64 Build and Test](https://github.com/RevEngAI/reai-rz/workflows/Docker%20ARM64%20Build%20and%20Test/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/docker-test.yml)
 
-
-RevEng.AI plugins for Rizin & Cutter.
+RevEng.AI plugins for Rizin & Cutter that provide AI-powered reverse engineering capabilities including decompilation, function analysis, binary similarity, and more.
 
 ## Support
 
 Need help? Join our Discord server: [![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da?logo=discord&logoColor=white)](https://discord.com/invite/ZwQTvzfSbA)
 
-## Installation
+## Quick Installation (Recommended)
 
-### Docker
+### Prerequisites
 
-Build with:
+- **Rizin** installed and available in PATH
+- **Cutter** (optional, for GUI plugin support)
 
+### Platform-Specific Installation
+
+Download the latest release for your platform and run the automated install script:
+
+#### Linux
+
+**x86_64:**
 ```bash
-git clone https://github.com/revengai/reai-rz &&
-cd reai-rz && git submodule update --init --recursive &&
-docker build --build-arg REVENG_APIKEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx -t reai-rz .
+# Download and extract
+wget https://github.com/RevEngAI/reai-rz/releases/latest/download/reai-rz-linux-x86_64.tar.gz
+tar -xzf reai-rz-linux-x86_64.tar.gz
+cd reai-rz-linux-x86_64
+
+# Install dependencies
+sudo apt install patchelf  # Ubuntu/Debian
+# sudo dnf install patchelf    # Fedora/RHEL
+# sudo pacman -S patchelf      # Arch
+
+# Run installer
+chmod +x install-linux.sh
+./install-linux.sh
 ```
 
-Then run rizin with the following command:
-
+**ARM64:**
 ```bash
-docker run -v {file}:/home/revengai/ -it reai-rz {file}
+# Download and extract
+wget https://github.com/RevEngAI/reai-rz/releases/latest/download/reai-rz-linux-aarch64.tar.gz
+tar -xzf reai-rz-linux-aarch64.tar.gz
+cd reai-rz-linux-aarch64
+
+# Install dependencies
+sudo apt install patchelf  # Ubuntu/Debian
+# sudo dnf install patchelf    # Fedora/RHEL
+# sudo pacman -S patchelf      # Arch
+
+# Run installer
+chmod +x install-linux.sh
+./install-linux.sh
 ```
 
-Notes:
+#### macOS
+```bash
+# Download and extract
+curl -L -O https://github.com/RevEngAI/reai-rz/releases/latest/download/reai-rz-macos.tar.gz
+tar -xzf reai-rz-macos.tar.gz
+cd reai-rz-macos
 
-- Make sure to put correct value for `REVENG_APIKEY` build arg. You can also change it after installing by
-  directly editing the guest config file, or using the `REi` command inside the plugin. Your API key can be found under account settings in the Web Portal.
-- You can also use an offline installation or custom host by setting the `REVENG_HOST` variable.
+# Install dependencies
+xcode-select --install
 
-### Manual
+# Run installer
+chmod +x install-macos.sh
+./install-macos.sh
+```
 
-The build scripts assume default settings that'll work for most users. For advanced users,
-who wish to change the intallation process, they may fetch the script and make modifications
-and then perform the installation.
+#### Windows
+```powershell
+# Download and extract
+Invoke-WebRequest "https://github.com/RevEngAI/reai-rz/releases/latest/download/reai-rz-windows.zip" -OutFile "reai-rz-windows.zip"
+Expand-Archive "reai-rz-windows.zip" -Force
+cd reai-rz-windows
 
-PyYaml is a required dependency for the rizin plugin. If your package manager blocks package
-installation from `pip`, then `pipx` will help get an easy installation. `pipx` needs to be
-installed from package manager.
+# Run installer
+Set-ExecutionPolicy Bypass -Scope Process -Force; .\install-windows.ps1
+```
+
+### What the Install Scripts Do
+
+The automated installation scripts handle all the complex setup:
+
+- **Install libraries** to user directories (`~/.local/lib/` on Unix, `%USERPROFILE%\.local\bin\` on Windows)
+- **Install Rizin plugin** to `$(rizin -H RZ_USER_PLUGINS)`
+- **Install Cutter plugin** to platform-specific Cutter plugin directories
+- **Fix library paths** so plugins can find rizin libraries and dependencies
+- **Set up environment variables** for library discovery (Windows: updates system PATH; Unix: creates environment script)
+- **Verify installation** and provide status messages
+
+## Configuration
+
+Before using the plugins, create a configuration file in your home directory:
+
+**Unix (Linux/macOS):** `~/.creait`
+**Windows:** `%USERPROFILE%\.creait`
+
+```ini
+api_key = YOUR_REVENGAI_API_KEY
+host = https://api.reveng.ai
+```
+
+### Generate Config with Plugin
+
+You can also generate the config file using the plugin itself:
 
 ```bash
-# On Linux/MacOSX
+# In rizin
+REi YOUR_API_KEY_HERE
+```
+
+Get your API key from [RevEng.AI Portal Settings](https://portal.reveng.ai/settings).
+
+## Usage
+
+### Rizin Command Line
+
+After installation, the plugin commands are available in rizin:
+
+```bash
+rizin -AA your_binary
+> RE?          # Show all RevEng.AI commands
+```
+
+### Cutter GUI
+
+1. **For Linux/macOS**: Run `source ~/.local/bin/reai-env.sh` before launching Cutter
+2. **For Windows**: 
+   - Usually works automatically after restarting your terminal/PowerShell
+   - If plugins don't load, run: `%USERPROFILE%\.local\bin\reai-env.ps1`
+3. Launch Cutter and look for RevEng.AI options in the menus
+
+## Manual Build (For Developers)
+
+If you want to build from source or contribute to development:
+
+### Prerequisites
+
+Before building, install:
+- **cmake**, **make**, **ninja**, **pkg-config**
+- **gcc/g++** (Linux) or **Xcode command line tools** (macOS) or **MSVC build tools** (Windows)
+- **libcurl development headers**
+- **rizin** with development headers
+- **Python 3** with **PyYAML**
+
+### Build Commands
+
+#### Linux/macOS
+```bash
+# Automated build script
 curl -fsSL https://raw.githubusercontent.com/RevEngAI/reai-rz/refs/heads/master/Scripts/Build.sh | bash
 
-# On Windows, from developer powershell (requires MSVC build tools)
+# Or manual build
+git clone https://github.com/RevEngAI/reai-rz
+cd reai-rz
+git submodule update --init --recursive
+
+# Build
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_CUTTER_PLUGIN=ON
+cmake --build build
+cmake --install build --prefix ~/.local
+```
+
+#### Windows
+```powershell
+# Automated build script (from Developer PowerShell)
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex (iwr -UseBasicParsing 'https://raw.githubusercontent.com/RevEngAI/reai-rz/refs/heads/master/Scripts/Build.ps1')
+
+# Manual build requires Visual Studio build tools and more setup
 ```
 
-### Possible Errors
+### Build Options
 
-If you get a segmentation fault after installing the plugin on the first run,
-then please make sure that either your current working directory is writable
-by current user (the user launching the plugin), or there exist environment
-varibles `$TMPDIR` or `$TMP` and those are writable as well.
-So it should be either `$PWD` or `$TMP` or `$TMPDIR`.
+- `BUILD_CUTTER_PLUGIN=ON/OFF`: Enable Cutter plugin compilation (default: OFF)
+- `CMAKE_INSTALL_PREFIX`: Installation prefix (default: system-specific)
 
-If you cannot see dialogs or messages when intercting with plugin in cutter UI,
-make sure that you have a cutter installation with bundled rizin. If your cutter
-installation uses pre-installed rizin, then the way the plugin is written, you'll
-end up using rizin's command line plugin through the cutter UI, and will only be
-able to see output through the command line. Cutter with bundled rizin is very
-important!
+## Docker Installation
 
-If rizin fails to automatically load the plugin, you can
+For isolated environments or when you want a pre-configured setup. The Docker image builds everything from source and supports multiple architectures (x86_64, ARM64).
 
-- Open rizin and run `e dir.plugins`. You'll get the exact path where
-  rizin expects the plugins to be present. Note the prefix for `/rizin/plugins`.
-  It'll be something like `/usr/lib` or `/usr/local/lib`. Now during the plugin
-  cmake configure step, provide this prefix path by appending `-D CMAKE_INSTALL_PREFIX=<prefix_path>`
-  to the cmake configure command. In my case it looks like this : `cmake -B build -G Ninja -D CMAKE_INSTALL_PREFIX=/usr`
+### Quick Start (Recommended)
 
-- load it by running the command `L <plugin_path>`. This is usually something like
-  `L /usr/local/lib/rizin/plugins/libreai_rizin.so` on a linux based system.
-  The exact path is displayed when installing the plugin. You'll need to do this
-  all the time btw, on every rizin run. This is not the best solution.
+```bash
+# Build Docker image with your API key
+docker build --build-arg REVENG_APIKEY=your-api-key-here -t reai-rz \
+    https://github.com/RevEngAI/reai-rz.git
 
-### Dependencies
-
-Before running any of the above commands, you must install cmake, make, ninja, meson, gcc/g++ (if required), pkg-config, libcurl (development package), and [rizin](https://github.com/rizinorg/rizin?tab=readme-ov-file#how-to-build).
-
-## CMake Configure Options
-
-- `BUILD_CUTTER_PLUGIN = ON/OFF` : When enabled will build cutter plugin alongside rizin plugin. By default
-  this is set to `OFF`. If you have cutter installed, and want to use the cutter plugin, set this to on
-  by adding `-D BUILD_CUTTER_PLUGIN=ON` in the cmake configure step.
-
-## Basic Usage
-
-Before being able to use anything in the plugin, a config file in the user's home
-directory is required. Name of file must be `.creait.toml`
-
-```toml
-apikey = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"    # Replace this with your own API key
-host = "https://api.reveng.ai"                  # API version and base endpoint
+# Run rizin with your binary
+docker run -it --rm \
+    -v /path/to/your/binary:/home/revengai/binary \
+    reai-rz rizin binary
 ```
 
-### Generating Config File In Plugins
+### Advanced Usage
 
-This config file can be generated using the `REi` command after plugin installation.
-Without a config, the plugin will keep erroring out for all other commands.
+```bash
+# Clone and build locally (if you want to modify the Dockerfile)
+git clone https://github.com/RevEngAI/reai-rz
+cd reai-rz
 
-`REi <apikey>`
+# Build with custom configuration
+docker build \
+    --build-arg REVENG_APIKEY=your-api-key-here \
+    --build-arg REVENG_HOST=https://api.reveng.ai \
+    -t reai-rz .
 
-Execute the above command to automatically create a config file similar to the one above.
-You can get the api key in `https://portal.reveng.ai/settings` API Key section. The plugin
-will automatically reload the new saved configuration
+# Run with your binary mounted (example with obscuratron binary)
+docker run -it --rm \
+    -v ~/Desktop/obscuratron:/home/revengai/binary \
+    reai-rz rizin binary
+
+# Run rizin with auto-analysis
+docker run -it --rm \
+    -v /path/to/your/binary:/home/revengai/binary \
+    reai-rz rizin -AA binary
+
+# Run interactively for multiple analyses
+docker run -it --rm \
+    -v $(pwd):/home/revengai/workspace \
+    reai-rz
+```
+
+### Using RevEng.AI Commands in Docker
+
+Once rizin is running inside the container, use the RevEng.AI commands:
+
+```bash
+# Start rizin with your binary
+docker run -it --rm \
+    -v ~/Desktop/obscuratron:/home/revengai/binary \
+    reai-rz rizin -AA binary
+
+# Inside rizin, use RevEng.AI commands:
+[0x00000000]> RE?                    # Show all RevEng.AI commands
+```
+
+### Build Arguments
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `REVENG_APIKEY` | `CHANGEME` | Your RevEng.AI API key from [portal.reveng.ai](https://portal.reveng.ai/settings) |
+| `REVENG_HOST` | `https://api.reveng.ai` | RevEng.AI API endpoint |
+| `BRANCH_NAME` | `master` | Git branch to build from |
+
+### Docker Features
+
+- **Built from source**: Compiles rizin and plugins from source for multi-architecture support
+- **Multi-architecture**: Supports x86_64 and ARM64 builds
+- **Pre-configured**: API key and host are set during build
+- **User-local installation**: Everything installed in `/home/revengai/.local`
+- **Lightweight runtime**: Multi-stage build keeps final image small
+- **Verified setup**: Checks plugin installation during build
+- **Usage help**: Shows commands and examples when container starts
+
+## Troubleshooting
+
+### Plugin Not Loading
+
+1. **Check rizin installation**:
+   ```bash
+   rizin -v
+   rizin -H RZ_USER_PLUGINS
+   ```
+
+2. **Verify plugin installation**:
+   ```bash
+   ls "$(rizin -H RZ_USER_PLUGINS)" | grep reai
+   ```
+
+3. **Check environment**:
+   ```bash
+   # Linux/macOS
+   source ~/.local/bin/reai-env.sh
+   echo $LD_LIBRARY_PATH    # Linux
+   echo $DYLD_LIBRARY_PATH  # macOS
+   
+   # Windows (if automatic setup failed)
+   %USERPROFILE%\.local\bin\reai-env.ps1
+   echo $env:PATH
+   ```
+
+### Library Not Found Errors
+
+1. **Verify library installation**:
+   ```bash
+   ls ~/.local/lib/libreai.*  # Unix
+   ls "%USERPROFILE%\.local\bin\reai.dll"  # Windows
+   ```
+
+2. **Check library paths** (Unix):
+   ```bash
+   # Linux
+   patchelf --print-rpath "$(rizin -H RZ_USER_PLUGINS)/libreai_rizin.so"
+   
+   # macOS
+   otool -l "$(rizin -H RZ_USER_PLUGINS)/libreai_rizin.dylib" | grep -A2 LC_RPATH
+   ```
+
+### Cutter Issues
+
+- **Use Cutter with bundled rizin** for best compatibility
+- **Environment setup**:
+  - **Linux/macOS**: Source environment script before launching Cutter: `source ~/.local/bin/reai-env.sh`
+  - **Windows**: If plugins don't load, run `%USERPROFILE%\.local\bin\reai-env.ps1` or restart terminal
+- Check Cutter plugin directory permissions
+
+### Windows Environment Issues
+
+If plugins don't work after installation:
+
+1. **Restart your terminal/PowerShell** - Windows needs to reload the updated PATH
+2. **Check if PATH was updated**:
+   ```powershell
+   echo $env:PATH | findstr ".local"
+   ```
+3. **Manually run environment script**:
+   ```powershell
+   %USERPROFILE%\.local\bin\reai-env.ps1
+   ```
+4. **Manually add to PATH** if script fails:
+   - Open System Properties → Environment Variables
+   - Add `%USERPROFILE%\.local\bin` to your user PATH
+
+### Permission Errors
+
+Ensure your user has write permissions to:
+- `~/.local/` directory (Unix)
+- `%USERPROFILE%\.local\` directory (Windows)
+- Current working directory (for temporary files)
 
 ## Uninstall
 
-Assuming you didn't make any changes to `Build.sh` or `Build.ps1` before install, you can directly
-execute any one of these commands, depending on your operating system.
-
 ```bash
-# On Linux/MacOSX
+# Linux/macOS
 curl -fsSL https://raw.githubusercontent.com/RevEngAI/reai-rz/refs/heads/master/Scripts/Uninstall.sh | bash
 
-# On Windows. Execute this from same directory where "Build.ps1" script was executed.
-# Execute in developer powershell (different from powershell)
+# Windows (from Developer PowerShell)
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex (iwr -UseBasicParsing 'https://raw.githubusercontent.com/RevEngAI/reai-rz/refs/heads/master/Scripts/Uninstall.ps1')
 ```
