@@ -3,7 +3,7 @@
 [![Build Linux](https://github.com/RevEngAI/reai-rz/workflows/Build%20Linux/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-linux.yml)
 [![Build macOS](https://github.com/RevEngAI/reai-rz/workflows/Build%20macOS/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-macos.yml)
 [![Build Windows](https://github.com/RevEngAI/reai-rz/workflows/Build%20Windows/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-windows.yml)
-[![Docker Build and Test](https://github.com/RevEngAI/reai-rz/workflows/Docker%20Build%20and%20Test/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/docker-test.yml)
+[![Docker ARM64 Build and Test](https://github.com/RevEngAI/reai-rz/workflows/Docker%20ARM64%20Build%20and%20Test/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/docker-test.yml)
 
 RevEng.AI plugins for Rizin & Cutter that provide AI-powered reverse engineering capabilities including decompilation, function analysis, binary similarity, and more.
 

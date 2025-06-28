@@ -1,4 +1,4 @@
-name: Docker Build and Test
+name: Docker ARM64 Build and Test
 
 on:
   pull_request:
@@ -14,11 +14,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  docker-test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        platform: [linux/amd64, linux/arm64]
+  docker-test-arm64:
+    runs-on: ubuntu-latest-arm
     
     steps:
     - name: Checkout repository
@@ -26,22 +23,15 @@ jobs:
       with:
         submodules: recursive
         
-    - name: Set up QEMU for multi-platform builds
-      uses: docker/setup-qemu-action@v3
-      with:
-        platforms: arm64
-        
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
     - name: Build Docker image
       run: |
-        # Build Docker image with test API key
-        docker buildx build \
-          --platform ${{ matrix.platform }} \
+        # Build ARM64 Docker image with test API key
+        docker build \
           --build-arg REVENG_APIKEY=test-api-key-for-ci \
           --build-arg REVENG_HOST=https://api.reveng.ai \
-          --load \
           -t reai-rz:test .
         
     - name: Create test binary
@@ -50,7 +40,7 @@ jobs:
         cat > test.c << 'EOF'
         #include <stdio.h>
         int main() {
-            printf("Hello, RevEng.AI!\n");
+            printf("Hello, RevEngAI!\n");
             return 0;
         }
         EOF
@@ -146,7 +136,7 @@ jobs:
           
     - name: Test architecture info
       run: |
-        echo "Testing architecture compatibility..."
+        echo "Testing ARM64 architecture compatibility..."
         
         docker run --rm reai-rz:test \
           bash -c "
@@ -161,9 +151,8 @@ jobs:
           "
           
     - name: Integration test with sample analysis
-      if: matrix.platform == 'linux/amd64'  # Only run on amd64 to avoid timeout issues
       run: |
-        echo "Running integration test with sample analysis..."
+        echo "Running ARM64 integration test with sample analysis..."
         
         # Test actual plugin functionality (without requiring valid API key)
         docker run --rm \
@@ -192,8 +181,9 @@ jobs:
           
     - name: Test summary
       run: |
-        echo "=== Docker Test Summary ==="
-        echo "Platform: ${{ matrix.platform }}"
+        echo "=== Docker ARM64 Test Summary ==="
+        echo "Platform: Linux ARM64 (aarch64)"
+        echo "Runner: ubuntu-latest-arm"
         echo "[OK] Docker image built successfully"
         echo "[OK] Container starts correctly"
         echo "[OK] Rizin is installed and working"
@@ -203,16 +193,9 @@ jobs:
         echo "Docker image ready for use with:"
         echo "docker run -it --rm -v /path/to/binary:/home/revengai/binary reai-rz:test rizin binary"
 
-    - name: Extract binaries from Docker container
+    - name: Extract ARM64 binaries from Docker container
       run: |
-        # Determine architecture suffix for artifacts
-        if [ "${{ matrix.platform }}" = "linux/amd64" ]; then
-          ARCH_SUFFIX="x86_64"
-        else
-          ARCH_SUFFIX="aarch64"
-        fi
-        
-        echo "=== Extracting binaries for $ARCH_SUFFIX ==="
+        echo "=== Extracting ARM64 binaries ==="
         mkdir -p artifacts
         
         # Create a temporary container to extract files
@@ -248,20 +231,20 @@ jobs:
         docker rm "$CONTAINER_ID"
         
         # Show what we extracted
-        echo "=== Extracted files for $ARCH_SUFFIX ==="
+        echo "=== Extracted ARM64 files ==="
         find artifacts -type f | sort
         
         # Verify we have the essential files
-        echo "=== File verification ==="
+        echo "=== ARM64 File verification ==="
         if [ -f "artifacts/libreai.so" ] || [ -f "artifacts/libreai_rizin.so" ]; then
           echo "[OK] Found essential reai files"
         else
           echo "[WARN] No essential reai files found"
         fi
 
-    - name: Upload artifacts
+    - name: Upload ARM64 artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: reai-rz-docker-linux-${{ matrix.platform == 'linux/amd64' && 'x86_64' || 'aarch64' }}-binaries
+        name: reai-rz-docker-linux-aarch64-binaries
         path: artifacts/
         if-no-files-found: warn 
