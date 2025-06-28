@@ -15,7 +15,7 @@ on:
 
 jobs:
   docker-test-arm64:
-    runs-on: ubuntu-latest-arm
+    runs-on: ubuntu-24.04-arm
     
     steps:
     - name: Checkout repository
@@ -26,9 +26,9 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Build Docker image
+    - name: Build ARM64 Docker image
       run: |
-        # Build ARM64 Docker image with test API key
+        # Build ARM64 Docker image natively on ARM64 runner
         docker build \
           --build-arg REVENG_APIKEY=test-api-key-for-ci \
           --build-arg REVENG_HOST=https://api.reveng.ai \
@@ -183,7 +183,7 @@ jobs:
       run: |
         echo "=== Docker ARM64 Test Summary ==="
         echo "Platform: Linux ARM64 (aarch64)"
-        echo "Runner: ubuntu-latest-arm"
+        echo "Runner: ubuntu-24.04-arm"
         echo "[OK] Docker image built successfully"
         echo "[OK] Container starts correctly"
         echo "[OK] Rizin is installed and working"
