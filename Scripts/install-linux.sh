@@ -14,7 +14,7 @@ echo "Artifact directory: $ARTIFACT_DIR"
 
 # Check if we have required tools
 if ! command -v patchelf &> /dev/null; then
-    echo "❌ Error: patchelf not found. Please install it:"
+    echo "[FAIL] Error: patchelf not found. Please install it:"
     echo "  Ubuntu/Debian: sudo apt install patchelf"
     echo "  Fedora/RHEL:   sudo dnf install patchelf"
     echo "  Arch:          sudo pacman -S patchelf"
@@ -34,9 +34,9 @@ if [ -f "$LIBREAI_PATH" ]; then
     echo "Installing: libreai.so -> $USER_LIB_DIR/"
     cp "$LIBREAI_PATH" "$USER_LIB_DIR/"
     chmod 755 "$USER_LIB_DIR/libreai.so"
-    echo "✅ libreai.so installed"
+    echo "[OK] libreai.so installed"
 else
-    echo "❌ Error: libreai.so not found in artifacts"
+    echo "[FAIL] Error: libreai.so not found in artifacts"
     exit 1
 fi
 
@@ -46,7 +46,7 @@ RIZIN_PLUGIN="$ARTIFACT_DIR/libreai_rizin.so"
 if [ -f "$RIZIN_PLUGIN" ]; then
     # Get rizin plugin directory
     RIZIN_PLUGIN_DIR=$(rizin -H RZ_USER_PLUGINS 2>/dev/null) || {
-        echo "❌ Error: Could not get rizin plugin directory. Is rizin installed?"
+        echo "[FAIL] Error: Could not get rizin plugin directory. Is rizin installed?"
         exit 1
     }
     
@@ -66,9 +66,9 @@ if [ -f "$RIZIN_PLUGIN" ]; then
     # So we need: $ORIGIN/../../../lib
     patchelf --set-rpath "\$ORIGIN/../../../lib:$USER_LIB_DIR:/usr/local/lib:/usr/lib" "$RIZIN_INSTALLED_PLUGIN"
     
-    echo "✅ Rizin plugin installed and rpath fixed"
+    echo "[OK] Rizin plugin installed and rpath fixed"
 else
-    echo "❌ Error: libreai_rizin.so not found in artifacts"
+    echo "[FAIL] Error: libreai_rizin.so not found in artifacts"
     exit 1
 fi
 
@@ -106,9 +106,9 @@ if [ -f "$CUTTER_PLUGIN" ]; then
     # Add absolute path to user's lib directory and common system paths
     patchelf --set-rpath "$USER_LIB_DIR:/usr/local/lib:/usr/lib" "$CUTTER_INSTALLED_PLUGIN"
     
-    echo "✅ Cutter plugin installed and rpath fixed"
+    echo "[OK] Cutter plugin installed and rpath fixed"
 else
-    echo "❌ Error: libreai_cutter.so not found in artifacts"
+    echo "[FAIL] Error: libreai_cutter.so not found in artifacts"
     exit 1
 fi
 
@@ -135,18 +135,18 @@ EOF
 chmod +x "$ENV_SCRIPT"
 
 echo ""
-echo "🎉 Installation complete!"
+echo "[OK] Installation complete!"
 echo ""
-echo "📋 Summary:"
-echo "  • Shared libraries installed to: $USER_LIB_DIR"
+echo "Summary:"
+echo "  * Shared libraries installed to: $USER_LIB_DIR"
 echo "    - libreai.so"
-echo "  • Rizin plugin installed to: $RIZIN_PLUGIN_DIR"
+echo "  * Rizin plugin installed to: $RIZIN_PLUGIN_DIR"
 echo "    - libreai_rizin.so"
-echo "  • Cutter plugin installed to: $CUTTER_PLUGIN_DIR"
+echo "  * Cutter plugin installed to: $CUTTER_PLUGIN_DIR"
 echo "    - libreai_cutter.so"
-echo "  • Environment script created: $ENV_SCRIPT"
+echo "  * Environment script created: $ENV_SCRIPT"
 echo ""
-echo "🚀 To use the plugins:"
+echo "To use the plugins:"
 echo "  1. For command line rizin: plugins should work automatically"
 echo "  2. For Cutter: run 'source $ENV_SCRIPT' before launching Cutter"
 echo "  3. Or add to your ~/.bashrc:"

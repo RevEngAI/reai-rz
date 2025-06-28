@@ -43,9 +43,9 @@ jobs:
         $ReaiDllPath = "$InstallPath\bin\reai.dll"
         if (Test-Path $ReaiDllPath) {
           Copy-Item $ReaiDllPath "artifacts\"
-          Write-Host "✅ Collected: reai.dll"
+          Write-Host "[OK] Collected: reai.dll"
         } else {
-          Write-Host "❌ reai.dll NOT FOUND at: $ReaiDllPath"
+          Write-Host "[FAIL] reai.dll NOT FOUND at: $ReaiDllPath"
           exit 1
         }
         
@@ -53,9 +53,9 @@ jobs:
         $ReaiLibPath = "$InstallPath\lib\reai.lib"
         if (Test-Path $ReaiLibPath) {
           Copy-Item $ReaiLibPath "artifacts\"
-          Write-Host "✅ Collected: reai.lib"
+          Write-Host "[OK] Collected: reai.lib"
         } else {
-          Write-Host "❌ reai.lib NOT FOUND at: $ReaiLibPath"
+          Write-Host "[FAIL] reai.lib NOT FOUND at: $ReaiLibPath"
           exit 1
         }
         
@@ -63,9 +63,9 @@ jobs:
         $CurlDllPath = "$InstallPath\bin\libcurl.dll"
         if (Test-Path $CurlDllPath) {
           Copy-Item $CurlDllPath "artifacts\"
-          Write-Host "✅ Collected: libcurl.dll"
+          Write-Host "[OK] Collected: libcurl.dll"
         } else {
-          Write-Host "❌ libcurl.dll NOT FOUND at: $CurlDllPath"
+          Write-Host "[FAIL] libcurl.dll NOT FOUND at: $CurlDllPath"
           exit 1
         }
         
@@ -73,9 +73,9 @@ jobs:
         $CurlLibPath = "$InstallPath\lib\libcurl_imp.lib"
         if (Test-Path $CurlLibPath) {
           Copy-Item $CurlLibPath "artifacts\"
-          Write-Host "✅ Collected: libcurl_imp.lib"
+          Write-Host "[OK] Collected: libcurl_imp.lib"
         } else {
-          Write-Host "❌ libcurl_imp.lib NOT FOUND at: $CurlLibPath"
+          Write-Host "[FAIL] libcurl_imp.lib NOT FOUND at: $CurlLibPath"
           exit 1
         }
         
@@ -84,9 +84,9 @@ jobs:
         $RizinPlugin = Get-ChildItem $RizinPluginDir -Filter "*reai_rizin*.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($RizinPlugin) {
           Copy-Item $RizinPlugin.FullName "artifacts\"
-          Write-Host "✅ Collected: $($RizinPlugin.Name)"
+          Write-Host "[OK] Collected: $($RizinPlugin.Name)"
         } else {
-          Write-Host "❌ reai_rizin plugin NOT FOUND in: $RizinPluginDir"
+          Write-Host "[FAIL] reai_rizin plugin NOT FOUND in: $RizinPluginDir"
           exit 1
         }
         
@@ -95,21 +95,21 @@ jobs:
         $CutterPlugin = Get-ChildItem $CutterPluginDir -Filter "*reai_cutter*.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($CutterPlugin) {
           Copy-Item $CutterPlugin.FullName "artifacts\"
-          Write-Host "✅ Collected: $($CutterPlugin.Name)"
+          Write-Host "[OK] Collected: $($CutterPlugin.Name)"
         } else {
-          Write-Host "❌ reai_cutter plugin NOT FOUND in: $CutterPluginDir"
+          Write-Host "[FAIL] reai_cutter plugin NOT FOUND in: $CutterPluginDir"
           exit 1
         }
         
         # Verify all essential files collected
         $files = Get-ChildItem "artifacts"
         Write-Host "`n=== Build Summary ==="
-        Write-Host "✅ reai.dll: Found"
-        Write-Host "✅ reai.lib: Found"
-        Write-Host "✅ libcurl.dll: Found" 
-        Write-Host "✅ libcurl_imp.lib: Found"
-        Write-Host "✅ Rizin Plugin: Found"
-        Write-Host "✅ Cutter Plugin: Found"
+        Write-Host "[OK] reai.dll: Found"
+        Write-Host "[OK] reai.lib: Found"
+        Write-Host "[OK] libcurl.dll: Found" 
+        Write-Host "[OK] libcurl_imp.lib: Found"
+        Write-Host "[OK] Rizin Plugin: Found"
+        Write-Host "[OK] Cutter Plugin: Found"
         Write-Host "`nCollected files:"
         $files | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
         

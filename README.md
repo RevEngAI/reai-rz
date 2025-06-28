@@ -3,6 +3,7 @@
 [![Build Linux](https://github.com/RevEngAI/reai-rz/workflows/Build%20Linux/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-linux.yml)
 [![Build macOS](https://github.com/RevEngAI/reai-rz/workflows/Build%20macOS/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-macos.yml)
 [![Build Windows](https://github.com/RevEngAI/reai-rz/workflows/Build%20Windows/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/build-windows.yml)
+[![Docker Build and Test](https://github.com/RevEngAI/reai-rz/workflows/Docker%20Build%20and%20Test/badge.svg)](https://github.com/RevEngAI/reai-rz/actions/workflows/docker-test.yml)
 
 RevEng.AI plugins for Rizin & Cutter that provide AI-powered reverse engineering capabilities including decompilation, function analysis, binary similarity, and more.
 
@@ -22,11 +23,30 @@ Need help? Join our Discord server: [![Discord](https://img.shields.io/badge/Dis
 Download the latest release for your platform and run the automated install script:
 
 #### Linux
+
+**x86_64:**
 ```bash
 # Download and extract
-wget https://github.com/RevEngAI/reai-rz/releases/latest/download/reai-rz-linux.tar.gz
-tar -xzf reai-rz-linux.tar.gz
-cd reai-rz-linux
+wget https://github.com/RevEngAI/reai-rz/releases/latest/download/reai-rz-linux-x86_64.tar.gz
+tar -xzf reai-rz-linux-x86_64.tar.gz
+cd reai-rz-linux-x86_64
+
+# Install dependencies
+sudo apt install patchelf  # Ubuntu/Debian
+# sudo dnf install patchelf    # Fedora/RHEL
+# sudo pacman -S patchelf      # Arch
+
+# Run installer
+chmod +x install-linux.sh
+./install-linux.sh
+```
+
+**ARM64:**
+```bash
+# Download and extract
+wget https://github.com/RevEngAI/reai-rz/releases/latest/download/reai-rz-linux-aarch64.tar.gz
+tar -xzf reai-rz-linux-aarch64.tar.gz
+cd reai-rz-linux-aarch64
 
 # Install dependencies
 sudo apt install patchelf  # Ubuntu/Debian

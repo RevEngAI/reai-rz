@@ -207,15 +207,15 @@ jobs:
         
         echo "=== Plugin Collection Summary ==="
         if [ -n "$RIZIN_PLUGIN" ]; then
-          echo "✅ Rizin plugin found: $(basename $RIZIN_PLUGIN)"
+          echo "[OK] Rizin plugin found: $(basename $RIZIN_PLUGIN)"
         else
-          echo "❌ Rizin plugin NOT found"
+          echo "[FAIL] Rizin plugin NOT found"
         fi
         
         if [ -n "$CUTTER_PLUGIN" ]; then
-          echo "✅ Cutter plugin found: $(basename $CUTTER_PLUGIN)"
+          echo "[OK] Cutter plugin found: $(basename $CUTTER_PLUGIN)"
         else
-          echo "❌ Cutter plugin NOT found"
+          echo "[FAIL] Cutter plugin NOT found"
         fi
         
     - name: Upload artifacts
