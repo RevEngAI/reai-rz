@@ -195,51 +195,56 @@ jobs:
 
     - name: Extract ARM64 binaries from Docker container
       run: |
-        echo "=== Extracting ARM64 binaries ==="
+        echo "=== Extracting specific ARM64 binaries ==="
         mkdir -p artifacts
         
         # Create a temporary container to extract files
         CONTAINER_ID=$(docker create reai-rz:test)
         
-        # Extract shared libraries
-        echo "Extracting shared libraries..."
-        docker cp "$CONTAINER_ID:/home/revengai/.local/lib/." artifacts/ || echo "No .local/lib files found"
+        # Extract only the specific files we need
+        echo "Extracting libreai.so..."
+        docker cp "$CONTAINER_ID:/home/revengai/.local/lib/libreai.so" artifacts/ 2>/dev/null || echo "[WARN] libreai.so not found"
         
-        # Extract rizin plugin
-        echo "Extracting Rizin plugin..."
+        echo "Extracting libreai_rizin.so..."
+        # Check multiple possible locations for the rizin plugin
         RIZIN_PLUGIN_DIR=$(docker run --rm reai-rz:test rizin -H RZ_USER_PLUGINS 2>/dev/null || echo "/home/revengai/.local/share/rizin/plugins")
-        docker cp "$CONTAINER_ID:$RIZIN_PLUGIN_DIR/." artifacts/ 2>/dev/null || echo "No Rizin plugins found"
+        docker cp "$CONTAINER_ID:$RIZIN_PLUGIN_DIR/libreai_rizin.so" artifacts/ 2>/dev/null || \
+        docker cp "$CONTAINER_ID:/home/revengai/.local/lib/libreai_rizin.so" artifacts/ 2>/dev/null || \
+        echo "[WARN] libreai_rizin.so not found"
         
-        # Extract any other reai files from the container
-        echo "Searching for other reai files..."
-        docker run --rm reai-rz:test find /home/revengai/.local -name "*reai*" -type f > reai_files.txt || true
-        
-        while IFS= read -r file; do
-          if [ -n "$file" ]; then
-            filename=$(basename "$file")
-            docker cp "$CONTAINER_ID:$file" "artifacts/$filename" 2>/dev/null || true
-          fi
-        done < reai_files.txt
-        
-        # Copy install scripts appropriate for Linux
-        echo "Adding install scripts..."
-        cp Scripts/install-linux.sh artifacts/ || echo "install-linux.sh not found"
-        cp Scripts/README.md artifacts/ || echo "README.md not found"
+        # Copy install scripts
+        echo "Adding install-linux.sh..."
+        cp Scripts/install-linux.sh artifacts/ || echo "[WARN] install-linux.sh not found"
         chmod +x artifacts/install-linux.sh 2>/dev/null || true
+        
+        echo "Adding README.md..."
+        cp Scripts/README.md artifacts/ || echo "[WARN] Scripts/README.md not found"
         
         # Clean up temporary container
         docker rm "$CONTAINER_ID"
         
         # Show what we extracted
         echo "=== Extracted ARM64 files ==="
-        find artifacts -type f | sort
+        ls -la artifacts/
         
-        # Verify we have the essential files
+        # Verify we have the required files
         echo "=== ARM64 File verification ==="
-        if [ -f "artifacts/libreai.so" ] || [ -f "artifacts/libreai_rizin.so" ]; then
-          echo "[OK] Found essential reai files"
+        REQUIRED_FILES=("libreai.so" "libreai_rizin.so" "install-linux.sh" "README.md")
+        MISSING_FILES=()
+        
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ -f "artifacts/$file" ]; then
+            echo "[OK] Found $file"
+          else
+            echo "[FAIL] Missing $file"
+            MISSING_FILES+=("$file")
+          fi
+        done
+        
+        if [ ${#MISSING_FILES[@]} -eq 0 ]; then
+          echo "[OK] All required files extracted successfully"
         else
-          echo "[WARN] No essential reai files found"
+          echo "[WARN] Missing files: ${MISSING_FILES[*]}"
         fi
 
     - name: Upload ARM64 artifacts
