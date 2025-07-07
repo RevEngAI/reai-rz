@@ -109,17 +109,24 @@ static int reai_on_fcn_rename (RzAnalysis *analysis, RzCore *core, RzAnalysisFun
     Str new_name = StrInitFromZstr (fcn->name);
 
     // Call RevEngAI API to rename the function
+    int result = 0;
     if (RenameFunction (GetConnection(), fn_id, new_name)) {
         LOG_INFO ("Successfully synced function rename with RevEngAI: '%s' (ID: %llu)", fcn->name, fn_id);
-        return 0;
+        result = 0;
     } else {
         LOG_ERROR ("Failed to sync function rename with RevEngAI for function '%s' (ID: %llu)", fcn->name, fn_id);
-        return 1;
+        result = 1;
     }
 
     StrDeinit (&new_name);
+    return result;
+}
 
-    return 0;
+void *syncTypes (RzCore *core) {
+    if (!core) {
+        LOG_FATAL ("Invalid core provided. Cannot start background sync thread.");
+    }
+    return core;
 }
 
 RZ_IPI bool rz_plugin_init (RzCore *core) {
@@ -146,6 +153,9 @@ RZ_IPI bool rz_plugin_init (RzCore *core) {
     }
 
     rzshell_cmddescs_init (core);
+
+    // TODO: Initialize variables from current analysis
+
     return true;
 }
 

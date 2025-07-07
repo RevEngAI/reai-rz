@@ -13,6 +13,7 @@
 #include <rz_core.h>
 #include <rz_lib.h>
 #include <rz_th.h>
+#include <rz_type.h>
 #include <rz_types.h>
 #include <rz_util/rz_annotated_code.h>
 
@@ -25,11 +26,14 @@
 /* libc */
 #include <rz_util/rz_str.h>
 #include <rz_util/rz_sys.h>
+#include <string.h>
+#include <ctype.h>
 
 /* plugin includes */
 #include <Plugin.h>
 #include <stdlib.h>
 #include "PluginVersion.h"
+#include "Reai/Api/Types/DataType.h"
 
 typedef struct Plugin {
     Config     config;
@@ -254,6 +258,201 @@ FunctionInfos getFunctionBoundaries (RzCore *core) {
     return fv;
 }
 
+
+/*
+ * DESIGN-DECISION: Manual Construction of RzType over Parsed Strings
+ *
+ * During investigation into Rizin's type system (`rz_type`), it was found that
+ * although the common usage pattern involves parsing type strings using the
+ * type parser, a more direct and manual approach is both possible and encouraged
+ * when working within Rizin's codebase.
+ *
+ * ACCORDING-TO-MAINTAINERS:
+ * - You can manually create types by first instantiating an `RzBaseType` of the
+ *   appropriate `.kind` and then filling its members.
+ * - To construct pointers or arrays, use helper functions like:
+ *     - `rz_type_identifier_of_base_type()`
+ *     - `rz_type_pointer_of_base_type()`
+ * - The distinction between `RzBaseType` and `RzType` is important and detailed in
+ *   `librz/include/rz_type.h`.
+ * - Manual creation avoids the need for parsing strings and is more straightforward
+ *   when source data is already structured.
+ *
+ * CONCLUSION:
+ * Manual construction of types using the API is preferred in this context to avoid
+ * the overhead of converting source data to intermediate string representations,
+ * which would then be reparsed. This avoids a "round-about way" and results in
+ * clearer, more maintainable code.
+ */
+
+// TODO: when fuction similarity fails to get result, it's displayed like an error,
+// instead show it like a simple message stating what happened.
+// - James requested this
+
+///
+/// Returned const char* is just for borrowing and the caller does not own the returned string.
+/// A call to this function will completely define the struct type and add to type-db so no need
+/// to check if the type is created and added if the return value is non-null.
+///
+/// The return value is the name of new struct created and added to RzTypeDB (tdb)
+///
+/// dt[in]      : DataType to convert to RzType struct representation.
+/// tdb[in,out] : Type database to add new created type to
+///
+/// SUCCESS: Name of new type added
+/// FAILURE: abort()
+///
+static const char *createStructOrUnion (DataType *dt, RzTypeDB *tdb) {
+    if (!dt || tdb) {
+        LOG_FATAL ("Invalid arguments.");
+    }
+
+    RzBaseTypeKind btk = 0;
+
+    if (!StrCmpZstr (&dt->artifact_type, "Struct")) {
+        btk = RZ_BASE_TYPE_KIND_STRUCT;
+    } else if (!StrCmpZstr (&dt->artifact_type, "Union")) {
+        btk = RZ_BASE_TYPE_KIND_UNION;
+    } else {
+        LOG_FATAL ("Expected a union or a struct, got %s", dt->artifact_type.data);
+    }
+
+    if (!dt->name.data) {
+        LOG_FATAL ("Invalid struct name. This shows a bug in application.");
+    }
+
+    RzBaseType *bt = rz_type_base_type_new (btk);
+    bt->name       = strdup (dt->name.data);
+    bt->size       = dt->size;
+    bt->type       = NULL; // used only for typedef, atomic-type or enum
+
+    VecForeachIdx (&dt->members, member, midx, {
+        RzTypeStructMember tm = {0};
+        tm.name               = strdup (member->name.data);
+        tm.size               = member->size;
+        tm.offset             = member->offset;
+
+        if (member->artifact_type.data) {
+            const char *name             = strdup (createStructOrUnion (member, tdb));
+            tm.type                      = RZ_NEW0 (RzType);
+            tm.type->kind                = RZ_TYPE_KIND_IDENTIFIER;
+            tm.type->identifier.name     = (char *)name;
+            tm.type->identifier.is_const = false;
+            tm.type->identifier.kind     = RZ_TYPE_IDENTIFIER_KIND_UNSPECIFIED;
+        } else if (rz_type_exists (tdb, member->type.data)) {
+            tm.type = rz_type_identifier_of_base_type_str (tdb, member->type.data);
+        } else {
+            tm.type                      = RZ_NEW0 (RzType);
+            tm.type->kind                = RZ_TYPE_KIND_IDENTIFIER;
+            tm.type->identifier.name     = strdup (member->type.data);
+            tm.type->identifier.is_const = false;
+            tm.type->identifier.kind     = RZ_TYPE_IDENTIFIER_KIND_UNSPECIFIED;
+        }
+
+        rz_vector_push (&bt->struct_data.members, &tm);
+    });
+
+    ht_sp_insert (tdb->types, bt->name, bt);
+
+    return bt->name;
+}
+
+/// TODO:
+/// - Current DataType is recursive in nature, we can make it non-recursive (concluded after reading libbs/artifacts/struct.py)
+/// - Create an ENUM for ArtifactType and convert provided artifact_type in JSON to ArtifactType
+///   - List of available artifacts : https://github.com/binsync/libbs/tree/main/libbs/artifacts
+/// - Create global variables
+/// - Create local variables
+/// - Find a way to verify current type sync algorithm
+///
+
+///
+/// Define function type and add to given type database.
+///
+static bool applyFunctionType (RzCore *core, FunctionType *ftype, FunctionInfo *finfo) {
+    if (!core || !ftype || !finfo) {
+        LOG_FATAL ("Invalid arguments");
+    }
+
+    if (!ftype->name.data) {
+        LOG_FATAL ("Invalid function name in provided FunctionType. Indicates a bug in app.");
+    }
+
+    RzTypeDB *tdb = core->analysis->typedb;
+
+    VecForeachIdx (&ftype->deps, dep_type, dtidx, {
+        if ((dep_type->name.data && rz_type_exists (tdb, dep_type->name.data)) ||
+            (dep_type->type.data && rz_type_exists (tdb, dep_type->type.data))) {
+            if (!StrCmpZstr (&dep_type->artifact_type, "GlobalVariable")) {
+            } else {
+                LOG_INFO (
+                    "Type (name = %s, type = %s) already exists in RzTypeDB",
+                    dep_type->name.data,
+                    dep_type->type.data
+                );
+            }
+            continue;
+        }
+
+        // if not already exists, create for struct and typedef
+        if (!StrCmpZstr (&dep_type->artifact_type, "Struct") || !StrCmpZstr (&dep_type->artifact_type, "Union")) {
+            createStructOrUnion (dep_type, tdb);
+        } else if (StrCmpZstr (&dep_type->name, "Typedef")) {
+            if (!dep_type->type.data || !dep_type->name.data) {
+                LOG_FATAL ("Invalid typedef entry. Either type or name is NULL, which mustn't happen!");
+            }
+
+            RzType *t              = RZ_NEW0 (RzType);
+            t->kind                = RZ_TYPE_KIND_IDENTIFIER;
+            t->identifier.kind     = RZ_TYPE_IDENTIFIER_KIND_UNSPECIFIED;
+            t->identifier.is_const = false;
+            t->identifier.name     = strdup (dep_type->type.data);
+
+            RzBaseType *bt = rz_type_base_type_new (RZ_BASE_TYPE_KIND_TYPEDEF);
+            bt->name       = strdup (dep_type->name.data);
+            bt->type       = t;
+
+            ht_sp_insert (tdb->types, bt->name, bt);
+
+            t  = NULL;
+            bt = NULL;
+        }
+    });
+
+    /// Find if callables already exists
+    RzCallable *cft = ht_sp_find (tdb->callables, ftype->name.data, NULL);
+    if (!cft) {
+        cft = rz_type_func_new (
+            tdb,
+            ftype->name.data,
+            rz_type_identifier_of_base_type_str (tdb, ftype->return_type.data)
+        );
+
+        RzType *ft   = RZ_NEW0 (RzType);
+        ft->kind     = RZ_TYPE_KIND_CALLABLE;
+        ft->callable = cft;
+
+        VecForeachIdx (&ftype->args, arg, idx, {
+            rz_type_func_arg_add (
+                tdb,
+                ftype->name.data,
+                arg->name.data,
+                rz_type_identifier_of_base_type_str (tdb, arg->type.data)
+            );
+        });
+    }
+
+    // set function type
+    RzAnalysisFunction *afn = rz_analysis_get_function_byname (core->analysis, finfo->symbol.name.data);
+    if (!afn) {
+        LOG_ERROR ("Function with name \"%s\" does not exist in current Rizin session", finfo->symbol.name.data);
+        return false;
+    }
+    rz_analysis_function_set_type (core->analysis, afn, cft);
+
+    return true;
+}
+
 void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
     rzClearMsg();
     if (!core || !binary_id) {
@@ -268,33 +467,41 @@ void rzApplyAnalysis (RzCore *core, BinaryId binary_id) {
         SetBinaryIdInCore (core, binary_id);
         LOG_INFO ("Set binary ID %llu in both local plugin and RzCore config", binary_id);
 
-        FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), binary_id);
+        AnalysisId analysis_id = AnalysisIdFromBinaryId (GetConnection(), binary_id);
+
+        FunctionInfos functions = GetFunctionsList (GetConnection(), analysis_id);
         if (!functions.length) {
             DISPLAY_ERROR ("Failed to get functions from RevEngAI analysis.");
             return;
         }
 
-        u64  base_addr = rzGetCurrentBinaryBaseAddr (core);
-        bool failed    = false;
+        // generate function types for all functions
+        BeginFunctionTypeGenerationForAllFunctions (GetConnection(), analysis_id);
+        u32 max_retries = 1;
+        while (max_retries-- && !IsFunctionTypeGenerationCompletedForAllFunctions (GetConnection(), analysis_id)) {
+            LOG_INFO ("Function type generation not completed yet! Remaining retries = %u", max_retries);
+            rz_sys_usleep (100);
+        }
+
+        u64 base_addr = rzGetCurrentBinaryBaseAddr (core);
+
+        // Apply function names
         VecForeachPtr (&functions, function, {
             u64                 addr = function->symbol.value.addr + base_addr;
             RzAnalysisFunction *fn   = rz_analysis_get_function_at (core->analysis, addr);
-            if (!fn) {
+            if (fn) {
+                rz_analysis_function_force_rename (fn, function->symbol.name.data);
+                FunctionType ftype = GetFunctionType (GetConnection(), analysis_id, function->id);
+                if (ftype.return_type.length) {
+                    applyFunctionType (core, &ftype, function);
+                } else {
+                    LOG_ERROR ("No function type provided for function at address '0x%08llx'", addr);
+                }
+                FunctionTypeDeinit (&ftype);
+            } else {
                 LOG_ERROR ("No Rizin function exists at address '0x%08llx'", addr);
-                failed = true;
-                continue;
             }
-            rz_analysis_function_force_rename (fn, function->symbol.name.data);
         });
-
-        if (!failed) {
-            DISPLAY_INFO ("All functions renamed successfully");
-        } else {
-            DISPLAY_INFO (
-                "Analyses applied, but some rename operations failed. Check logs.\n"
-                "Check renamed functions by `afl` command."
-            );
-        }
 
         VecDeinit (&functions);
     }
@@ -332,7 +539,8 @@ void rzAutoRenameFunctions (RzCore *core, size max_results_per_function, u32 min
         }
 
         u64           base_addr = rzGetCurrentBinaryBaseAddr (core);
-        FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), GetBinaryId());
+        FunctionInfos functions =
+            GetFunctionsList (GetConnection(), AnalysisIdFromBinaryId (GetConnection(), GetBinaryId()));
 
         RzListIter         *it = NULL;
         RzAnalysisFunction *fn = NULL;
@@ -457,7 +665,7 @@ FunctionId rzLookupFunctionId (RzCore *core, RzAnalysisFunction *rz_fn) {
         return 0;
     }
 
-    FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), binary_id);
+    FunctionInfos functions = GetFunctionsList (GetConnection(), AnalysisIdFromBinaryId (GetConnection(), binary_id));
     if (!functions.length) {
         APPEND_ERROR ("Failed to get function info list for opened binary file from RevEng.AI servers.");
         return 0;
