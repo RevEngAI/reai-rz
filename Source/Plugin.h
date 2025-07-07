@@ -27,7 +27,6 @@
 extern "C" {
 #endif
 
-
     ///
     /// Reinit plugin by deiniting current internal state and reloading config
     ///

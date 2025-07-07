@@ -376,7 +376,7 @@ void AutoAnalysisWorker::performAnalysis (const AutoAnalysisRequest &request) {
         emitProgress (40, "Getting function information...");
 
         // Get RevEngAI functions for lookup
-        FunctionInfos revengaiFunctions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), binaryId);
+        FunctionInfos revengaiFunctions = GetFunctionsList (GetConnection(), AnalysisIdFromBinaryId (GetConnection(), binaryId));
         if (!revengaiFunctions.length) {
             VecDeinit (&map);
             emit analysisError ("Failed to get function info list from RevEng.AI servers.");
@@ -445,7 +445,7 @@ void AutoAnalysisWorker::performAnalysis (const AutoAnalysisRequest &request) {
 
 // Custom function ID lookup that works with FunctionDescription
 FunctionId AutoAnalysisWorker::lookupFunctionId (
-    const QList<FunctionDescription> &cutterFunctions,
+    const QList<FunctionDescription> &cutterFunctions, // TODO: Remove this parameter if unused
     const FunctionDescription        &targetFunction,
     const FunctionInfos              &revengaiFunctions,
     u64                               baseAddr

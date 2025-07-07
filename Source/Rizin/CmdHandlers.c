@@ -200,7 +200,7 @@ RZ_IPI RzCmdStatus rz_get_basic_function_info_handler (RzCore* core, int argc, c
     (void)argv;
 
     if (rzCanWorkWithAnalysis (GetBinaryId(), true)) {
-        FunctionInfos functions = GetBasicFunctionInfoUsingBinaryId (GetConnection(), GetBinaryId());
+        FunctionInfos functions = GetFunctionsList (GetConnection(), AnalysisIdFromBinaryId (GetConnection(), GetBinaryId()));
 
         if (!functions.length) {
             DISPLAY_ERROR ("Failed to get functions from RevEngAI analysis.");
