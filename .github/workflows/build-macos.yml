@@ -6,8 +6,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-test:
     runs-on: macos-latest
+
+    env:
+      E2E_API_KEY: ${{ secrets.E2E_API_KEY }}
+      E2E_API_URL: ${{ secrets.E2E_API_URL }}
     
     steps:
     - name: Checkout repository
@@ -98,6 +102,7 @@ jobs:
         source .venv/bin/activate
         python -m pip install --upgrade pip
         python -m pip install pyyaml
+        python -m pip install rzpipe
         
     - name: Build and install creait
       run: |
@@ -247,3 +252,13 @@ jobs:
         name: reai-rz-macos-binaries
         path: artifacts/
         if-no-files-found: warn 
+        
+    - name: Prepare dummy binary
+      run: |
+        echo -e '#include <stdio.h>\nint main(){puts("Hi");return 0;}' > test.c
+        gcc -o test.bin test.c
+
+    - name: Run Rizin plugin tests
+      run: |
+        source .venv/bin/activate
+        python3 rizin_test.py test.bin

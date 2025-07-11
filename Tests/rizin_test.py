@@ -29,13 +29,21 @@ def test_plugin_init_cmd(rz):
     Test REi command
 
     Requires:
-        - `TEST_API_KEY` environment variable set
+        - `E2E_API_KEY` environment variable set
+        - `E2E_API_URL` environment variable set
     """
 
-    if 'TEST_API_KEY' in os.environ.keys():
-        api_key = os.environ['TEST_API_KEY']
+    # get API key from 
+    if 'E2E_API_KEY' in os.environ.keys():
+        api_key = os.environ['E2E_API_KEY']
     else:
-        print('[ERROR] RevEngAI API key not provided in environment. "TEST_API_KEY" is required in environment.')
+        print('[ERROR] RevEngAI API key not provided in environment. "E2E_API_KEY" is required in environment.')
+        return False
+
+    if 'E2E_API_URL' in os.environ.keys():
+        api_url = os.environ['E2E_API_URL']
+    else:
+        print('[ERROR] RevEngAI API url not provided in environment. "E2E_API_URL" is required in environment.')
         return False
 
     res = True
@@ -50,6 +58,8 @@ def test_plugin_init_cmd(rz):
                 res = False
             else:
                 print('[SUCCESS] API key found in config file.')
+                with open(os.path.expanduser('~/.creait'), 'w') as f:
+                    f.write(f'api_key={api_key}\nhost={api_url}\n') 
     except File:
         print('[ERROR] Creait config file not found!')
 
@@ -57,7 +67,7 @@ def test_plugin_init_cmd(rz):
 
 
 # Basic argument parser
-parser = argparse.ArgumentParser("test_root.py")
+parser = argparse.ArgumentParser("rizin_test.py")
 parser.add_argument("bin", help="Binary to open RzPipe over", type=str)
 args = parser.parse_args()
 
