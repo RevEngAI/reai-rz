@@ -128,15 +128,15 @@ jobs:
         path: artifacts/
         if-no-files-found: error
                 
-    - name: Create dummy test binary with MSVC
-      shell: cmd
+    - name: Download test binary with PowerShell
+      shell: pwsh
       run: |
-        echo #include <stdio.h> > test.c
-        echo int main() { puts("Hi"); return 0; } >> test.c
-        cl /nologo /Fe:test.exe test.c
+        $url = "https://raw.githubusercontent.com/GaloisInc/sample-binaries/master/tiny/test-indirect-calls.x86_64-exe"
+        $output = "test.bin"
+        Invoke-WebRequest -Uri $url -OutFile $output
 
     - name: Run Rizin plugin tests
       run: |
         source .venv/bin/activate
         python3 -m pip install rzpipe
-        python3 Tests/rizin_test.py test.exe
+        python3 Tests/rizin_test.py test.bin
