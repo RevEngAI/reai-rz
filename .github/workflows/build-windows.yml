@@ -136,7 +136,10 @@ jobs:
         Invoke-WebRequest -Uri $url -OutFile $output
 
     - name: Run Rizin plugin tests
+      shell: pwsh
       run: |
-        source .venv/bin/activate
-        python3 -m pip install rzpipe
-        python3 Tests/rizin_test.py test.bin
+        python -m venv .venv
+        . .venv\Scripts\Activate.ps1
+        python -m pip install --upgrade pip
+        python -m pip install rzpipe
+        python Tests/rizin_test.py test.bin
