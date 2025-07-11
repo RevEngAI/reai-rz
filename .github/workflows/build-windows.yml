@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
+    env:
+      E2E_API_KEY: ${{ secrets.E2E_API_KEY }}
+      E2E_API_URL: ${{ secrets.E2E_API_URL }}
     
     steps:
     - name: Checkout repository
@@ -123,3 +127,24 @@ jobs:
         name: reai-rz-windows-binaries
         path: artifacts/
         if-no-files-found: error
+                
+    # - name: Download test binary with PowerShell
+    #   shell: pwsh
+    #   run: |
+    #     $url = "https://raw.githubusercontent.com/GaloisInc/sample-binaries/master/tiny/test-indirect-calls.x86_64-exe"
+    #     $output = "test.bin"
+    #     Invoke-WebRequest -Uri $url -OutFile $output
+
+    # - name: Run Rizin plugin tests
+    #   shell: pwsh
+    #   run: |
+    #     $env:PATH = "$UserBinDir;$env:PATH"
+
+    #     rizin -v
+        
+    #     python -m venv .venv
+    #     . .venv\Scripts\Activate.ps1
+    #     python -m pip install --upgrade pip
+    #     python -m pip install rzpipe
+        
+    #     python Tests/rizin_test.py test.bin
