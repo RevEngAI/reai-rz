@@ -51,7 +51,7 @@ def test_plugin_init_cmd(rz):
     res &= rz.cmd(f'REi {api_key}') is None   # Will succeed and print nothing
 
     try:
-        with open('~/.creait', 'r') as config:
+        with open(os.path.expanduser('~/.creait'), 'r') as config:
             content = config.read()
             if api_key not in content:
                 print('[ERROR] API key not found in config file. Plugin not initialized correctly.')
