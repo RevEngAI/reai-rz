@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  build:
     runs-on: windows-latest
 
     env:
