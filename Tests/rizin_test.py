@@ -48,8 +48,13 @@ def test_plugin_init_cmd(rz):
 
     res = True
     res &= rz.cmd('REi') is not None          # Will fail and print log messages
-    res &= rz.cmd(f'REi {api_key}') is None   # Will succeed and print nothing
 
+    if rz.cmd(f'REi {api_key}').strip() != "":
+        print("[ERROR] REi <key> returned unexpected output")
+        res = False
+    else:
+        print("[SUCCESS] REi <key> executed silently as expected")
+    
     try:
         with open(os.path.expanduser('~/.creait'), 'r') as config:
             content = config.read()
@@ -60,6 +65,7 @@ def test_plugin_init_cmd(rz):
                 print('[SUCCESS] API key found in config file.')
                 with open(os.path.expanduser('~/.creait'), 'w') as f:
                     f.write(f'api_key={api_key}\nhost={api_url}\n') 
+                res &= True
     except File:
         print('[ERROR] Creait config file not found!')
 
