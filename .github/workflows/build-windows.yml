@@ -8,6 +8,10 @@ on:
 jobs:
   build-and-test:
     runs-on: windows-latest
+
+    env:
+      E2E_API_KEY: ${{ secrets.E2E_API_KEY }}
+      E2E_API_URL: ${{ secrets.E2E_API_URL }}
     
     steps:
     - name: Checkout repository
