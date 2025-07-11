@@ -137,4 +137,4 @@ jobs:
       run: |
         source .venv/bin/activate
         python3 -m pip install rzpipe
-        python3 rizin_test.py test.bin
+        python3 Tests/rizin_test.py test.bin
