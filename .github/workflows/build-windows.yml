@@ -142,6 +142,6 @@ jobs:
         . .venv\Scripts\Activate.ps1
         python -m pip install --upgrade pip
         python -m pip install rzpipe
-        . "$env:USERPROFILE\bin\reai-env.ps1"
+        . "$env:USERPROFILE\\.local\\bin\\reai-env.ps1"
         rizin -v
         python Tests/rizin_test.py test.bin
