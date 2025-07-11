@@ -138,12 +138,7 @@ jobs:
     - name: Run Rizin plugin tests
       shell: pwsh
       run: |
-        $EnvScript = "$env:USERPROFILE\.local\bin\reai-env.ps1"
-        if (-Not (Test-Path $EnvScript)) {
-          Write-Error "Env script not found at $EnvScript"
-          exit 1
-        }
-        . $EnvScript
+        $env:PATH = "$UserBinDir;$env:PATH"
 
         rizin -v
         
