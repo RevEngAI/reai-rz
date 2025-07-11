@@ -138,10 +138,18 @@ jobs:
     - name: Run Rizin plugin tests
       shell: pwsh
       run: |
+        $EnvScript = "$env:USERPROFILE\.local\bin\reai-env.ps1"
+        if (-Not (Test-Path $EnvScript)) {
+          Write-Error "Env script not found at $EnvScript"
+          exit 1
+        }
+        . $EnvScript
+
+        rizin -v
+        
         python -m venv .venv
         . .venv\Scripts\Activate.ps1
         python -m pip install --upgrade pip
         python -m pip install rzpipe
-        . "$env:USERPROFILE\\.local\\bin\\reai-env.ps1"
-        rizin -v
+        
         python Tests/rizin_test.py test.bin
